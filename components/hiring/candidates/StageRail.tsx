@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Ban, ClipboardCheck, Lock, RotateCcw } from "lucide-react";
+import { ArrowRight, Ban, ClipboardCheck, Lock, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,6 +61,7 @@ export function StageRail({
     if (target < step) ask(to);
     else void move(candidateId, to);
   };
+  const next = nextStepFor(stage, step, terminal);
   const lm = step >= DECIDE_STEP ? "approved" : step >= EVALUATE_STEP ? "requested" : "none";
 
   return (
@@ -116,33 +117,15 @@ export function StageRail({
       )}
       <div className="flex flex-wrap items-center gap-2">
         {canEdit ? (
-          <>
-            <Button
-              variant="outline"
-              disabled={busy || step < INTERVIEW_STEP || step >= DECIDE_STEP}
-              title={
-                step < INTERVIEW_STEP
-                  ? t("unlocksAt", { step: tStep(String(INTERVIEW_STEP)) })
-                  : undefined
-              }
-              onClick={() => void move(candidateId, "DECISION_PENDING")}
-            >
-              {step < INTERVIEW_STEP ? (
-                <Lock className="h-4 w-4" />
-              ) : (
-                <ClipboardCheck className="h-4 w-4" />
-              )}
-              {t("requestLm")}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={busy || terminal}
-              onClick={() => ask("REJECTED")}
-            >
-              <Ban className="h-4 w-4" />
-              {t("refuse")}
-            </Button>
-          </>
+          <RailActions
+            step={step}
+            next={next}
+            busy={busy}
+            terminal={terminal}
+            onNext={(n) => onStep(n)}
+            onRequestLm={() => void move(candidateId, "DECISION_PENDING")}
+            onRefuse={() => ask("REJECTED")}
+          />
         ) : null}
         <span className="flex-1" />
         <Badge variant={lm === "approved" ? "success" : lm === "requested" ? "warning" : "default"}>
@@ -158,7 +141,12 @@ export function StageRail({
                 : t("moveBackTitle", { stage: reasonFor ? ts(reasonFor) : "" })}
             </DialogTitle>
           </DialogHeader>
-          <Field label={t("reason")} htmlFor="rail-reason" hint={t("reasonHint")}>
+          <Field
+            label={t("reason")}
+            htmlFor="rail-reason"
+            required={reasonFor === "REJECTED"}
+            hint={reasonFor === "REJECTED" ? t("refuseHint") : t("reasonHint")}
+          >
             <Textarea id="rail-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
           <DialogFooter>
@@ -167,7 +155,7 @@ export function StageRail({
             </Button>
             <Button
               variant={reasonFor === "REJECTED" ? "destructive" : "default"}
-              disabled={busy}
+              disabled={busy || (reasonFor === "REJECTED" && !reason.trim())}
               onClick={() => {
                 const to = reasonFor;
                 if (!to) return;
@@ -182,5 +170,62 @@ export function StageRail({
       </Dialog>
       {dialog}
     </section>
+  );
+}
+
+/**
+ * The stage-appropriate next step as the one primary action. Not into Decide
+ * (that is "Request line-manager approval") and not past it (the offer and the
+ * hire happen on the offer screen).
+ */
+function nextStepFor(stage: Stage, step: number, terminal: boolean): number | null {
+  const n = step + 1;
+  if (terminal || step < 1 || n >= DECIDE_STEP) return null;
+  return stageTransitionError(stage, stepEntryStage(n)) ? null : n;
+}
+
+function RailActions(props: {
+  step: number;
+  next: number | null;
+  busy: boolean;
+  terminal: boolean;
+  onNext: (n: number) => void;
+  onRequestLm: () => void;
+  onRefuse: () => void;
+}) {
+  const t = useTranslations("hiring.candidate");
+  const tStep = useTranslations("hiring.steps");
+  const { step, next, busy } = props;
+  const locked = step < INTERVIEW_STEP;
+  return (
+    <>
+      {next !== null ? (
+        <Button disabled={busy} onClick={() => props.onNext(next)}>
+          <ArrowRight className="h-4 w-4" />
+          {t("nextStep", { step: tStep(String(next)) })}
+        </Button>
+      ) : null}
+      <Button
+        variant="outline"
+        disabled={busy || locked || step >= DECIDE_STEP}
+        title={locked ? t("unlocksAt", { step: tStep(String(INTERVIEW_STEP)) }) : undefined}
+        onClick={props.onRequestLm}
+      >
+        {locked ? <Lock className="h-4 w-4" /> : <ClipboardCheck className="h-4 w-4" />}
+        {t("requestLm")}
+      </Button>
+      {/* Refusing is irreversible for the candidate: a secondary, destructive-
+          toned button behind a dialog that asks why — never the solid red
+          primary it used to be, beside the routine stage controls. */}
+      <Button
+        variant="outline"
+        className="text-destructive-emphasis"
+        disabled={busy || props.terminal}
+        onClick={props.onRefuse}
+      >
+        <Ban className="h-4 w-4" />
+        {t("refuse")}
+      </Button>
+    </>
   );
 }

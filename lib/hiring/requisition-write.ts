@@ -1,7 +1,9 @@
 import type { HiringRequisition, Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { can, type HiringActor } from "./access";
+import { assertChainStaffed, getRoutedChain } from "./approval-config";
 import { HiringRuleError } from "./http";
+import { toOMRorNull } from "./money";
 import { isLiveUser } from "./people";
 import { canRaiseRequisition } from "./planning-rules";
 import { requisitionSubject } from "./scope";
@@ -40,6 +42,7 @@ export async function assertPlacement(
   if (!can(actor, "hiring.manage", subject)) {
     throw new HiringRuleError("You can only raise hiring requests for a company you manage.", 403);
   }
+  return subject;
 }
 
 async function assertPeople(ids: Array<string | null | undefined>) {
@@ -76,8 +79,22 @@ export async function createRequisition(
 /** Step 1: the hiring request (draft, or draft + submit in one transaction). */
 export async function createHiringRequest(actor: HiringActor, input: CreateHiringRequestInput) {
   const r = input.request;
-  await assertPlacement(actor, r.entityId, r.departmentId ?? null);
+  const subject = await assertPlacement(actor, r.entityId, r.departmentId ?? null);
   await assertPeople([r.hiringManagerId]);
+  if (input.mode === "submit") {
+    // Submitting straight away: refuse a chain with a step nobody holds.
+    const entity = await prisma.orgEntity.findUnique({
+      where: { id: r.entityId },
+      select: { code: true },
+    });
+    const { steps } = await getRoutedChain(
+      entity?.code ?? "",
+      subject,
+      toOMRorNull(r.salaryBandMax ?? null, r.salaryCurrency),
+      "requisition",
+    );
+    assertChainStaffed(steps);
+  }
   if (!r.hiringManagerId)
     throw new HiringRuleError("Choose the hiring manager before saving.", 400);
   const needId = r.departmentNeedId ? await raisableNeed(actor, r.departmentNeedId) : null;

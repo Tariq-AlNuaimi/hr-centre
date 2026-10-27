@@ -20,7 +20,7 @@ export type EditRefusal = { reason: string; status: 409 | 422 };
 /** §2 — a finished performance year's 360 is part of the record. */
 function yearClosed(performanceYearStatus: CycleStatus): EditRefusal | null {
   if (performanceYearStatus === "CLOSED") {
-    return { reason: "A closed performance year's 360 cannot be amended (§2).", status: 409 };
+    return { reason: "A closed performance year's 360 cannot be amended.", status: 409 };
   }
   return null;
 }
@@ -80,7 +80,7 @@ export function windowChangeBlockedReason(params: {
 
   if (cycleStatus === "CLOSED") {
     return {
-      reason: "This 360 cycle is closed. Reopen it first if the window needs to change (§9.8).",
+      reason: "This 360 cycle is closed. Reopen it first if the window needs to change.",
       status: 409,
     };
   }
@@ -90,7 +90,7 @@ export function windowChangeBlockedReason(params: {
     return {
       reason:
         "The deadline can be extended but not brought forward on a live cycle: raters have been " +
-        "told when it closes, and a passed deadline locks their form (§5.4). Close the cycle " +
+        "told when it closes, and a passed deadline locks their form. Close the cycle " +
         "instead if it should end now.",
       status: 409,
     };
@@ -98,7 +98,7 @@ export function windowChangeBlockedReason(params: {
   if (currentOpensAt <= now && nextOpensAt.getTime() !== currentOpensAt.getTime()) {
     return {
       reason:
-        "This cycle has already opened, so its opening date cannot change (§9.7) — raters may " +
+        "This cycle has already opened, so its opening date cannot change — raters may " +
         "be part-way through. The deadline can still be extended.",
       status: 409,
     };
@@ -202,7 +202,7 @@ export function raterChangeBlockedReason(params: {
 
   if (cycleStatus === "CLOSED") {
     return {
-      reason: "This 360 cycle is closed (§9.8). Reopen it first if its raters must change.",
+      reason: "This 360 cycle is closed. Reopen it first if its raters must change.",
       status: 409,
     };
   }
@@ -240,7 +240,7 @@ export function discardBlockedReason(params: {
 
   if (cycleStatus === "CLOSED") {
     return {
-      reason: "This 360 cycle is closed (§9.8). Reopen it first if its assignments must change.",
+      reason: "This 360 cycle is closed. Reopen it first if its assignments must change.",
       status: 409,
     };
   }

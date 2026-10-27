@@ -24,7 +24,7 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!actor.capabilities.orgWide) {
-      return err("Org-wide reporting is HR's and the executive viewers' (§13.5).", 403);
+      return err("Org-wide reporting is HR's and the executive viewers'.", 403);
     }
 
     const cycleId = new URL(request.url).searchParams.get("cycleId");

@@ -29,7 +29,7 @@ import { upsertProjectSchema } from "@/lib/validations/three-sixty";
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR maintains the project mapping (§9.6).", 403);
+    if (!isHr(actor)) return err("Only HR maintains the project mapping.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -54,7 +54,7 @@ export const POST = withRateLimit(
       select: { id: true },
     });
     if (members.length !== uniqueIds.length) {
-      return err("One or more of those employees does not exist (§9.6).", 409);
+      return err("One or more of those employees does not exist.", 409);
     }
 
     const existing = await prisma.project.findUnique({
@@ -113,7 +113,7 @@ export const POST = withRateLimit(
 export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("The project mapping is HR's (§9.6).", 403);
+    if (!isHr(actor)) return err("The project mapping is HR's.", 403);
 
     const cycleId = new URL(request.url).searchParams.get("cycleId");
     if (!cycleId) return err("cycleId is required");

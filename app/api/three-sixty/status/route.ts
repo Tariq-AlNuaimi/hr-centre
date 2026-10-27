@@ -38,7 +38,7 @@ import { setThreeSixtyStatusSchema } from "@/lib/validations/three-sixty";
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR runs the 360 cycle (§4.1).", 403);
+    if (!isHr(actor)) return err("Only HR runs the 360 cycle.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");

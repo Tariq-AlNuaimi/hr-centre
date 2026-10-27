@@ -59,10 +59,10 @@ export function resolveBlockedReason(params: {
 }): { reason: string; status: 403 | 409 | 400 } | null {
   const { actor, rollUp, newManagerEmployeeId, subjectEmployeeId } = params;
   if (!canResolveRollUp(actor)) {
-    return { reason: "Only HR reassigns a permanent manager (§12.2).", status: 403 };
+    return { reason: "Only HR reassigns a permanent manager.", status: 403 };
   }
   if (rollUp.resolvedAt !== null) {
-    return { reason: "This roll-up has already been resolved (§12.2).", status: 409 };
+    return { reason: "This roll-up has already been resolved.", status: 409 };
   }
   if (newManagerEmployeeId === subjectEmployeeId) {
     return { reason: "An employee cannot be their own manager.", status: 400 };

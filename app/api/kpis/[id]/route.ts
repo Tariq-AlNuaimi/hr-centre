@@ -87,7 +87,7 @@ async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
     return {
       ok: false as const,
       response: err(
-        "C-Level employees skip goal-setting entirely (§8.3) — this participant has no KPI set " +
+        "C-Level employees skip goal-setting entirely — this participant has no KPI set " +
           "to amend.",
         409,
       ),
@@ -98,7 +98,7 @@ async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
     return {
       ok: false as const,
       response: err(
-        `KPIs are edited while the cycle is open — this cycle is ${participant.cycle.status} (§2).`,
+        `KPIs are edited while the cycle is open — this cycle is ${participant.cycle.status}.`,
         409,
       ),
     };
@@ -108,7 +108,7 @@ async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
   if (stage === null) {
     return {
       ok: false as const,
-      response: err("This cycle has no goal-setting stage configured yet (§2).", 409),
+      response: err("This cycle has no goal-setting stage configured yet.", 409),
     };
   }
 

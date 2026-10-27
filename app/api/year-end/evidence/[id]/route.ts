@@ -193,7 +193,7 @@ export const PATCH = withRateLimit(
     // manager still adding notes would have been locked out by the subject.
     if (row.kpi.participant.signOffs.some((s) => s.party === "MANAGER")) {
       return err(
-        "You have signed this review, so its evidence notes are part of the signed record (§7.1).",
+        "You have signed this review, so its evidence notes are part of the signed record.",
         409,
       );
     }

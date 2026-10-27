@@ -134,7 +134,7 @@ test("the same department name in two entities stays two groups", () => {
   assert.equal(chart[1].departments.length, 1);
 });
 
-test("a manager outside the visible set makes their report a top (§4.2)", () => {
+test("a manager outside the visible set makes their report a top", () => {
   // A manager viewing their own subtree: their own manager is not visible, and
   // they must still appear rather than vanishing for lack of a parent.
   const chart = buildOrgChart([person({ id: "me", name: "Me", managerId: "invisible-boss" })]);
@@ -220,7 +220,7 @@ const stripComments = (src: string) =>
 test("the page keeps §4.2's scoping and carries no compensation column", () => {
   const page = stripComments(readFileSync("app/[locale]/(dashboard)/org/page.tsx", "utf8"));
   assert.match(page, /visibleEmployeeIds\(/, "visibility is unchanged");
-  assert.match(page, /ORG_TREE_NODE_SELECT/, "and so is the column set (§4.5)");
+  assert.match(page, /ORG_TREE_NODE_SELECT/, "and so is the column set");
   assert.match(page, /buildOrgChart\(/, "the page uses the shared arrangement");
   assert.doesNotMatch(page, /basicSalary/);
 });

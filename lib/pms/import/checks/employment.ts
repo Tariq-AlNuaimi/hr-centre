@@ -63,7 +63,7 @@ export function checkDateOfJoining(row: EmployeeSourceRow): Check<Date | null> {
           row,
           "dateOfJoining",
           "date_of_joining_missing",
-          "Date of Joining is required — it anchors the bonus eligibility gate and pro-ration (§3.4, §11).",
+          "Date of Joining is required — it anchors the bonus eligibility gate and pro-ration.",
         ),
       ],
     };

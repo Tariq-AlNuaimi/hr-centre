@@ -563,7 +563,7 @@
 - lib/hiring/analytics-rules.ts: MIN_CELL, WITHHELD, FUNNEL_STAGES, suppressSmallCells, avgDays, pct, acceptanceRate
 - lib/hiring/analytics.ts: insightsView
 - lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
-- lib/hiring/approval-config.ts: approvalConfigSchema, ApprovalConfig, loadApprovalConfig, configToChainOptions, Approver, RoutedStep, routeChain, getRoutedChain, computeChainSnapshot, vacantApprovalRoles
+- lib/hiring/approval-config.ts: approvalConfigSchema, ApprovalConfig, loadApprovalConfig, configToChainOptions, Approver, RoutedStep, routeChain, getRoutedChain, computeChainSnapshot, vacantApprovalRoles, approvalRoleLabel, vacantSteps, assertChainStaffed
 - lib/hiring/assessment-rules.ts: RESULTS_USE, assessmentConfigSchema, AssessmentConfig, DEFAULT_ASSESSMENT_CONFIG, AssessmentStatusValue, PercentileBand, percentileBand, computeValidUntil, ResultLike, isResultValid, ReuseAction, reuseDecision, isThresholdLocked, blocksAdvance, effectiveStatus, defaultDueAt, advanceableCount
 - lib/hiring/assessments.ts: loadAssessmentConfig, completedResultCount, mayEditPolicy, policyView, savePolicy, listAssessments, invite, remind, advance, recordResult
 - lib/hiring/candidate-bulk.ts: BulkSummary, bulkStageMove, ExportRow, exportRows, IMPORT_ROW_CAP, importCandidates
@@ -1015,6 +1015,7 @@
 - components/hiring/ui/stage.tsx
 - components/hiring/ui/states.tsx
 - components/hiring/ui/tabs.tsx
+- components/hiring/ui/vacant-steps.tsx
 - components/hive/HiveLogo.tsx
 - components/hive/HiveRoleBadge.tsx
 - components/hive/TicketTaskPanels.tsx

@@ -194,7 +194,7 @@ test("a report with zero KPIs reads differently from one that is merely short", 
 });
 
 test("§5.4 the server's refusal sentence is carried verbatim, never re-worded", () => {
-  const reason = "The goal-setting deadline has passed and the stage is locked (§5.4).";
+  const reason = "The goal-setting deadline has passed and the stage is locked.";
   assert.equal(reportTask(myReport({ editBlockedReason: reason }), "/x", 0)!.blockedReason, reason);
   assert.equal(
     ownTask(mine({ editBlockedReason: reason }), "/x", 0)!.blockedReason,
@@ -380,7 +380,7 @@ test("§5.1 the server's refusal travels with the card, not just to the screen",
   // A set with no HR-approved baseline cannot be rated. The card still appears
   // — it is still their year — but it carries the reason, so nobody clicks
   // through to discover it.
-  const reason = "This KPI set has no HR-approved baseline, so there is nothing to assess (§5.1).";
+  const reason = "This KPI set has no HR-approved baseline, so there is nothing to assess.";
   const [task] = yearEnd({ blockedReason: reason });
   assert.equal(task.blockedReason, reason);
 });

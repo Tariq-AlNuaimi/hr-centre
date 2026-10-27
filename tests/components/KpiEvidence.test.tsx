@@ -96,7 +96,7 @@ test("a refused upload-permission request shows the server's words AND the statu
     async () =>
       new Response(
         JSON.stringify({
-          error: "The year-end deadline has passed and the stage is locked (§5.4).",
+          error: "The year-end deadline has passed and the stage is locked.",
         }),
         {
           status: 409,

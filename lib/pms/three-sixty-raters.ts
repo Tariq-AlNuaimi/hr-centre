@@ -64,7 +64,7 @@ export function raterEligibilityRefusal(params: {
   const exempt = raters.filter((r) => isThreeSixtyExempt(r.roleTrack));
   if (exempt.length > 0) {
     return {
-      reason: `C-Level are excused from 360 work entirely (§8.3) — ${exempt.length} named.`,
+      reason: `C-Level are excused from 360 work entirely — ${exempt.length} named.`,
       status: 409,
     };
   }
@@ -72,7 +72,7 @@ export function raterEligibilityRefusal(params: {
   const leavers = raters.filter((r) => r.status !== "ACTIVE");
   if (leavers.length > 0) {
     return {
-      reason: `${leavers.length} of those raters have left (§12.1) — choose someone else.`,
+      reason: `${leavers.length} of those raters have left — choose someone else.`,
       status: 409,
     };
   }

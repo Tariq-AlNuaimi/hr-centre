@@ -264,6 +264,6 @@ export function hrInterventionDue(
 export function interventionSummary(state: ParticipantComplianceState): string {
   const outstanding = outstandingWork(state);
   return outstanding.length === 0
-    ? "Both parties signed; awaiting HR approval (§5.1)."
+    ? "Both parties signed; awaiting HR approval."
     : `Outstanding: ${outstanding.join("; ")}.`;
 }

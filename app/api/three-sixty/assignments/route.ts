@@ -40,7 +40,7 @@ const CANDIDATE_SELECT = THREE_SIXTY_CANDIDATE_SELECT;
 export const PUT = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR manages rater assignments (§9.4).", 403);
+    if (!isHr(actor)) return err("Only HR manages rater assignments.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -60,7 +60,7 @@ export const PUT = withRateLimit(
     if (threeSixty.status !== "DRAFT") {
       // §9.6 puts HR's review BEFORE launch. Regenerating under an ACTIVE cycle
       // would delete assignments raters are part-way through answering.
-      return err("Assignments are generated while the 360 cycle is a draft (§9.6).", 409);
+      return err("Assignments are generated while the 360 cycle is a draft.", 409);
     }
 
     const templateByType = new Map(threeSixty.templates.map((t) => [t.type, t.id]));
@@ -121,7 +121,7 @@ export const PUT = withRateLimit(
         entityId: threeSixtyCycleId,
         action: "DELETE",
         before: { assignmentCount: wiped },
-        after: { assignmentCount: 0, reason: "regenerated from the relationship mapping (§9.6)" },
+        after: { assignmentCount: 0, reason: "regenerated from the relationship mapping" },
       });
     });
 
@@ -160,7 +160,7 @@ export const PUT = withRateLimit(
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR manages rater assignments (§9.4).", 403);
+    if (!isHr(actor)) return err("Only HR manages rater assignments.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -181,7 +181,7 @@ export const POST = withRateLimit(
     });
     if (!threeSixty) return notFound("360 cycle");
     if (threeSixty.status !== "DRAFT") {
-      return err("Assignments are edited before the cycle is activated (§9.6).", 409);
+      return err("Assignments are edited before the cycle is activated.", 409);
     }
 
     const ratee = await prisma.employee.findUnique({
@@ -190,7 +190,7 @@ export const POST = withRateLimit(
     });
     if (!ratee) return notFound("Employee");
     if (isThreeSixtyExempt(ratee.roleTrack)) {
-      return err("C-Level skip the 360 entirely (§8.3).", 409);
+      return err("C-Level skip the 360 entirely.", 409);
     }
     const raters = await prisma.employee.findMany({
       where: { id: { in: raterIds } },

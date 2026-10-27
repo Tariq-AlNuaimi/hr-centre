@@ -46,11 +46,13 @@ type JdView = {
     comment: string | null;
     createdAt: string;
   }[];
+  hrSignerVacant: boolean;
   can: { submit: boolean; sign: ("HIRING_MANAGER" | "HR")[]; requestChanges: boolean };
 };
 
 export function JdSignoffView({ id }: { id: string }) {
   const t = useTranslations("hiring.jd");
+  const tv = useTranslations("hiring.vacant");
   const locale = useLocale();
   const req = useHiringQuery<RequisitionDetail>(`/api/hiring/requisitions/${id}`);
   const jd = useHiringQuery<JdView>(`/api/hiring/requisitions/${id}/jd`);
@@ -76,13 +78,27 @@ export function JdSignoffView({ id }: { id: string }) {
               <>
                 <StatusBadge kind="jd" value={v.jdStatus} />
                 {v.can.submit ? (
-                  <Button onClick={() => act.mutate({ action: "SUBMIT" })} disabled={act.isPending}>
+                  <Button
+                    onClick={() => act.mutate({ action: "SUBMIT" })}
+                    disabled={act.isPending || v.hrSignerVacant}
+                  >
                     {t("submit")}
                   </Button>
                 ) : null}
               </>
             }
           />
+          {v.can.submit && v.hrSignerVacant ? (
+            <Notice tone="warning" title={tv("hrSignerTitle")}>
+              {tv("hrSignerBody")}{" "}
+              <Link
+                href={`/${locale}/admin/roles`}
+                className="font-medium underline underline-offset-4"
+              >
+                {tv("openRoles")}
+              </Link>
+            </Notice>
+          ) : null}
           {v.jdStatus === "CHANGES_REQUESTED" && lastChange ? (
             <Notice tone="warning" title={t("changesRequestedBy", { name: lastChange.actorName })}>
               <p className="whitespace-pre-wrap">{lastChange.comment}</p>

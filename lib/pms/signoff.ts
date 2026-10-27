@@ -139,13 +139,13 @@ export function signerBlockedReason(params: {
   if (party === "EMPLOYEE" && !isSubject) {
     return {
       reason:
-        "Only the employee themselves may sign their own KPI set (§5.1) — a signature is an acknowledgment of agreement, not an administrative act.",
+        "Only the employee themselves may sign their own KPI set — a signature is an acknowledgment of agreement, not an administrative act.",
       status: 403,
     };
   }
   if (party === "MANAGER" && !canAct) {
     return {
-      reason: "Only this employee's direct line manager may sign their KPI set (§4.2).",
+      reason: "Only this employee's direct line manager may sign their KPI set.",
       status: 403,
     };
   }
@@ -186,7 +186,7 @@ export function hrApprovalDecision(params: {
   const { state, stage, now, kpis } = params;
 
   if (kpis.length === 0) {
-    return { allowed: false, reason: "There are no KPIs to approve (§5.1)." };
+    return { allowed: false, reason: "There are no KPIs to approve." };
   }
   // §5.3, applied per period on a split year (§12.3) and once otherwise. HR is
   // the party §12.3 puts in charge of consolidating the two halves, so this is
@@ -197,36 +197,36 @@ export function hrApprovalDecision(params: {
       allowed: false,
       reason:
         `${incomplete} ` +
-        "If the stage has closed, extend the deadline (§5.5) rather than locking an incomplete set.",
+        "If the stage has closed, extend the deadline rather than locking an incomplete set.",
     };
   }
   if (!state.managerSigned) {
     return {
       allowed: false,
       reason:
-        "The line manager has not signed (§5.1). A missed manager sign-off escalates to the " +
-        "skip-level manager and HR (§5.5); it is not waived by approval.",
+        "The line manager has not signed. A missed manager sign-off escalates to the " +
+        "skip-level manager and HR; it is not waived by approval.",
     };
   }
   if (state.employeeSigned) {
     return {
       allowed: true,
       basis: "BOTH_SIGNED",
-      note: "Both parties signed; HR approval locks the agreed baseline (§5.1).",
+      note: "Both parties signed; HR approval locks the agreed baseline.",
     };
   }
   if (stageState(stage, now) === "LOCKED") {
     return {
       allowed: true,
       basis: "HR_REVIEW_EMPLOYEE_UNSIGNED",
-      note: `${EMPLOYEE_DID_NOT_SIGN} — the stage locked and the set moved to HR review (§5.4).`,
+      note: `${EMPLOYEE_DID_NOT_SIGN} — the stage locked and the set moved to HR review.`,
     };
   }
   return {
     allowed: false,
     reason:
-      "The employee has not signed yet and the goal-setting stage is still open (§5.1). " +
-      "Approval waits for their signature, or for the deadline to pass (§5.4).",
+      "The employee has not signed yet and the goal-setting stage is still open. " +
+      "Approval waits for their signature, or for the deadline to pass.",
   };
 }
 
@@ -344,10 +344,10 @@ export function contextBlockedReason(ctx: {
       : "This performance cycle is closed.";
   }
   if (ctx.exempt) {
-    return "C-Level employees have no goal-setting step (§8.3).";
+    return "C-Level employees have no goal-setting step.";
   }
   if (!ctx.stage) {
-    return "This cycle has no goal-setting stage configured (§2).";
+    return "This cycle has no goal-setting stage configured.";
   }
   return null;
 }

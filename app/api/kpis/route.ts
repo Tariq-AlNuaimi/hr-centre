@@ -167,13 +167,13 @@ async function periodRefusal(params: {
   if (periods.length === 0) {
     return assignmentPeriodId === null
       ? null
-      : "This employee's year is not split, so a KPI cannot belong to a period (§12.3).";
+      : "This employee's year is not split, so a KPI cannot belong to a period.";
   }
   if (assignmentPeriodId === null) {
-    return "This employee's year is split by a transfer — every KPI must belong to one period (§12.3).";
+    return "This employee's year is split by a transfer — every KPI must belong to one period.";
   }
   const period = periods.find((p) => p.id === assignmentPeriodId);
-  if (!period) return "That period does not belong to this employee's cycle (§12.3).";
+  if (!period) return "That period does not belong to this employee's cycle.";
 
   return periodAuthorityBlockedReason({
     actorEmployeeId: actor.employeeId,

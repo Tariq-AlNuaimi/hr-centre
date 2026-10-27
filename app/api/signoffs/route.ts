@@ -71,7 +71,7 @@ export const POST = withRateLimit(
     const contextBlocked = contextBlockedReason(ctx);
     if (contextBlocked) return err(contextBlocked, 409);
     const stage = ctx.stage;
-    if (!stage) return err("This cycle has no goal-setting stage configured (§2).", 409);
+    if (!stage) return err("This cycle has no goal-setting stage configured.", 409);
 
     // Idempotent by design (see the file comment): a second POST is the same
     // statement as the first, so it reports the existing signature at 200.

@@ -112,7 +112,7 @@ export function periodWeightageBlockedReason(params: {
   if (params.weightageTotal.equals(HUNDRED)) return null;
   return `§5.3: period ${params.orderIndex + 1}'s weightages total ${params.weightageTotal.toFixed(
     2,
-  )}%, not 100 — each period's KPI set must be complete on its own (§12.3).`;
+  )}%, not 100 — each period's KPI set must be complete on its own.`;
 }
 
 /**
@@ -143,7 +143,7 @@ export function periodAuthorityBlockedReason(params: {
   if (actorEmployeeId !== null && period.managerEmployeeId === actorEmployeeId) return null;
   return `Period ${
     period.orderIndex + 1
-  } belongs to the manager who held the relationship during it (§12.3).`;
+  } belongs to the manager who held the relationship during it.`;
 }
 
 /**

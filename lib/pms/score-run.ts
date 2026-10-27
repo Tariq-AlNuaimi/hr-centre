@@ -126,7 +126,7 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     employeeId,
     // §8.4 — every employee receives their entity's Corporate score, so a
     // missing one blocks the whole entity, not just this person.
-    reason: "No Corporate score has been keyed for this employee's entity (§8.4).",
+    reason: "No Corporate score has been keyed for this employee's entity.",
   };
 
   if (roleTrack === "C_LEVEL") {
@@ -175,7 +175,7 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     return {
       scored: false,
       employeeId,
-      reason: `No Departmental score has been keyed for this employee's department (§8.4).`,
+      reason: `No Departmental score has been keyed for this employee's department.`,
     };
   }
 
@@ -213,7 +213,7 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     return {
       scored: false,
       employeeId,
-      reason: "This employee has no completed 360 assessment (§9.5, §8.5).",
+      reason: "This employee has no completed 360 assessment.",
     };
   }
 
@@ -290,7 +290,7 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
     return {
       scored: false,
       employeeId,
-      reason: "A split year needs at least two periods (§12.3).",
+      reason: "A split year needs at least two periods.",
     };
   }
   if (roleTrack === "C_LEVEL") {
@@ -300,7 +300,7 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
     return {
       scored: false,
       employeeId,
-      reason: "C-Level scores pass through from the entity (§8.3) and are not split (§12.3).",
+      reason: "C-Level scores pass through from the entity and are not split.",
     };
   }
 
@@ -319,7 +319,7 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
       return {
         scored: false,
         employeeId,
-        reason: `Period ${p.orderIndex + 1} has no KPIs — each department's manager drafts their own portion (§12.3).`,
+        reason: `Period ${p.orderIndex + 1} has no KPIs — each department's manager drafts their own portion.`,
       };
     }
     const unratedPeriod = unratedBlockedReason(p.kpis);
@@ -354,25 +354,24 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
     return {
       scored: false,
       employeeId,
-      reason: "A Corporate score is missing for at least one of this employee's periods (§12.3).",
+      reason: "A Corporate score is missing for at least one of this employee's periods.",
     };
   }
   if (needsDepartmental && departmental === null) {
     return {
       scored: false,
       employeeId,
-      reason:
-        "A Departmental score is missing for at least one of this employee's periods (§12.3).",
+      reason: "A Departmental score is missing for at least one of this employee's periods.",
     };
   }
   if (individual === null) {
-    return { scored: false, employeeId, reason: "One period is not yet assessed (§12.3)." };
+    return { scored: false, employeeId, reason: "One period is not yet assessed." };
   }
   if (threeSixty === null) {
     return {
       scored: false,
       employeeId,
-      reason: "This employee has no completed 360 assessment (§9.5, §8.5).",
+      reason: "This employee has no completed 360 assessment.",
     };
   }
 

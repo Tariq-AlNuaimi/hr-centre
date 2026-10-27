@@ -314,7 +314,7 @@ export async function loadEmployeesFromXlsx(
     throw new ImportFileError(
       "too_many_rows",
       `The sheet has ${bodyRows.length} rows; one import can apply at most ${maxRows}. ` +
-        `An import either applies completely or changes nothing (§3.5), and beyond this ` +
+        `An import either applies completely or changes nothing, and beyond this ` +
         `size it cannot finish inside the time the server allows — so it is refused here ` +
         `rather than failing halfway. Split the sheet into files of ${maxRows} rows or ` +
         `fewer and import them one after another, or ask IT to raise the server's ` +

@@ -44,7 +44,7 @@ export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     // §4.1 — employee data administration is HR's.
-    if (!isHr(actor)) return err("Only HR records a departure (§12.1).", 403);
+    if (!isHr(actor)) return err("Only HR records a departure.", 403);
     if (!actor.employeeId) {
       return err("This account has no linked employee record (ADR-065).", 403);
     }
@@ -63,7 +63,7 @@ export const POST = withRateLimit(
     });
     if (!employee) return notFound("Employee");
     if (employee.status === "LEAVER") {
-      return err("This employee is already recorded as a leaver (§12.1).", 409);
+      return err("This employee is already recorded as a leaver.", 409);
     }
 
     // §12.1 — "one level (to the departed manager's own manager)". May be null,
@@ -95,7 +95,7 @@ export const POST = withRateLimit(
           422,
         );
       }
-      return err("This employee is already recorded as a leaver (§12.1).", 409);
+      return err("This employee is already recorded as a leaver.", 409);
     }
     const target = outcome.rollUpTo;
     const rolled = outcome.movedReportIds;
@@ -146,7 +146,7 @@ export const POST = withRateLimit(
 export const GET = withRateLimit(
   withAuth(async (_request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("The reassignment queue is HR's (§12.1).", 403);
+    if (!isHr(actor)) return err("The reassignment queue is HR's.", 403);
 
     const rows = await prisma.assignment.findMany({
       where: { status: { not: "SUBMITTED" }, rater: { status: "LEAVER" } },

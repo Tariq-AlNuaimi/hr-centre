@@ -81,7 +81,7 @@ export const PUT = withRateLimit(
     if (next === "OPEN" && cycle._count.stages !== 3) {
       return err(
         "A cycle needs all three stage deadlines before it opens — goal-setting, mid-year " +
-          "and year-end (§2).",
+          "and year-end.",
         409,
       );
     }

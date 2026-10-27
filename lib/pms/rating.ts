@@ -81,7 +81,7 @@ export function ratingBlockedReason(params: {
   if (isGoalSettingExempt(subject.roleTrack)) {
     return {
       reason:
-        "C-Level employees skip self-assessment entirely (§8.3) — their score passes through " +
+        "C-Level employees skip self-assessment entirely — their score passes through " +
         "from the entity.",
       status: 409,
     };
@@ -101,7 +101,7 @@ export function ratingBlockedReason(params: {
     if (!employeeRated) {
       return {
         reason:
-          "This KPI has not been self-assessed yet. §7.1 puts the employee's assessment first — " +
+          "This KPI has not been self-assessed yet. The policy puts the employee's assessment first — " +
           "the manager reviews it.",
         status: 409,
       };
@@ -111,21 +111,20 @@ export function ratingBlockedReason(params: {
   // §5.1 — there is nothing to rate against without an agreed baseline.
   if (goalsApprovedAt === null) {
     return {
-      reason:
-        "This KPI set has no HR-approved baseline, so there is nothing to assess against (§5.1).",
+      reason: "This KPI set has no HR-approved baseline, so there is nothing to assess against.",
       status: 409,
     };
   }
 
   if (stage === null) {
-    return { reason: "This cycle has no year-end stage configured yet (§2).", status: 409 };
+    return { reason: "This cycle has no year-end stage configured yet.", status: 409 };
   }
   if (!canActOnStage(stage, now)) {
     return {
       reason:
         now < stage.opensAt
-          ? "The year-end review has not opened yet for this cycle (§2)."
-          : "The year-end deadline has passed and the stage is locked (§5.4).",
+          ? "The year-end review has not opened yet for this cycle."
+          : "The year-end deadline has passed and the stage is locked.",
       status: 409,
     };
   }
@@ -167,6 +166,6 @@ export function divergenceBlockedReason(params: {
   return (
     `Your rating (${level}) is ${direction} than the employee's self-assessment ` +
     `(${employeeLevel}). Say why — the reason is shown to them and is what calibration reads ` +
-    `later (§7.1, §10).`
+    `later.`
   );
 }

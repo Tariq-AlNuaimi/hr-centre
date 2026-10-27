@@ -66,7 +66,7 @@ export function gateDataProblem(
   positionClassification: string | null,
 ): string | null {
   if (gateId !== "C8" || positionClassification?.trim()) return null;
-  return "C8 requires the exit to record its position classification (§17.3). Record it on the case before marking this gate satisfied, or override it with a reason.";
+  return "C8 requires the exit to record its position classification. Record it on the case before marking this gate satisfied, or override it with a reason.";
 }
 
 export const INCIDENT_KINDS = {

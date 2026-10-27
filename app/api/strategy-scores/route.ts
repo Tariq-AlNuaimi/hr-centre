@@ -36,7 +36,7 @@ export const POST = withRateLimit(
     // §4.1 — HR Super Admin and HRBP both "run the cycle org-wide". Neither a
     // line manager nor the executive viewer keys a Strategy figure.
     if (!isHr(actor)) {
-      return err("Only HR records the Strategy team's scores (§4.1, §8.4).", 403);
+      return err("Only HR records the Strategy team's scores.", 403);
     }
     const enteredBy = actor.employeeId;
     if (!enteredBy) return err("This account has no linked employee record (ADR-065).", 403);
@@ -132,7 +132,7 @@ export const GET = withRateLimit(
     // viewer org-wide sight. A line manager has no use for a departmental figure
     // they cannot act on, and §13.1 keeps components away from employees.
     if (!actor.capabilities.orgWide) {
-      return err("Strategy scores are visible to HR and the executive viewers (§4.1).", 403);
+      return err("Strategy scores are visible to HR and the executive viewers.", 403);
     }
 
     const cycleId = new URL(request.url).searchParams.get("cycleId");

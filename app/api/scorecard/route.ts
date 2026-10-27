@@ -47,7 +47,7 @@ export const GET = withRateLimit(
       // A line manager does NOT get their report's scorecard: §13.3 gives the
       // manager workspace "status, scores, and bands", which is the roster, and
       // §13.1's scorecard is the employee's own view of their own year.
-      return err("A scorecard is the employee's own (§13.1).", 403);
+      return err("A scorecard is the employee's own.", 403);
     }
 
     const publication = await prisma.cyclePublication.findUnique({

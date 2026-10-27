@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
-import { seedFoundation } from "./seed-foundation";
+import { grantBootstrapModuleAdmins, seedFoundation } from "./seed-foundation";
 import { seedJml } from "./seed-jml";
 import { seedHive } from "./seed-hive";
 import { seedPms } from "./seed-pms";
@@ -53,7 +53,7 @@ async function main() {
     // HR Centre starts empty: companies, the bootstrap HR department and the
     // bootstrap HR Super Admin only (prisma/seed-foundation.ts). Runs on every
     // deploy via vercel.json, so it must stay idempotent.
-    await seedFoundation(prisma);
+    const bootstrappedUserId = await seedFoundation(prisma);
 
     // Joiners, movers & leavers — reference configuration only (templates,
     // checklists, reason codes, statutory parameters). Idempotent; no people.
@@ -63,6 +63,9 @@ async function main() {
     await seedHive(prisma);
     // Hiring reference data + configuration defaults (idempotent; no people).
     await seedHiring(prisma);
+    // First run only: the bootstrap admin gets every module's admin role (the
+    // module roles above exist by now). A no-op on every later deploy.
+    await grantBootstrapModuleAdmins(prisma, bootstrappedUserId);
 
     // The 36-person demo fixture is for local development only. It never runs
     // unless asked for explicitly, so a real deployment holds no invented people.

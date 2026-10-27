@@ -180,11 +180,7 @@ test("§5.1 HR approval is the lock — an approved set refuses edits inside an 
     goalsApprovedAt: new Date("2026-12-20T00:00:00Z"),
   });
   assert.match(reason as string, /approved/i);
-  assert.match(
-    reason as string,
-    /change request/i,
-    "it should point at the correction path (§6.2)",
-  );
+  assert.match(reason as string, /change request/i, "it should point at the correction path");
 });
 
 test("the three gates are reported in the order a person would ask them", () => {

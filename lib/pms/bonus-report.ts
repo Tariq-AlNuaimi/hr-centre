@@ -102,7 +102,7 @@ export async function bonusRows(params: {
         effectiveMonths: "0.00",
         eligible: false,
         ineligibleReason:
-          "No Date of Joining on file (§3.3) — the eligibility gate and pro-ration cannot be computed.",
+          "No Date of Joining on file — the eligibility gate and pro-ration cannot be computed.",
         bonus: null,
       };
     }

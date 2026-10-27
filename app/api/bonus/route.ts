@@ -36,7 +36,7 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!canViewCompensation(actor)) {
-      return err("Bonus figures are visible to HR and the executive viewers (§4.5, §11.6).", 403);
+      return err("Bonus figures are visible to HR and the executive viewers.", 403);
     }
 
     const url = new URL(request.url);
@@ -55,7 +55,7 @@ export const GET = withRateLimit(
 
     const rows = await bonusRows({ cycleId, year: cycle.year });
     if (rows === null) {
-      return err("No scores have been calculated for this cycle yet (§10.7).", 409);
+      return err("No scores have been calculated for this cycle yet.", 409);
     }
 
     if (asExport) {

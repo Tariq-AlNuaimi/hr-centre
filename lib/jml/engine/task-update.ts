@@ -87,7 +87,7 @@ async function fieldData(
   const data: Prisma.JmlTaskUpdateInput = {};
   if (input.dueDate !== undefined) {
     if (kase.caseType === "LEAVE" && !input.dueDateOverrideReason?.trim()) {
-      throw new JmlError("dueDateOverrideReason: a changed due date needs a reason (§9.6)", 422);
+      throw new JmlError("dueDateOverrideReason: a changed due date needs a reason", 422);
     }
     data.dueDate = input.dueDate ? utcDate(input.dueDate) : null;
     data.dueDateOverrideReason = input.dueDateOverrideReason?.trim() || null;

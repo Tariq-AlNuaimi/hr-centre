@@ -145,7 +145,7 @@ test("§5.3 99.99 fails, and the message names the missing 0.01", () => {
   assert.equal(weightageGap(set).toString(), "-0.01");
   assert.equal(
     weightageMessage(set),
-    "Weightages total 99.99% — 0.01% short of the 100% required to sign off (§5.3).",
+    "Weightages total 99.99% — 0.01% short of the 100% required to sign off.",
     "the gap has to be actionable — 'invalid' is not a number anyone can fix",
   );
 });
@@ -156,14 +156,14 @@ test("§5.3 100.01 fails too — the rule has no upward tolerance either", () =>
   assert.equal(weightageGap(set).toString(), "0.01");
   assert.equal(
     weightageMessage(set),
-    "Weightages total 100.01% — 0.01% over the 100% allowed to sign off (§5.3).",
+    "Weightages total 100.01% — 0.01% over the 100% allowed to sign off.",
   );
 });
 
 test("§5.3 the 95% draft says which 5% is missing (the blueprint's worst path)", () => {
   assert.equal(
     weightageMessage(w("50", "45")),
-    "Weightages total 95% — 5% short of the 100% required to sign off (§5.3).",
+    "Weightages total 95% — 5% short of the 100% required to sign off.",
   );
 });
 
@@ -183,7 +183,7 @@ test("§5.1/§5.3 an empty set is not a 100% set — it is a manager who has not
   assert.equal(isWeightageComplete([]), false);
   assert.equal(
     weightageMessage([]),
-    "This employee has no KPIs yet. A manager drafts them before either party signs (§5.1).",
+    "This employee has no KPIs yet. A manager drafts them before either party signs.",
     "zero KPIs must not read as 'you are 100% short' — the fix is drafting, not arithmetic",
   );
 });
@@ -191,7 +191,7 @@ test("§5.1/§5.3 an empty set is not a 100% set — it is a manager who has not
 test("§5.3 sign-off is refused at 99.99 with the gap stated (US-11)", () => {
   assert.equal(
     signOffBlockedReason({ kpis: w("33.33", "33.33", "33.33"), stage: GOAL_SETTING, now: DURING }),
-    "Weightages total 99.99% — 0.01% short of the 100% required to sign off (§5.3).",
+    "Weightages total 99.99% — 0.01% short of the 100% required to sign off.",
   );
   assert.equal(
     signOffBlockedReason({ kpis: w("40", "60"), stage: GOAL_SETTING, now: DURING }),
@@ -209,7 +209,7 @@ test("§5.1 HR approval blocks the edit, and points at the change-request path",
   const reason = editable({ goalsApprovedAt: new Date("2026-12-20T10:00:00Z") });
   assert.equal(
     reason,
-    "HR has approved this KPI set, which locks it as the agreed baseline (§5.1). " +
+    "HR has approved this KPI set, which locks it as the agreed baseline. " +
       "A change now goes through a mid-year change request.",
     "the blueprint's 'just fix a typo' worst path — refused, with the real route named",
   );
@@ -220,7 +220,7 @@ test("§5.1 approval locks HR out too — the lock is the baseline, not a permis
     actor: actor({ userId: "u-hr", employeeId: "hr-1", pmsRoles: ["HR_SUPER_ADMIN"] }),
     goalsApprovedAt: new Date("2026-12-20T10:00:00Z"),
   });
-  assert.match(reason ?? "", /§5\.1/, "HR's own approval is what froze it");
+  assert.match(reason ?? "", /HR-approved|approv/i, "HR's own approval is what froze it");
 });
 
 test("§5.1 sign-off is NOT the lock: signatures do not appear in the edit gate", () => {
@@ -238,7 +238,7 @@ test("§5.4 one second past the deadline the manager can no longer act", () => {
   assert.equal(editable({ now: GOAL_SETTING.deadline }), null, "at the instant: still open");
   assert.equal(
     editable({ now: new Date(GOAL_SETTING.deadline.getTime() + 1000) }),
-    "The goal-setting deadline has passed and the stage is locked (§5.4).",
+    "The goal-setting deadline has passed and the stage is locked.",
   );
 });
 
@@ -247,8 +247,8 @@ test("§5.4 the lock does not soften, and the grace window does not reopen it", 
   const longAfter = new Date("2027-06-01T00:00:00Z");
   assert.equal(
     editable({ now: insideGrace }),
-    "The goal-setting deadline has passed and the stage is locked (§5.4).",
-    "grace gates HR's intervention (§5.5), never the ability to act",
+    "The goal-setting deadline has passed and the stage is locked.",
+    "grace gates HR's intervention, never the ability to act",
   );
   assert.equal(editable({ now: longAfter }), editable({ now: insideGrace }));
 });
@@ -259,7 +259,7 @@ test("§5.4 HR does not get to act inside a locked stage either", () => {
       actor: actor({ userId: "u-hr", employeeId: "hr-1", pmsRoles: ["HRBP"] }),
       now: AFTER,
     }),
-    "The goal-setting deadline has passed and the stage is locked (§5.4).",
+    "The goal-setting deadline has passed and the stage is locked.",
     "§5.5 gives HR an extension — which moves the deadline and leaves a trail — not a bypass",
   );
 });
@@ -267,7 +267,7 @@ test("§5.4 HR does not get to act inside a locked stage either", () => {
 test("§2 a stage that has not opened refuses with a different sentence than a locked one", () => {
   assert.equal(
     editable({ now: new Date("2026-11-30T23:59:59Z") }),
-    "Goal-setting has not opened yet for this cycle (§2).",
+    "Goal-setting has not opened yet for this cycle.",
     "'not yet' and 'too late' are different problems and must not share a message",
   );
 });
@@ -277,7 +277,7 @@ test("§2 a stage that has not opened refuses with a different sentence than a l
 test("§4.2 a report two levels down is view-only, and the refusal says why", () => {
   assert.equal(
     editable({ target: SKIP_LEVEL_REPORT }),
-    "Only this employee's direct line manager may draft their KPIs (§4.2).",
+    "Only this employee's direct line manager may draft their KPIs.",
     "US-10: chain visibility is not chain authority — one owner per assessment",
   );
 });
@@ -288,7 +288,7 @@ test("§4.2 the §4.2 check runs FIRST, so a stranger never learns the stage sta
   // employees they have no business acting on.
   assert.equal(
     editable({ target: SKIP_LEVEL_REPORT, now: AFTER }),
-    "Only this employee's direct line manager may draft their KPIs (§4.2).",
+    "Only this employee's direct line manager may draft their KPIs.",
   );
 });
 
@@ -296,7 +296,7 @@ test("§4.2 authority follows the managerId edge, not a role or a title", () => 
   assert.equal(editable({ target: { id: "emp-3", managerId: "mgr-1" } }), null);
   assert.equal(
     editable({ actor: actor({ employeeId: "mgr-2" }) }),
-    "Only this employee's direct line manager may draft their KPIs (§4.2).",
+    "Only this employee's direct line manager may draft their KPIs.",
     "a peer manager is a stranger to this employee's set",
   );
 });
@@ -315,7 +315,7 @@ test("§4.1 HR overrides §4.2 — an executive viewer does not", () => {
       actor: actor({ userId: "u-coo", employeeId: "coo-1", pmsRoles: ["EXECUTIVE_VIEWER"] }),
       target: SKIP_LEVEL_REPORT,
     }),
-    "Only this employee's direct line manager may draft their KPIs (§4.2).",
+    "Only this employee's direct line manager may draft their KPIs.",
     "§4.1 pins the COO to 'Acts on: Nothing' — org-wide sight, no authority",
   );
 });
@@ -323,7 +323,7 @@ test("§4.1 HR overrides §4.2 — an executive viewer does not", () => {
 test("§4.2 an actor with no employee record has no drafting authority at all", () => {
   assert.equal(
     editable({ actor: actor({ userId: "u-admin", employeeId: null, isLineManager: false }) }),
-    "Only this employee's direct line manager may draft their KPIs (§4.2).",
+    "Only this employee's direct line manager may draft their KPIs.",
     "a platform ADMIN with no employee row is not a line manager (ADR-065)",
   );
 });

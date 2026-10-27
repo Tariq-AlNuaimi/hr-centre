@@ -79,11 +79,11 @@ export function yearEndSignBlockedReason(params: {
 }): string | null {
   const { state, stage, now } = params;
 
-  if (stage === null) return "This cycle has no year-end stage configured yet (§2).";
+  if (stage === null) return "This cycle has no year-end stage configured yet.";
   if (!canActOnStage(stage, now)) {
     return now < stage.opensAt
-      ? "The year-end review has not opened yet for this cycle (§2)."
-      : "The year-end deadline has passed and the stage is locked (§5.4).";
+      ? "The year-end review has not opened yet for this cycle."
+      : "The year-end deadline has passed and the stage is locked.";
   }
   if (state.kpiCount === 0) {
     return "This participant has no KPIs, so there is no year-end assessment to sign.";
@@ -134,8 +134,8 @@ export function yearEndSignerBlockedReason(params: {
   if (isHr(actor) && actor.employeeId !== subject.managerId) {
     return {
       reason:
-        "A year-end signature is the line manager's own statement of agreement (§7.1). HR can " +
-        "extend the deadline or record a non-compliance (§5.5), but cannot sign in their place.",
+        "A year-end signature is the line manager's own statement of agreement. HR can " +
+        "extend the deadline or record a non-compliance, but cannot sign in their place.",
       status: 403,
     };
   }

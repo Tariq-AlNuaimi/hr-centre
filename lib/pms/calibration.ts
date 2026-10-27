@@ -117,7 +117,7 @@ export function adjustmentBlockedReason(params: {
 
   if (!isHrSuperAdmin(actor)) {
     return {
-      reason: "Only an HR Super Admin calibrates (§10.6) — HRBP does not touch calibration.",
+      reason: "Only an HR Super Admin calibrates — HRBP does not touch calibration.",
       status: 403,
     };
   }
@@ -127,7 +127,7 @@ export function adjustmentBlockedReason(params: {
   if (reason === null || reason.trim() === "") {
     // §10.5 — mandatory. The database refuses a blank too.
     return {
-      reason: "A calibration adjustment carries a mandatory reason (§10.5).",
+      reason: "A calibration adjustment carries a mandatory reason.",
       status: 409,
     };
   }
@@ -137,7 +137,7 @@ export function adjustmentBlockedReason(params: {
     // un-publishes first, which is itself audited.
     return {
       reason:
-        "Results for this cycle are published (§13.2). Un-publish before adjusting, so the " +
+        "Results for this cycle are published. Un-publish before adjusting, so the " +
         "correction is deliberate and recorded.",
       status: 409,
     };
@@ -159,7 +159,7 @@ export function calibrationReadinessBlockedReason(params: {
 }): string | null {
   const { participantCount, scoredCount, hasTarget } = params;
 
-  if (participantCount === 0) return "No one is enrolled in this cycle (§2).";
+  if (participantCount === 0) return "No one is enrolled in this cycle.";
   if (scoredCount === 0) {
     return "No raw scores have been calculated yet — §10.7 puts the score run before calibration.";
   }
@@ -170,7 +170,7 @@ export function calibrationReadinessBlockedReason(params: {
     );
   }
   if (!hasTarget) {
-    return "No target distribution has been defined for this cycle (§10.2).";
+    return "No target distribution has been defined for this cycle.";
   }
   return null;
 }

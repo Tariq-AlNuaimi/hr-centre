@@ -51,7 +51,7 @@ export const POST = withRateLimit(
     const actor = await resolveActor(session);
     // §12.3 gives HR the consolidation, and a transfer rearranges two managers'
     // authority — not a line manager's call.
-    if (!isHr(actor)) return err("Only HR records a mid-cycle transfer (§12.3).", 403);
+    if (!isHr(actor)) return err("Only HR records a mid-cycle transfer.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -96,7 +96,7 @@ export const POST = withRateLimit(
     } else {
       const supplied = parsed.data.newEntityId;
       if (!supplied) {
-        return err("newEntityId is required when the new position has no department (§1.2).");
+        return err("newEntityId is required when the new position has no department.");
       }
       const entity = await prisma.orgEntity.findUnique({
         where: { id: supplied },
@@ -107,7 +107,7 @@ export const POST = withRateLimit(
     }
 
     if (newDepartmentId === employee.departmentId && newEntityId === employee.entityId) {
-      return err("This is not a transfer — the department and entity are unchanged (§12.3).", 409);
+      return err("This is not a transfer — the department and entity are unchanged.", 409);
     }
 
     // §2 — the cycle is the calendar performance year.
@@ -118,7 +118,7 @@ export const POST = withRateLimit(
     });
     if (!windows) {
       return err(
-        `A transfer on this date does not split ${cycle.year} — it falls outside the cycle (§12.3).`,
+        `A transfer on this date does not split ${cycle.year} — it falls outside the cycle.`,
         409,
       );
     }
@@ -128,7 +128,7 @@ export const POST = withRateLimit(
       select: { id: true },
     });
     if (!participant) {
-      return err("This employee is not enrolled in that cycle (§12.3).", 409);
+      return err("This employee is not enrolled in that cycle.", 409);
     }
 
     const existingPeriods = await prisma.employeeAssignmentPeriod.count({
@@ -141,7 +141,7 @@ export const POST = withRateLimit(
       // plainly beats producing a two-period answer that silently loses a third
       // of the year.
       return err(
-        "This employee's year is already split (§12.3). A second mid-cycle transfer is not supported in v1 — record it with HR and split manually.",
+        "This employee's year is already split. A second mid-cycle transfer is not supported in v1 — record it with HR and split manually.",
         409,
       );
     }
@@ -194,7 +194,7 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!actor.capabilities.orgWide) {
-      return err("The transfer register is HR's and the executive viewers' (§12.3).", 403);
+      return err("The transfer register is HR's and the executive viewers'.", 403);
     }
 
     const url = new URL(request.url);

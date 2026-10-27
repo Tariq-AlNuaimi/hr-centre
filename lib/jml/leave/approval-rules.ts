@@ -113,7 +113,7 @@ export function decisionProblem(
   }
   if (!d.decisionDate) return "A decision date is required.";
   if (d.status === "GRANTED" && !d.reference?.trim()) {
-    return `Granting the ${type} on behalf of the ${existing.holderRoleKey} requires a reference — the email, minute or signed memo the authorisation came from (§4.3).`;
+    return `Granting the ${type} on behalf of the ${existing.holderRoleKey} requires a reference — the email, minute or signed memo the authorisation came from.`;
   }
   if (d.status === "REJECTED" && !d.comments?.trim())
     return "Recording a refusal requires the reason it was refused.";

@@ -26,7 +26,7 @@ import {
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR sets up the 360 cycle (§4.1).", 403);
+    if (!isHr(actor)) return err("Only HR sets up the 360 cycle.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -44,10 +44,10 @@ export const POST = withRateLimit(
     if (cycle.threeSixty) {
       // §9.1 ties one 360 to one performance year. A second would make "the
       // employee's 360 ratio" ambiguous when §8.5 carries it into the formula.
-      return err("This performance cycle already has a 360 cycle (§9.1).", 409);
+      return err("This performance cycle already has a 360 cycle.", 409);
     }
     if (cycle.status === "CLOSED") {
-      return err("A closed cycle cannot take a new 360 (§2).", 409);
+      return err("A closed cycle cannot take a new 360.", 409);
     }
 
     const threeSixty = await prisma.threeSixtyCycle.create({
@@ -101,7 +101,7 @@ export const POST = withRateLimit(
 export const PATCH = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR sets up the 360 cycle (§4.1).", 403);
+    if (!isHr(actor)) return err("Only HR sets up the 360 cycle.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");

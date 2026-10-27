@@ -240,7 +240,7 @@ function statusTransitionRefusal(next: string, current: string): string | null {
   if (next === "ACTIVE" && current === "LEAVER") {
     return (
       "Bringing a departed employee back is not supported in this version, and is not a field " +
-      "edit: when they left, their direct reports were moved up a level (§12.1) and their " +
+      "edit: when they left, their direct reports were moved up a level and their " +
       "login was revoked. Re-import them from the employee sheet to restore the record, " +
       "restore their account from the Recycling bin to give them access again, and set " +
       "their team's reporting lines on the employee records that need to change."

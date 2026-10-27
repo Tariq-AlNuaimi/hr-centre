@@ -31,7 +31,7 @@ const COMPANIES = [
 
 const BOOTSTRAP_DEPARTMENT = { entity: "RIHAL", name: "HR" };
 
-export async function seedFoundation(prisma: PrismaClient): Promise<void> {
+export async function seedFoundation(prisma: PrismaClient): Promise<string | null> {
   const entityIds = new Map<string, string>();
   for (const company of COMPANIES) {
     const found = await prisma.orgEntity.findUnique({
@@ -58,7 +58,7 @@ export async function seedFoundation(prisma: PrismaClient): Promise<void> {
     ).id;
 
   await seedStarterRoles(prisma);
-  await bootstrapAdminEmployee(prisma, entityId, departmentId);
+  return bootstrapAdminEmployee(prisma, entityId, departmentId);
 }
 
 /**
@@ -106,12 +106,12 @@ async function bootstrapAdminEmployee(
   prisma: PrismaClient,
   entityId: string,
   departmentId: string,
-): Promise<void> {
+): Promise<string | null> {
   const email = (process.env.SEED_ADMIN_EMAIL ?? "").toLowerCase().trim();
-  if (!email) return;
+  if (!email) return null;
 
   const existing = await prisma.employee.findUnique({ where: { email }, select: { id: true } });
-  if (existing) return;
+  if (existing) return null;
 
   const headcount = await prisma.employee.count();
   if (headcount !== 0) {
@@ -119,7 +119,7 @@ async function bootstrapAdminEmployee(
       `HR Centre bootstrap: skipped for ${email} — ${headcount} employee(s) already exist. ` +
         `Grant HR roles in Admin → Roles instead of from a build step.`,
     );
-    return;
+    return null;
   }
 
   // The login may not exist yet (seed.ts skips the admin in production while
@@ -164,4 +164,48 @@ async function bootstrapAdminEmployee(
   }
 
   console.log(`HR Centre bootstrap: ${email} seeded as HR Super Admin (odooId BOOTSTRAP-ADMIN).`);
+  return user?.id ?? null;
+}
+
+/**
+ * UX review P0 (AC-5.2) — on the FIRST run only (the caller passes the user id
+ * `bootstrapAdminEmployee` returned, which it does once, while no employee
+ * exists), give the bootstrap administrator every module's admin starter role
+ * at Whole group. Runs after the module seeds, which create those roles.
+ * Existing databases got the same grant once from migration
+ * 20261027180000_ux_p0_bootstrap_admin_roles. Never re-grants on later deploys.
+ */
+export const MODULE_ADMIN_STARTER_KEYS = [
+  "HR_SUPER_ADMIN",
+  "JML_HR_MANAGER",
+  "HIRING_ADMIN",
+  "TICKETS_ADMIN",
+] as const;
+
+export async function grantBootstrapModuleAdmins(
+  prisma: PrismaClient,
+  userId: string | null,
+): Promise<void> {
+  if (!userId) return;
+  const roles = await prisma.accessRole.findMany({
+    where: { starterKey: { in: [...MODULE_ADMIN_STARTER_KEYS] }, deletedAt: null },
+    select: { id: true },
+    take: MODULE_ADMIN_STARTER_KEYS.length,
+  });
+  for (const role of roles) {
+    const found = await prisma.roleAssignment.findFirst({
+      where: { userId, roleId: role.id, scopeType: "GROUP" },
+      select: { id: true },
+    });
+    if (found) continue;
+    await prisma.roleAssignment.create({
+      data: {
+        userId,
+        roleId: role.id,
+        scopeType: "GROUP",
+        note: "Bootstrap administrator: every module's admin role (one-time grant)",
+      },
+      select: { id: true },
+    });
+  }
 }

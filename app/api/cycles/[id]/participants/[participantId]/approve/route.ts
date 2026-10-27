@@ -33,7 +33,7 @@ export const POST = withRateLimit(
     const actor = await resolveActor(session);
     // §4.1 — HR Super Admin and HRBP both "run the cycle org-wide (approvals
     // ...)". A line manager signs; only HR locks.
-    if (!canRunCycle(actor)) return forbidden("Only HR may approve a KPI set (§5.1).");
+    if (!canRunCycle(actor)) return forbidden("Only HR may approve a KPI set.");
     if (!actor.employeeId) {
       return forbidden("This account has no linked employee record to record as approver.");
     }
@@ -48,7 +48,7 @@ export const POST = withRateLimit(
     const contextBlocked = contextBlockedReason(ctx);
     if (contextBlocked) return err(contextBlocked, 409);
     const stage = ctx.stage;
-    if (!stage) return err("This cycle has no goal-setting stage configured (§2).", 409);
+    if (!stage) return err("This cycle has no goal-setting stage configured.", 409);
 
     // Idempotent: approving an approved set reports the existing lock rather
     // than moving `goalsApprovedAt` forward, which would rewrite when the

@@ -14,7 +14,8 @@ import { Field, Textarea } from "../ui/fields";
 import { useOrgOptions } from "../ui/org";
 import { PersonPicker, type Person } from "../ui/person-picker";
 import { Notice, QueryState } from "../ui/states";
-import { ApprovalRoutePreview } from "./ApprovalRoutePreview";
+import { VacantStepsNotice, vacantRoles } from "../ui/vacant-steps";
+import { ApprovalRoutePreview, useRequestRoute } from "./ApprovalRoutePreview";
 import { NeedContext } from "./NeedContext";
 
 /**
@@ -208,28 +209,74 @@ export function HiringRequestForm() {
               onChange={(e) => set("note")(e.target.value)}
             />
           </Field>
-          {save.error ? (
-            <div className="mt-3">
-              <Notice tone="danger">{save.error.message}</Notice>
-            </div>
-          ) : null}
-          <div className="mt-4 flex flex-wrap justify-end gap-2">
-            <Button
-              variant="outline"
-              disabled={save.isPending || !form.title || !entityId}
-              onClick={() => save.mutate({ mode: "draft", request })}
-            >
-              {t("saveDraft")}
-            </Button>
-            <Button
-              disabled={save.isPending || !form.note.trim()}
-              onClick={() => save.mutate({ mode: "submit", request, note: form.note })}
-            >
-              {t("submit")}
-            </Button>
-          </div>
+          <SubmitControls
+            route={
+              entityId
+                ? {
+                    entityId,
+                    departmentId,
+                    bandMax: form.salaryBandMax,
+                    currency: form.salaryCurrency,
+                  }
+                : null
+            }
+            error={save.error?.message ?? null}
+            pending={save.isPending}
+            canDraft={Boolean(form.title && entityId)}
+            canSubmit={Boolean(form.note.trim() && entityId)}
+            onDraft={() => save.mutate({ mode: "draft", request })}
+            onSubmit={() => save.mutate({ mode: "submit", request, note: form.note })}
+          />
         </SectionCard>
       </div>
     </QueryState>
+  );
+}
+
+/**
+ * Save / submit, with the dead-end check (docs/blueprints/ux-p0.md, AC-3.2):
+ * reads the same cached route as the preview above, and will not submit into
+ * a step nobody holds. The server refuses it too.
+ */
+function SubmitControls(props: {
+  route: Parameters<typeof useRequestRoute>[0];
+  error: string | null;
+  pending: boolean;
+  canDraft: boolean;
+  canSubmit: boolean;
+  onDraft: () => void;
+  onSubmit: () => void;
+}) {
+  const t = useTranslations("hiring.request");
+  const route = useRequestRoute(props.route);
+  const vacant = route.data ? vacantRoles(route.data.steps) : [];
+  return (
+    <>
+      {vacant.length ? (
+        <div className="mt-3">
+          <VacantStepsNotice roles={vacant} />
+        </div>
+      ) : null}
+      {props.error ? (
+        <div className="mt-3">
+          <Notice tone="danger">{props.error}</Notice>
+        </div>
+      ) : null}
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <Button
+          variant="outline"
+          disabled={props.pending || !props.canDraft}
+          onClick={props.onDraft}
+        >
+          {t("saveDraft")}
+        </Button>
+        <Button
+          disabled={props.pending || !props.canSubmit || vacant.length > 0}
+          onClick={props.onSubmit}
+        >
+          {t("submit")}
+        </Button>
+      </div>
+    </>
   );
 }

@@ -92,7 +92,7 @@ test("§5.4 a stage is actionable right up to the deadline instant", () => {
   assert.equal(
     canActOnStage(GOAL_SETTING, new Date(GOAL_SETTING.deadline.getTime() + 1)),
     false,
-    "one millisecond past: locked, with no taper (§5.4)",
+    "one millisecond past: locked, with no taper",
   );
 });
 

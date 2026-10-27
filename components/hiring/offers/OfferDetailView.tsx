@@ -22,7 +22,8 @@ import { OfferForm, toOfferBody, type OfferFormValues } from "./OfferForm";
 import { PackageCard } from "./PackageCard";
 import { ReviseDialog, Revisions } from "./Revisions";
 import { OfferStatusBadge, muscatDay } from "./bits";
-import type { OfferDetail, OfferStatus, VersionView } from "./types";
+import { VacantStepsNotice, vacantRoles } from "../ui/vacant-steps";
+import type { ApprovalViewData, OfferDetail, OfferStatus, VersionView } from "./types";
 
 type Dialogs = "edit" | "revise" | "align" | "accept" | null;
 
@@ -163,8 +164,20 @@ function MoveStatus({ o }: { o: OfferDetail }) {
   const move = useHiringMutation<{ status: OfferStatus }>("PUT", `/api/hiring/offers/${o.id}`, {
     success: t("moved"),
   });
+  // Same query (and cache entry) as the approval panel beside it: a step nobody
+  // can decide blocks submission here, and the server refuses it too.
+  const approvals = useHiringQuery<ApprovalViewData>(`/api/hiring/offers/${o.id}/approvals`);
+  const vacant =
+    o.can.transitions.includes("PENDING_APPROVAL") && approvals.data
+      ? vacantRoles(approvals.data.chain)
+      : [];
   return (
     <SectionCard title={t("moveTitle")} subtitle={t(`moveHint.${o.status}`)}>
+      {vacant.length ? (
+        <div className="mb-3">
+          <VacantStepsNotice roles={vacant} />
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         {o.can.transitions.map((s) => (
           <ConfirmAction
@@ -175,7 +188,10 @@ function MoveStatus({ o }: { o: OfferDetail }) {
           >
             <Button
               variant={s === "PENDING_APPROVAL" || s === "SENT" ? "default" : "outline"}
-              disabled={move.isPending}
+              disabled={
+                move.isPending ||
+                (s === "PENDING_APPROVAL" && (vacant.length > 0 || approvals.isLoading))
+              }
             >
               {t(`moveTo.${s}`)}
             </Button>

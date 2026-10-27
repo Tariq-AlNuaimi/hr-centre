@@ -180,7 +180,7 @@ export async function addManualTask(actor: JmlActor, caseId: string, input: Manu
     throw new JmlError("stage: that stage does not belong to this case type", 422);
   }
   if (kase.caseType !== "LEAVE" && !input.comment?.trim()) {
-    throw new JmlError("comment: say why this task is needed (§10.5)", 422);
+    throw new JmlError("comment: say why this task is needed", 422);
   }
   if (input.statutory && !input.complianceCategory) {
     throw new JmlError("complianceCategory: a statutory task needs a category", 422);

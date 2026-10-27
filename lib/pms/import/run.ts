@@ -734,7 +734,7 @@ async function runDepartures(
       lastWorkingDay: departure.lastWorkingDay,
       previousStatus: departure.previousStatus,
       previousLastWorkingDay: departure.previousLastWorkingDay,
-      note: "Recorded by employee import (§3.2)",
+      note: "Recorded by employee import",
     });
     if (!outcome.ok && outcome.reason === "TOO_MANY_REPORTS") refused.push(departure.name);
   }

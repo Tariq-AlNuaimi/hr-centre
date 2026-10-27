@@ -35,7 +35,7 @@ import { resolveRollUpSchema } from "@/lib/validations/edge-cases";
 export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Roll-up prompts are HR's to clear (§12.2).", 403);
+    if (!isHr(actor)) return err("Roll-up prompts are HR's to clear.", 403);
 
     const includeResolved = new URL(request.url).searchParams.get("includeResolved") === "1";
 
@@ -116,7 +116,7 @@ export const POST = withRateLimit(
     // 404-vs-403 to a non-HR caller, turning this route into an oracle for which
     // roll-up ids exist — the same reasoning §4.2 applies to employee records.
     if (!canResolveRollUp(actor)) {
-      return err("Only HR reassigns a permanent manager (§12.2).", 403);
+      return err("Only HR reassigns a permanent manager.", 403);
     }
 
     const rollUp = await prisma.managerRollUp.findUnique({
@@ -155,7 +155,7 @@ export const POST = withRateLimit(
       // Naming a leaver as the permanent manager would recreate the exact gap
       // §12.1's roll-up just closed.
       if (manager.status === "LEAVER") {
-        return err("A leaver cannot be named as the permanent manager (§12.1).", 409);
+        return err("A leaver cannot be named as the permanent manager.", 409);
       }
     }
 
@@ -206,7 +206,7 @@ export const POST = withRateLimit(
     });
 
     if (!resolved) {
-      return err("This roll-up was resolved by someone else a moment ago (§12.2).", 409);
+      return err("This roll-up was resolved by someone else a moment ago.", 409);
     }
 
     return ok({ rollUpId, resolvedAt: now, managerEmployeeId: nextManagerId });

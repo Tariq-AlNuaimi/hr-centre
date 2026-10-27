@@ -2,7 +2,12 @@ import { Prisma, type HiringOfferStatus } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import type { HiringActor } from "./access";
 import { computeChain, totalMonthlyComp } from "./approval-chain";
-import { configToChainOptions, loadApprovalConfig } from "./approval-config";
+import {
+  assertChainStaffed,
+  configToChainOptions,
+  loadApprovalConfig,
+  routeChain,
+} from "./approval-config";
 import { applyStageChange, moveStage } from "./candidate-stage";
 import { loadCandidate, seesCandidateComp } from "./candidates";
 import { newHiringId, sealAmount, sealJson } from "./comp-crypto";
@@ -142,6 +147,9 @@ export async function updateOffer(
       totalMonthlyComp(terms.salary, terms.allowances),
       configToChainOptions(await loadApprovalConfig()),
     );
+    // No dead-end approvals: every step needs someone (not the candidate's
+    // referrer) who can decide it, or the offer would stall unseen.
+    assertChainStaffed(await routeChain(chain, l.subject), [o.candidate.referredById]);
     Object.assign(extra, {
       submittedById: actor.userId,
       approvalChain: chain as unknown as Prisma.InputJsonValue,

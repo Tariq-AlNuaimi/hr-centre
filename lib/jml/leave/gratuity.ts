@@ -76,7 +76,7 @@ function splitDateFrom(rows: readonly StatutoryRow[]): number {
   if (!post) {
     throw new GratuityUnavailableError(
       `No "${SPLIT_KEY}" parameter is configured, so the 31 Jul 2023 service split cannot be located. ` +
-        `Configure it in Administration (§17.2).`,
+        `Configure it in Administration.`,
     );
   }
   return utcDay(post.effectiveFrom);
