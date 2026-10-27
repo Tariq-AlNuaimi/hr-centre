@@ -3,7 +3,7 @@
 Scope: lib/jml/**, lib/validations/jml/**, app/api/jml/**, app/api/internal/jml-sweep/**, app/api/notifications/**, app/[locale]/(dashboard)/jml/**, components/jml/**, components/layout/AppSidebar.tsx, components/layout/Breadcrumbs.tsx, lib/rbac/catalogue.ts, lib/pms/notifications.ts, lib/email.ts, lib/prisma/soft-delete-extension.ts, lib/prisma/recyclable.ts, prisma/schema.prisma, vercel.json
 
 Status: part of `docs/blueprints/jml.md` (slice 2). Decision D6 (one engine), D12 (permissions);
-ADR-079.
+ADR-086.
 
 ## What this slice delivers
 

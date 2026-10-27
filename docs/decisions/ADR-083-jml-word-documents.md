@@ -5,7 +5,7 @@
 **Decision owner:** Tariq Al-Naaimi
 **Supersedes (in part):** ADR-001 (locked stack) — adds two runtime dependencies for the JML
 module's documents. ADR-001 otherwise stands.
-**Relates to:** ADR-079 (one JML case engine), HR Offboarding ADR-HRO-001 (the decision ported),
+**Relates to:** ADR-086 (one JML case engine), HR Offboarding ADR-HRO-001 (the decision ported),
 ADR-051 (licence elections), docs/blueprints/jml-s6-leavers.md.
 
 ## Context

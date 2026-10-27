@@ -3,7 +3,7 @@
 Scope: lib/jml/**, lib/validations/jml/**, app/api/jml/**, app/[locale]/(dashboard)/jml/**, components/jml/**, lib/pms/transfer-apply.ts, app/api/transfers/route.ts, prisma/schema.prisma, prisma/seed-jml.ts, prisma/seed-jml-templates.ts, tests/contracts/jml-movers.test.ts
 
 Status: part of `docs/blueprints/jml.md` (slice 4). Decision D9 (a MOVE applies when it
-completes, through the existing transfer logic); ADR-079 (one engine), ADR-082.
+completes, through the existing transfer logic); ADR-086 (one engine), ADR-082.
 
 ## What this slice delivers (HR Onboarding R1–R10)
 
