@@ -1,4 +1,4 @@
-# ADR-079 — One case engine for joiners, movers and leavers
+# ADR-086 — One case engine for joiners, movers and leavers
 
 **Status:** 🟢 Accepted — operator brief for the JML module, 2026-10-26.
 **Date:** 2026-10-27
