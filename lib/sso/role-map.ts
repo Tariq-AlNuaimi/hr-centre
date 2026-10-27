@@ -8,9 +8,9 @@ import type { Role } from "@/generated/prisma/client";
  *
  * `User.role` (ADMIN / EDITOR / VIEWER) governs PLATFORM administration:
  * `withAdminAuth` gates `/api/users`, `/api/recycling-bin` and `/api/audit-log`
- * on it. It is NOT §4.1's HR authority — that lives on `Employee.pmsRoles`
- * (HR_SUPER_ADMIN / HRBP / EXECUTIVE_VIEWER) and is granted at `/admin/roles`
- * by a human who means it.
+ * on it. It is NOT §4.1's HR authority — that is a role assignment
+ * (`AccessRole` / `RoleAssignment`, lib/rbac) granted at `/admin/roles` by a
+ * human who means it.
  *
  * So an IdP group can make someone a platform administrator. It cannot make them
  * an HR Super Admin, and it must not: §4.1's authority is derived from the org

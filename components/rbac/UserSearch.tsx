@@ -13,9 +13,15 @@ type Account = { id: string; name: string | null; email: string };
 export function UserSearch({
   value,
   onChange,
+  id = "assign-user",
+  label,
 }: {
   value: Account | null;
   onChange: (account: Account | null) => void;
+  /** Input id (two searches can share a page). */
+  id?: string;
+  /** Accessible name when no visible <label> points at `id`. */
+  label?: string;
 }) {
   const t = useTranslations("rbac");
   const [term, setTerm] = useState("");
@@ -41,13 +47,14 @@ export function UserSearch({
   return (
     <div className="space-y-1">
       <Input
-        id="assign-user"
+        id={id}
+        aria-label={label}
         value={term}
         placeholder={t("searchPeople")}
         onChange={(e) => setTerm(e.target.value)}
-        aria-describedby="assign-user-hint"
+        aria-describedby={`${id}-hint`}
       />
-      <p id="assign-user-hint" className="text-xs text-muted-foreground">
+      <p id={`${id}-hint`} className="text-xs text-muted-foreground">
         {t("searchHint")}
       </p>
       {(results.data?.data ?? []).length > 0 ? (

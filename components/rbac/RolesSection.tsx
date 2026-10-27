@@ -11,9 +11,16 @@ import { ConfirmAction } from "@/components/shared/ConfirmAction";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { RoleDialog } from "./RoleDialog";
+import { RoleMatrix } from "./RoleMatrix";
+import { RoleHolders } from "./RoleHolders";
+import { FilterChips } from "@/components/shared/FilterBar";
 import type { RoleRow } from "./types";
 
-/** Roles — named bundles of actions (AC-F3.1). */
+/**
+ * Roles — named bundles of actions (AC-F3.1). UX P1 R12: a list or a roles ×
+ * actions matrix; each role shows who holds it; a role still held cannot be
+ * deleted (the server refuses too); built-in roles say they are editable.
+ */
 export function RolesSection() {
   const t = useTranslations("rbac");
   const { success, error: toastError } = useNotify();
@@ -21,6 +28,8 @@ export function RolesSection() {
   const [editing, setEditing] = useState<RoleRow | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "matrix">("list");
+  const [openHolders, setOpenHolders] = useState<string | null>(null);
 
   const roles = useQuery({
     queryKey: ["rbac", "roles"],
@@ -60,6 +69,17 @@ export function RolesSection() {
       subtitle={t("rolesNote")}
       actions={<Button onClick={() => setEditing("new")}>{t("newRole")}</Button>}
     >
+      <div className="mb-4">
+        <FilterChips
+          label={t("viewLabel")}
+          value={view}
+          onChange={(v) => setView(v === "matrix" ? "matrix" : "list")}
+          chips={[
+            { value: "list", label: t("viewList") },
+            { value: "matrix", label: t("viewMatrix") },
+          ]}
+        />
+      </div>
       {roles.isLoading ? (
         <div className="h-24 animate-pulse rounded-md bg-muted" />
       ) : roles.isError ? (
@@ -68,6 +88,8 @@ export function RolesSection() {
         </p>
       ) : list.length === 0 ? (
         <EmptyState description={t("noRoles")} />
+      ) : view === "matrix" ? (
+        <RoleMatrix roles={list} />
       ) : (
         <ul>
           {list.map((role) => (
@@ -78,30 +100,46 @@ export function RolesSection() {
               <span className="font-medium text-foreground">{role.name}</span>
               {role.starterKey ? <Badge>{t("starter")}</Badge> : null}
               <span className="text-xs text-muted-foreground">
-                {t("roleCounts", {
-                  actions: role.permissions.length,
-                  holders: role._count.assignments,
-                })}
+                {t("roleActions", { actions: role.permissions.length })}
               </span>
-              {role.description ? (
-                <span className="basis-full text-xs text-muted-foreground">{role.description}</span>
-              ) : null}
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-expanded={openHolders === role.id}
+                onClick={() => setOpenHolders((id) => (id === role.id ? null : role.id))}
+              >
+                {t("assignedTo", { count: role._count.assignments })}
+              </Button>
               <span className="ms-auto flex gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditing(role)}>
                   {t("edit")}
                 </Button>
-                <ConfirmAction
-                  title={t("deleteTitle", { name: role.name })}
-                  description={t("deleteDescription")}
-                  okText={t("delete")}
-                  okType="danger"
-                  onConfirm={() => void remove(role)}
-                >
-                  <Button size="sm" variant="ghost">
+                {role._count.assignments > 0 ? (
+                  <Button size="sm" variant="ghost" disabled title={t("deleteBlocked")}>
                     {t("delete")}
                   </Button>
-                </ConfirmAction>
+                ) : (
+                  <ConfirmAction
+                    title={t("deleteTitle", { name: role.name })}
+                    description={t("deleteDescription")}
+                    okText={t("delete")}
+                    okType="danger"
+                    onConfirm={() => void remove(role)}
+                  >
+                    <Button size="sm" variant="ghost">
+                      {t("delete")}
+                    </Button>
+                  </ConfirmAction>
+                )}
               </span>
+              {role.description ? (
+                <span className="basis-full text-xs text-muted-foreground">{role.description}</span>
+              ) : null}
+              {openHolders === role.id ? (
+                <div className="basis-full rounded-md bg-muted/50 p-3">
+                  <RoleHolders roleId={role.id} />
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

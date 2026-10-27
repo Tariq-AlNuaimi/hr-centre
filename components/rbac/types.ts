@@ -24,3 +24,14 @@ export type AssignmentRow = {
   role: { id: string; name: string };
   grantedBy: { name: string | null; email: string } | null;
 };
+
+/** GET /api/rbac/effective — one person's effective access (UX P1 R12d). */
+export type EffectiveAccess = {
+  assignments: Array<{
+    id: string;
+    role: { id: string; name: string };
+    scope: { type: string; label: string | null };
+    validUntil: string | null;
+  }>;
+  permissions: Array<{ code: string; scopes: Array<{ type: string; label: string | null }> }>;
+};
