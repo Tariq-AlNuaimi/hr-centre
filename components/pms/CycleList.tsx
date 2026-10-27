@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { ConfirmAction } from "@/components/shared/ConfirmAction";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -117,7 +118,15 @@ export function CycleList({
       key: "year",
       title: t("cycles.year"),
       dataIndex: "year",
-      render: (value: number) => <span className="font-medium text-foreground">{value}</span>,
+      // UX P1 (perf-jml P1-8): the year opens the cycle's console.
+      render: (value: number, record: PerformanceCycle) => (
+        <Link
+          href={`/admin/cycles/${record.id}`}
+          className="font-medium text-primary-emphasis underline-offset-4 hover:underline"
+        >
+          {value}
+        </Link>
+      ),
     },
     {
       key: "status",

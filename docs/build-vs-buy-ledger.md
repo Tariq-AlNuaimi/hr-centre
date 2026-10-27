@@ -951,3 +951,12 @@ Considered: **A manager-portal product (Workday My Team, Lattice manager dashboa
 the data lives in our own module tables; a portal would need all of it synced out). **Reusing
 the Home "My work" providers** (partly — Home stays the task list; this is the team's state, not
 tasks). Decision: build — two bounded read services over existing tables.
+
+### 2026-10-27 — UX review P1: performance cycle console
+
+Scope: lib/pms/cycle-overview.ts
+Considered: **A review-cycle product (Lattice, Culture Amp)** (rejected — the cycle engine,
+statutory stage locks and calibration already live here; this is a read over them). **A BI
+dashboard on the database** (rejected — the late/complete rule is the status engine's, and a
+second copy in SQL would drift). Decision: build — a bounded read over the status engine plus a
+reminder through the existing notification writer.

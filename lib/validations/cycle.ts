@@ -74,3 +74,6 @@ export const cyclePolicySchema = z
   .refine((v) => Object.keys(v).length > 0, {
     message: "Send at least one policy field to change.",
   });
+
+/** UX P1 — "Remind late" on the cycle console (the stages with a deadline to miss). */
+export const remindLateSchema = z.object({ stageKind: z.enum(["GOAL_SETTING", "YEAR_END"]) });

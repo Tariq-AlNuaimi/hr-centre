@@ -582,7 +582,17 @@
           "OPEN": "Open",
           "LOCKED": "Locked"
         }
-      }
+      },
+      "stateFilter": "Show",
+      "stateAll": "All ({count})",
+      "goalState": {
+        "notDrafted": "Not drafted",
+        "awaitingManager": "Awaiting manager",
+        "awaitingEmployee": "Awaiting employee",
+        "awaitingHr": "Awaiting HR",
+        "approved": "Approved"
+      },
+      "sharedReason": "{count, plural, one {For # person:} other {For # people:}} {reason}"
     },
     "kpi": {
       "title": "KPIs for {name}",
@@ -678,7 +688,8 @@
         "lockedTitle": "Locked as the agreed baseline",
         "lockedSubtitle": "HR's approval is the lock, and there is no unapprove.",
         "lockedBody": "Approved {datetime}. A change from here is a mid-year change request."
-      }
+      },
+      "descriptorsToggle": "Rating descriptors (5 levels)"
     },
     "home": {
       "myTasksTitle": "My tasks",
@@ -1622,7 +1633,7 @@
       "bellWithCount": "Notifications, {count} unread",
       "moreInBell": "{count} more in the notifications menu.",
       "kind": {
-        "CYCLE_REMINDER": "Goal-setting deadline approaching",
+        "CYCLE_REMINDER": "Performance deadline approaching",
         "CYCLE_ESCALATION": "Goal-setting deadline escalated",
         "HR_INTERVENTION": "HR intervention needed",
         "THREE_SIXTY_REMINDER": "360 assessment outstanding",
@@ -1856,7 +1867,44 @@
       }
     },
     "teamColumn": "Team",
-    "pendingId": "Pending ID"
+    "pendingId": "Pending ID",
+    "cycleConsole": {
+      "title": "Performance cycle",
+      "heading": "{year} performance cycle",
+      "subtitle": "{count, plural, =0 {Nobody enrolled yet} one {# person enrolled} other {# people enrolled}}",
+      "status": {
+        "DRAFT": "Draft",
+        "OPEN": "Open",
+        "CLOSED": "Closed"
+      },
+      "state": {
+        "NOT_YET_OPEN": "Not open yet",
+        "OPEN": "Open",
+        "LOCKED": "Locked"
+      },
+      "window": "Opens {opens} · deadline {deadline} · {grace, plural, one {# grace day} other {# grace days}}",
+      "done": "{done} of {total} done",
+      "late": "{count, plural, one {# person late — see who} other {# people late — see who}}",
+      "noneLate": "Nobody late",
+      "remind": "Remind late",
+      "reminded": "{count, plural, =0 {Everyone late was already reminded today} one {Reminded # person} other {Reminded # people}}",
+      "remindFailed": "Couldn't send the reminders. Try again.",
+      "noTally": "Mid-year is a conversation; it has no completion to track here.",
+      "truncated": "This cycle has more participants than one read covers; the figures are for the first 500.",
+      "setupTitle": "Setup checklist",
+      "setupNote": "What this cycle needs before it can run end to end.",
+      "setup": {
+        "stages": "All three stage windows are scheduled",
+        "enrolled": "Employees are enrolled",
+        "scores": "Corporate or departmental scores are entered",
+        "calibration": "Calibration targets are set"
+      },
+      "setupDone": "Done",
+      "setupTodo": "Not done yet",
+      "setupGo": "Set up",
+      "loadFailed": "Couldn't load this cycle",
+      "loadFailedHelp": "You may not run performance cycles, or the cycle no longer exists."
+    }
   },
   "access": {
     "title": "Logins & access",
