@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { apiClient } from "@/lib/api-client";
-import { DateText } from "../CaseBits";
+import { DueLabel } from "../CaseBits";
 import { useJmlAction, useJmlLookups } from "../use-jml";
 import { CompleteAction, DueDateAction, ReasonAction } from "./TaskActions";
 import type { CaseDetail, TaskDto } from "./types";
@@ -22,10 +22,6 @@ const NEEDS_ACTION = new Set(["COMPLETED", "NOT_APPLICABLE", "DELAYED", "CANCELL
 function Badges({ task }: { task: TaskDto }) {
   const t = useTranslations("jml.case.task");
   const tv = useTranslations("jml.vocab");
-  const overdue =
-    task.dueDate &&
-    !["COMPLETED", "NOT_APPLICABLE", "CANCELLED"].includes(task.status) &&
-    task.dueDate.slice(0, 10) < new Date().toISOString().slice(0, 10);
   return (
     <span className="flex flex-wrap gap-1">
       <Badge
@@ -53,7 +49,6 @@ function Badges({ task }: { task: TaskDto }) {
         </Badge>
       ) : null}
       {task.blocking ? <Badge variant="default">{t("blocking")}</Badge> : null}
-      {overdue ? <Badge variant="danger">{t("overdue")}</Badge> : null}
     </span>
   );
 }
@@ -145,6 +140,12 @@ function Comments({ task, canPost }: { task: TaskDto; canPost: boolean }) {
   );
 }
 
+/**
+ * One checklist task, compact (UX P1 perf-jml P1-3c): name, flags and a
+ * relative due date on one line; ONE "Complete" button; everything else
+ * (set a waiting status, delay, not applicable, due date, owner) behind
+ * "More". The status chip is the only place the status is shown.
+ */
 export function TaskRow({
   task,
   detail,
@@ -155,109 +156,123 @@ export function TaskRow({
   editable: boolean;
 }) {
   const t = useTranslations("jml.case.task");
+  const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false);
+  const settled = ["COMPLETED", "NOT_APPLICABLE", "CANCELLED"].includes(task.status);
+  const isLeave = detail.caseType === "LEAVE";
+  return (
+    <li className="px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="min-w-0 flex-1">
+          <p className="m-0 text-sm text-foreground">
+            <span className="text-muted-foreground">{task.code}</span> {task.name}
+          </p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <Badges task={task} />
+            <DueLabel value={task.dueDate} settled={settled} />
+            {task.owner ? <span className="text-muted-foreground">· {task.owner.name}</span> : null}
+            <TaskNotes task={task} />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {editable && !settled ? <CompleteAction task={task} /> : null}
+          {editable && task.status === "COMPLETED" && (!isLeave || detail.can.reopenTasks) ? (
+            <ReasonAction
+              task={task}
+              label={t("reopen")}
+              title={t("reopenTitle")}
+              status="IN_PROGRESS"
+              field="reason"
+              minLength={isLeave ? 3 : 0}
+              variant="ghost"
+            />
+          ) : null}
+          {editable && !settled ? (
+            <Button size="sm" variant="ghost" aria-expanded={more} onClick={() => setMore(!more)}>
+              {t("more")}
+            </Button>
+          ) : null}
+          <Button size="sm" variant="ghost" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {t("comments", { count: task._count.comments })}
+          </Button>
+        </div>
+      </div>
+      {more && editable && !settled ? <MoreActions task={task} detail={detail} /> : null}
+      {open ? <Comments task={task} canPost={detail.can.workTasks} /> : null}
+    </li>
+  );
+}
+
+function TaskNotes({ task }: { task: TaskDto }) {
+  const t = useTranslations("jml.case.task");
+  const notes = [
+    task.completedAt
+      ? t("completedBy", {
+          name: task.completedBy?.name ?? t("someone"),
+          at: task.completedAt.slice(0, 10),
+        })
+      : null,
+    task.delayReason ? t("delayReason", { reason: task.delayReason }) : null,
+    task.notApplicableReason ? t("naReason", { reason: task.notApplicableReason }) : null,
+    task.externalReference ? t("reference", { ref: task.externalReference }) : null,
+  ].filter(Boolean);
+  if (notes.length === 0) return null;
+  return <span className="text-muted-foreground">· {notes.join(" · ")}</span>;
+}
+
+/** The secondary task controls, revealed by "More". */
+function MoreActions({ task, detail }: { task: TaskDto; detail: CaseDetail }) {
+  const t = useTranslations("jml.case.task");
   const tv = useTranslations("jml.vocab");
   const { run, busy } = useJmlAction(t("failed"));
-  const [open, setOpen] = useState(false);
-  const settled = ["COMPLETED", "NOT_APPLICABLE", "CANCELLED"].includes(task.status);
   const isLeave = detail.caseType === "LEAVE";
   const selectable = detail.taskStatuses.filter((s) => !NEEDS_ACTION.has(s));
   return (
-    <li className="rounded-md border border-border p-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium text-foreground">
-            <span className="text-muted-foreground">{task.code}</span> {task.name}
-          </p>
-          <Badges task={task} />
-          <p className="text-xs text-muted-foreground">
-            {t("due")} <DateText value={task.dueDate} />
-            {task.completedAt
-              ? ` · ${t("completedBy", { name: task.completedBy?.name ?? t("someone"), at: task.completedAt.slice(0, 10) })}`
-              : ""}
-          </p>
-          {task.delayReason ? (
-            <p className="text-xs text-muted-foreground">
-              {t("delayReason", { reason: task.delayReason })}
-            </p>
-          ) : null}
-          {task.notApplicableReason ? (
-            <p className="text-xs text-muted-foreground">
-              {t("naReason", { reason: task.notApplicableReason })}
-            </p>
-          ) : null}
-          {task.externalReference ? (
-            <p className="text-xs text-muted-foreground">
-              {t("reference", { ref: task.externalReference })}
-            </p>
-          ) : null}
-        </div>
-        {editable ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {!settled ? (
-              <>
-                <NativeSelect
-                  aria-label={t("status")}
-                  value={selectable.includes(task.status) ? task.status : ""}
-                  disabled={busy}
-                  onChange={(e) =>
-                    void run(
-                      () =>
-                        apiClient.patch(`/api/jml/tasks/${task.id}`, {
-                          status: e.target.value,
-                          expectedVersion: task.version,
-                        }),
-                      t("saved"),
-                    )
-                  }
-                >
-                  {!selectable.includes(task.status) ? (
-                    <option value="">{tv(`taskStatus.${task.status}`)}</option>
-                  ) : null}
-                  {selectable.map((s) => (
-                    <option key={s} value={s}>
-                      {tv(`taskStatus.${s}`)}
-                    </option>
-                  ))}
-                </NativeSelect>
-                <CompleteAction task={task} />
-                <ReasonAction
-                  task={task}
-                  label={t("markDelayed")}
-                  title={t("delayTitle")}
-                  status="DELAYED"
-                  field="delayReason"
-                  minLength={3}
-                />
-                <ReasonAction
-                  task={task}
-                  label={t("markNa")}
-                  title={t("naTitle")}
-                  status="NOT_APPLICABLE"
-                  field="notApplicableReason"
-                  minLength={isLeave ? 3 : 0}
-                  variant="ghost"
-                />
-                <DueDateAction task={task} reasonRequired={isLeave} />
-                <OwnerSelect task={task} />
-              </>
-            ) : task.status === "COMPLETED" && (!isLeave || detail.can.reopenTasks) ? (
-              <ReasonAction
-                task={task}
-                label={t("reopen")}
-                title={t("reopenTitle")}
-                status="IN_PROGRESS"
-                field="reason"
-                minLength={isLeave ? 3 : 0}
-                variant="ghost"
-              />
-            ) : null}
-          </div>
+    <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2">
+      <NativeSelect
+        aria-label={t("status")}
+        value={selectable.includes(task.status) ? task.status : ""}
+        disabled={busy}
+        onChange={(e) =>
+          void run(
+            () =>
+              apiClient.patch(`/api/jml/tasks/${task.id}`, {
+                status: e.target.value,
+                expectedVersion: task.version,
+              }),
+            t("saved"),
+          )
+        }
+      >
+        {!selectable.includes(task.status) ? (
+          <option value="">{tv(`taskStatus.${task.status}`)}</option>
         ) : null}
-      </div>
-      <Button size="sm" variant="ghost" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {t("comments", { count: task._count.comments })}
-      </Button>
-      {open ? <Comments task={task} canPost={detail.can.workTasks} /> : null}
-    </li>
+        {selectable.map((s) => (
+          <option key={s} value={s}>
+            {tv(`taskStatus.${s}`)}
+          </option>
+        ))}
+      </NativeSelect>
+      <ReasonAction
+        task={task}
+        label={t("markDelayed")}
+        title={t("delayTitle")}
+        status="DELAYED"
+        field="delayReason"
+        minLength={3}
+        variant="ghost"
+      />
+      <ReasonAction
+        task={task}
+        label={t("markNa")}
+        title={t("naTitle")}
+        status="NOT_APPLICABLE"
+        field="notApplicableReason"
+        minLength={isLeave ? 3 : 0}
+        variant="ghost"
+      />
+      <DueDateAction task={task} reasonRequired={isLeave} />
+      <OwnerSelect task={task} />
+    </div>
   );
 }
