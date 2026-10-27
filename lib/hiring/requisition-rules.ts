@@ -161,3 +161,16 @@ export function signRefusal(input: {
   }
   return null;
 }
+
+/** Still being hired for (not drafted, filled or archived). */
+const LIVE_STATUSES = new Set(["PENDING_APPROVAL", "OPEN", "ON_HOLD", "REOPENED"]);
+
+/** A live requisition whose target close date has passed (UX review P1-12). */
+export function isPastTargetClose(
+  status: string,
+  targetCloseDate: Date | string | null,
+  now: number = Date.now(),
+): boolean {
+  if (!targetCloseDate || !LIVE_STATUSES.has(status)) return false;
+  return new Date(targetCloseDate).getTime() < now;
+}

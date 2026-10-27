@@ -6,6 +6,7 @@
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
 - app/[locale]/(careers)/agency/[token]/page.tsx
+- app/[locale]/(careers)/careers/[slug]/page.tsx
 - app/[locale]/(careers)/careers/page.tsx
 - app/[locale]/(dashboard)/admin/access/[id]/page.tsx
 - app/[locale]/(dashboard)/admin/access/new/page.tsx
@@ -591,7 +592,8 @@
 - lib/hiring/candidate-views.ts: candidateDetail, boardCards
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
 - lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
-- lib/hiring/careers.ts: CareersRole, markdownToPlainText, listOpenRoles, alreadyApplied, applyToRole
+- lib/hiring/careers-jd.ts: roleSlug, idFromSlug, JdBlock, jdBlocks, JobPostingInput, jobPostingJsonLd, scriptSafeJson
+- lib/hiring/careers.ts: CareersRole, CareersRoleDetail, markdownToPlainText, listOpenRoles, openRole, alreadyApplied, applyToRole
 - lib/hiring/close-out.ts: listCloseOut, markNoticesSent
 - lib/hiring/comp-crypto.ts: CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId, sealSecretSetting, openSecretSetting
 - lib/hiring/comparison.ts: loadComparison, selectPreferred, rejectFinalist, clearPreferred
@@ -631,7 +633,8 @@
 - lib/hiring/preboarding-rules.ts: HandoverRoute, handoverRoute, ChecklistInput, ChecklistItem, preboardingChecklist, handoverRefusal
 - lib/hiring/preboarding.ts: preboardingView, recordHandover, retryHandoff
 - lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, handToJml, withdrawFromJml
-- lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, RequiredField, ReadinessInput, readinessProblems, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal
+- lib/hiring/requisition-pending.ts: PendingStep, pendingSteps
+- lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, RequiredField, ReadinessInput, readinessProblems, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal, isPastTargetClose
 - lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, notifyNextRequisitionStep, syncRequisitionFill, assertRoutedToActor
 - lib/hiring/requisition-views.ts: approvalView, statusHistory, auditTrail
 - lib/hiring/requisition-write.ts: createRequisition, createHiringRequest, updateRequisition
@@ -645,7 +648,7 @@
 - lib/hiring/screening.ts: screeningView, screeningAction
 - lib/hiring/settings.ts: HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
 - lib/hiring/stage-gates.ts: GATE_CODE, skippedGates, mayCrossGates, PackageEvidence, packageGateBlocks, GateVerdict, gateVerdict
-- lib/hiring/stage-rules.ts: PIPELINE_STAGES, Stage, LINEAR_STAGES, TERMINAL_STAGES, isStage, stageRank, isPastFirstInterview, isRegression, isPhaseCross, classifyStageMove, HIRING_STEPS, stepForStage, boardStepForStage, BOARD_STEPS, RAIL_STEPS, stepEntryStage, stageTransitionError
+- lib/hiring/stage-rules.ts: PIPELINE_STAGES, Stage, LINEAR_STAGES, TERMINAL_STAGES, isStage, stageRank, isPastFirstInterview, isRegression, isPhaseCross, classifyStageMove, HIRING_STEPS, stepForStage, boardStepForStage, BOARD_STEPS, RAIL_STEPS, stepEntryStage, stageTransitionError, stagesForStep, NextOwner, nextOwner
 - lib/hiring/work-items.ts: hiringWorkProvider
 - lib/hive/civil.ts: CivilDate, muscatDate, fold, ExpiryState, expiryStateFor
 - lib/hive/hrtag-routing.ts: CoverageRow, inCompanyOf, PairRow, CompanyRow, pairCard, resolveCompany, matchCompanyWide, matchDirectorate, matchSelector, PairResolution, resolvePair
@@ -972,6 +975,8 @@
 - components/hiring/careers/ApplyPanel.tsx
 - components/hiring/careers/CareersBoard.tsx
 - components/hiring/careers/CareersChrome.tsx
+- components/hiring/careers/JdBody.tsx
+- components/hiring/careers/RoleApply.tsx
 - components/hiring/evaluations/EvaluationDetail.tsx
 - components/hiring/evaluations/EvaluationForm.tsx
 - components/hiring/evaluations/EvaluationList.tsx
@@ -1013,6 +1018,7 @@
 - components/hiring/pipeline/BoardDnd.tsx
 - components/hiring/pipeline/PipelineBoard.tsx
 - components/hiring/pipeline/PipelineView.tsx
+- components/hiring/pipeline/ScrollStrip.tsx
 - components/hiring/planning/CycleDialogs.tsx
 - components/hiring/planning/NeedDialog.tsx
 - components/hiring/planning/PlanningView.tsx
@@ -1029,6 +1035,7 @@
 - components/hiring/requisitions/HiringRequestForm.tsx
 - components/hiring/requisitions/JdSignoffView.tsx
 - components/hiring/requisitions/NeedContext.tsx
+- components/hiring/requisitions/PhaseProgress.tsx
 - components/hiring/requisitions/PostingConsole.tsx
 - components/hiring/requisitions/RequisitionCompSection.tsx
 - components/hiring/requisitions/RequisitionForm.tsx

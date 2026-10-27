@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { CANDIDATE_SOURCES } from "@/lib/validations/hiring/candidate";
 import { qs, useHiringMe, useHiringMutation, useHiringQuery } from "../ui/api";
+import { BOARD_STEPS } from "@/lib/hiring/stage-rules";
 import { useRequisitionOptions } from "../ui/requisition-options";
 import { ScoreChip, StageBadge } from "../ui/stage";
 import { QueryState } from "../ui/states";
@@ -38,7 +39,6 @@ export type CandidateRow = {
   requisition: { id: string; title: string } | null;
 };
 
-const PILLS = ["NEW_APPLICATION", "SHORTLISTED", "FIRST_INTERVIEW", "OFFER_EXTENDED"] as const;
 const SEARCH_DEBOUNCE_MS = 300;
 
 const daysSince = (iso: string) =>
@@ -47,7 +47,7 @@ const daysSince = (iso: string) =>
 /** `/hiring/candidates` (Interview Hub `CandidatesListClient`). */
 export function CandidateList({ initialStage }: { initialStage?: string }) {
   const t = useTranslations("hiring.candidates");
-  const ts = useTranslations("hiring.stage");
+  const tStep = useTranslations("hiring.steps");
   const tsrc = useTranslations("hiring.source");
   const router = useRouter();
   const locale = useLocale();
@@ -57,7 +57,9 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
   const [pageSize, setPageSize] = useState(20);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  // Old `?stage=` links still filter by that stage; the chips filter by phase (UX P1-7).
   const [stage, setStage] = useState<string | undefined>(initialStage);
+  const [phase, setPhase] = useState<string | undefined>(undefined);
   const [source, setSource] = useState("");
   const [requisitionId, setRequisitionId] = useState("");
   const [advanced, setAdvanced] = useState<AdvancedValues>({});
@@ -89,6 +91,7 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
     pageSize,
     search,
     stage,
+    phase,
     source,
     requisitionId,
     ...advanced,
@@ -208,43 +211,49 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
 
   return (
     <div className="space-y-4">
-      <ViewSwitch active="list" />
       <PageHeader
         title={t("title")}
         subtitle={t("subtitle", { count: data?.total ?? 0 })}
         actions={
-          canManage ? (
-            <>
-              <a
-                className={buttonVariants({ variant: "outline" })}
-                href={`/api/hiring/candidates/export${qs({ search, stage, requisitionId })}`}
-              >
-                <Download className="h-4 w-4" />
-                {t("export")}
-              </a>
-              <Button variant="outline" onClick={() => router.push(`/${locale}/hiring/import`)}>
-                <Upload className="h-4 w-4" />
-                {t("import")}
-              </Button>
-              <Button onClick={() => router.push(`/${locale}/hiring/candidates/new`)}>
-                <Plus className="h-4 w-4" />
-                {t("add")}
-              </Button>
-            </>
-          ) : null
+          <>
+            <ViewSwitch active="list" />
+            {canManage ? (
+              <>
+                <a
+                  className={buttonVariants({ variant: "outline" })}
+                  href={`/api/hiring/candidates/export${qs({ search, stage, phase, requisitionId })}`}
+                >
+                  <Download className="h-4 w-4" />
+                  {t("export")}
+                </a>
+                <Button variant="outline" onClick={() => router.push(`/${locale}/hiring/import`)}>
+                  <Upload className="h-4 w-4" />
+                  {t("import")}
+                </Button>
+                <Button onClick={() => router.push(`/${locale}/hiring/candidates/new`)}>
+                  <Plus className="h-4 w-4" />
+                  {t("add")}
+                </Button>
+              </>
+            ) : null}
+          </>
         }
       />
       <div className="flex flex-wrap items-center gap-2">
         <FilterChips
           label={t("stageFilter")}
-          active={stage}
+          active={phase}
           onSelect={(v) => {
-            setStage(v);
+            setPhase(v);
+            setStage(undefined);
             reset();
           }}
           options={[
             { value: undefined, label: t("allStages") },
-            ...PILLS.map((s) => ({ value: s as string | undefined, label: ts(s) })),
+            ...BOARD_STEPS.map((s) => ({
+              value: String(s) as string | undefined,
+              label: tStep(String(s)),
+            })),
           ]}
         />
         <span className="flex-1" />

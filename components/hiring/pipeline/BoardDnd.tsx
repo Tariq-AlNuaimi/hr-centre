@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { ScrollStrip } from "./ScrollStrip";
 
 /**
  * The drag-and-drop half of the board (lazy-loaded — ADR-081). Columns are
@@ -55,17 +56,19 @@ export function BoardDnd<T extends BoardItem>({
       onDragCancel={() => setActive(null)}
       onDragEnd={onDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-2">
-        {columns.map((col) => (
-          <Column
-            key={col.id}
-            column={col}
-            items={items.filter((i) => i.columnId === col.id)}
-            renderCard={renderCard}
-            cardClass={cardClass}
-          />
-        ))}
-      </div>
+      <ScrollStrip className="pb-2">
+        <div className="flex w-max gap-3">
+          {columns.map((col) => (
+            <Column
+              key={col.id}
+              column={col}
+              items={items.filter((i) => i.columnId === col.id)}
+              renderCard={renderCard}
+              cardClass={cardClass}
+            />
+          ))}
+        </div>
+      </ScrollStrip>
       <DragOverlay>
         {active ? (
           <div className="rounded-md border border-border bg-card p-3 shadow-md">
@@ -94,7 +97,7 @@ function Column<T extends BoardItem>({
       ref={setNodeRef}
       aria-label={`${column.title} (${items.length})`}
       className={cn(
-        "flex w-68 shrink-0 flex-col gap-2 rounded-lg p-3 transition-colors",
+        "flex w-60 shrink-0 flex-col gap-2 rounded-lg p-3 transition-colors",
         isOver ? "bg-accent-subtle" : "bg-muted/50",
       )}
     >

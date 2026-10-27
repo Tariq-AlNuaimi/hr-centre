@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BOARD_STEPS, stepEntryStage } from "@/lib/hiring/stage-rules";
+import { BOARD_STEPS, stepEntryStage, type NextOwner } from "@/lib/hiring/stage-rules";
 import { qs, useHiringQuery } from "../ui/api";
 import { NationalityDot, ScoreChip } from "../ui/stage";
 import { Notice, QueryState } from "../ui/states";
@@ -43,11 +43,20 @@ export type BoardCard = {
   overallScore: number | null;
   omani: boolean | null;
   hasOffer: boolean;
+  nextOwner: NextOwner | null;
   step: number;
   inStageSince: string;
 };
 
 const SLA_DAYS = 7;
+/** Whose move a card waits on (Greenhouse pattern, UX P1-8) — one colour each, with a legend. */
+export const OWNER_DOT: Record<NextOwner, string> = {
+  recruiter: "bg-status-info-fg",
+  manager: "bg-primary",
+  panel: "bg-status-warn-fg",
+  candidate: "bg-status-neutral-fg",
+  approvers: "bg-status-err-fg",
+};
 const ACCENT: Record<number, string> = {
   1: "bg-status-info-fg",
   2: "bg-status-info-fg",
@@ -91,9 +100,11 @@ function BoardSkeleton() {
 
 export function PipelineBoard({
   requisitionId,
+  hiringManagerId,
   empty,
 }: {
   requisitionId?: string;
+  hiringManagerId?: string;
   empty: ReactNode;
 }) {
   const t = useTranslations("hiring.pipeline");
@@ -101,7 +112,7 @@ export function PipelineBoard({
   const { data, isLoading, error, refetch } = useHiringQuery<{
     cards: BoardCard[];
     truncated: boolean;
-  }>(`/api/hiring/candidates/board${qs({ requisitionId })}`);
+  }>(`/api/hiring/candidates/board${qs({ requisitionId, hiringManagerId })}`);
   const { move, dialog } = useStageMove();
   // Optimistic column while a move is in flight; the refetch settles it.
   const [moving, setMoving] = useState<Record<string, number>>({});
@@ -133,6 +144,7 @@ export function PipelineBoard({
       ) : (
         <div className="space-y-3">
           {data?.truncated ? <Notice tone="warning">{t("truncated")}</Notice> : null}
+          <OwnerLegend />
           <BoardDnd
             columns={columns}
             items={items}
@@ -203,6 +215,7 @@ function Card({ card, onMoveTo }: { card: BoardCard; onMoveTo: (step: number) =>
         {round ? <Badge variant="info">{t(round)}</Badge> : null}
         {offer ? <Badge variant="success">{t(offer)}</Badge> : null}
         <span className="flex-1" />
+        {card.nextOwner ? <OwnerTag owner={card.nextOwner} /> : null}
         <NationalityDot omani={card.omani} />
         <span
           className={
@@ -216,5 +229,30 @@ function Card({ card, onMoveTo }: { card: BoardCard; onMoveTo: (step: number) =>
         </span>
       </div>
     </div>
+  );
+}
+
+function OwnerTag({ owner }: { owner: NextOwner }) {
+  const tOwner = useTranslations("hiring.pipeline.owner");
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <span aria-hidden className={`h-2 w-2 rounded-full ${OWNER_DOT[owner]}`} />
+      {tOwner(owner)}
+    </span>
+  );
+}
+
+function OwnerLegend() {
+  const tOwner = useTranslations("hiring.pipeline.owner");
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <span className="font-medium text-foreground">{tOwner("legend")}</span>
+      {(Object.keys(OWNER_DOT) as NextOwner[]).map((o) => (
+        <span key={o} className="inline-flex items-center gap-1">
+          <span aria-hidden className={`h-2 w-2 rounded-full ${OWNER_DOT[o]}`} />
+          {tOwner(o)}
+        </span>
+      ))}
+    </p>
   );
 }

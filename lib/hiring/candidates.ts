@@ -5,6 +5,7 @@ import type { ScopeSubject } from "@/lib/rbac/grants";
 import { can, holdsAnywhere, isPanelOnly, seesComp, seesPii, type HiringActor } from "./access";
 import { resolveInterviewCountBounds } from "./candidate-rules";
 import { candidateScopeWhere, requisitionSubject, requisitionSubjects } from "./scope";
+import { stagesForStep } from "./stage-rules";
 import type { CandidateListQuery } from "@/lib/validations/hiring/candidate";
 
 /**
@@ -122,6 +123,7 @@ function listFilters(
     });
   }
   if (q.stage) and.push({ stage: q.stage });
+  if (q.phase) and.push({ stage: { in: stagesForStep(q.phase) } });
   if (q.source) and.push({ source: q.source });
   if (q.requisitionId) and.push({ requisitionId: q.requisitionId });
   if (q.grade) and.push({ requisition: { grade: q.grade } });

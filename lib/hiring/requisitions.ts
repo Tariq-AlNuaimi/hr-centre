@@ -7,6 +7,8 @@ import { describeFill, fillLabel, SEAT_OCCUPYING_STAGES } from "./fill-rules";
 import { toNum } from "./money";
 import { orgNames, peopleById, personOrNull } from "./people";
 import { requisitionScopeWhere, requisitionSubject, requisitionSubjects } from "./scope";
+import { isPastTargetClose } from "./requisition-rules";
+import { pendingSteps } from "./requisition-pending";
 
 /** Requisition reads — scope-checked loads, comp-gated serialisation, the list. */
 
@@ -140,13 +142,15 @@ export async function listRequisitions(
     }),
     prisma.hiringRequisition.count({ where }),
   ]);
-  const [people, org] = await Promise.all([
+  const [people, org, pending] = await Promise.all([
     peopleById(rows.map((r) => r.hiringManagerId)),
     orgNames(
       rows.map((r) => r.entityId),
       rows.flatMap((r) => (r.departmentId ? [r.departmentId] : [])),
     ),
+    pendingSteps(rows),
   ]);
+  const now = Date.now();
   const subjects = await requisitionSubjects(rows);
   const data = rows.map((r) => {
     const band = bandFor(actor, {
@@ -167,6 +171,8 @@ export async function listRequisitions(
       departmentName: r.departmentId ? (org.departments.get(r.departmentId) ?? null) : null,
       hiringManager: personOrNull(people, r.hiringManagerId),
       candidateCount: r._count.candidates,
+      pendingStep: pending.get(r.id) ?? null,
+      pastTargetClose: isPastTargetClose(r.status, r.targetCloseDate, now),
       ...band,
     };
   });

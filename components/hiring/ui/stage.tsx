@@ -20,15 +20,36 @@ const STEP_TONE: Record<number, Tone> = {
   7: "success",
 };
 
+/**
+ * A candidate's stage as its PHASE first (Apply … Hire) with the stage itself
+ * as the quieter second label — one vocabulary with the board (UX P1-7). When
+ * both would read the same ("Hired" under Hire) only the phase shows.
+ */
 export function StageBadge({ stage }: { stage: string }) {
   const t = useTranslations("hiring.stage");
-  const tone: Tone =
-    stage === "REJECTED"
-      ? "danger"
-      : stage === "WITHDRAWN"
-        ? "outline"
-        : (STEP_TONE[stepForStage(stage)] ?? "default");
-  return <Badge variant={tone}>{t(stage)}</Badge>;
+  const tStep = useTranslations("hiring.steps");
+  if (stage === "REJECTED" || stage === "WITHDRAWN") {
+    return <Badge variant={stage === "REJECTED" ? "danger" : "outline"}>{t(stage)}</Badge>;
+  }
+  const step = stepForStage(stage);
+  if (!step) return <Badge variant="default">{t(stage)}</Badge>;
+  const phase = tStep(String(step));
+  const sub = t(stage);
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <Badge variant={STEP_TONE[step] ?? "default"}>{phase}</Badge>
+      {samePhrase(phase, sub) ? null : (
+        <span className="truncate text-xs text-muted-foreground">{sub}</span>
+      )}
+    </span>
+  );
+}
+
+/** "Hire" and "Hired" say the same thing; "Offer" and "Offer extended" do not. */
+function samePhrase(phase: string, stage: string): boolean {
+  const a = phase.toLowerCase();
+  const b = stage.toLowerCase();
+  return b === a || b === `${a}d` || b === `${a}ed`;
 }
 
 function scoreTone(v: number) {
