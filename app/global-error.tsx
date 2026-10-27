@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { brand } from "@/brand.config";
 
 // Deliberately context-free (no providers / next-intl / Ant): this is the
@@ -19,7 +18,10 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
-    Sentry.captureException(error);
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      // Loaded on demand (ADR-088): with no DSN the SDK never reaches the browser.
+      void import("@sentry/nextjs").then((S) => S.captureException(error)).catch(() => {});
+    }
   }, [error]);
 
   return (
