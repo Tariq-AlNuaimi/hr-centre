@@ -46,7 +46,7 @@ export type CandidateDetail = {
     agencySubmissionNote: string | null;
     referredById: string | null;
   } | null;
-  dei: { gender: string | null } | null;
+  dei: { gender: string | null; ethnicity: string | null } | null;
   salaryExpectation: number | null;
   can: {
     manage: boolean;

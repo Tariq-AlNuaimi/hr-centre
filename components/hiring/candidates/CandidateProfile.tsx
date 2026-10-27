@@ -21,11 +21,10 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDateTime } from "@/lib/format";
 import type { Stage } from "@/lib/hiring/stage-rules";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { NationalityDot, ScoreChip, StageBadge } from "../ui/stage";
+import { ScoreChip, StageBadge } from "../ui/stage";
 import { useCrumb } from "../ui/crumb";
 import { QueryState } from "../ui/states";
 import { Tabs } from "../ui/tabs";
-import { isOmani } from "@/lib/hiring/candidate-rules";
 import { CandidateForm, EMPTY_CANDIDATE, toBody } from "./CandidateForm";
 import { CvCard } from "./CvCard";
 import { DataRequestCard } from "./DataRequestCard";
@@ -135,12 +134,6 @@ function Header({ c, onEdit }: { c: CandidateDetail; onEdit: () => void }) {
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
           {c.requisition ? <span className="font-medium">{c.requisition.title}</span> : null}
-          {contact?.nationality ? (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <NationalityDot omani={isOmani(contact.nationality)} />
-              {contact.nationality}
-            </span>
-          ) : null}
           {contact?.currentEmployer ? (
             <span className="text-muted-foreground">
               {t("fromEmployer", { employer: contact.currentEmployer })}

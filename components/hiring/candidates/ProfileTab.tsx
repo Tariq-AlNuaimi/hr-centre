@@ -64,9 +64,7 @@ export function ProfileTab({ c }: { c: CandidateDetail }) {
                 ? [
                     { key: "email", label: t("email"), value: dash(contact.email) },
                     { key: "phone", label: t("phone"), value: dash(contact.phone) },
-                    { key: "nat", label: t("nationality"), value: dash(contact.nationality) },
                     { key: "emp", label: t("employer"), value: dash(contact.currentEmployer) },
-                    { key: "nec", label: t("nec"), value: contact.nec ? contact.nec : "—" },
                   ]
                 : []),
               {
@@ -79,25 +77,11 @@ export function ProfileTab({ c }: { c: CandidateDetail }) {
                 : []),
               { key: "req", label: t("requisition"), value: c.requisition?.title ?? "—" },
               { key: "applied", label: t("applied"), value: formatDate(c.createdAt) },
-              ...(c.dei
-                ? [{ key: "g", label: t("gender"), value: c.dei.gender ?? t("notDeclared") }]
-                : []),
-              ...(c.can.viewComp
-                ? [
-                    {
-                      key: "exp",
-                      label: t("expectation"),
-                      value:
-                        c.salaryExpectation == null
-                          ? t("notDeclared")
-                          : formatMoney(c.salaryExpectation),
-                    },
-                  ]
-                : []),
             ]}
           />
           {!contact ? <p className="mt-3 text-xs text-muted-foreground">{t("piiHidden")}</p> : null}
         </SectionCard>
+        <SensitiveCard c={c} />
         {c.can.manage ? <StallCard c={c} /> : null}
       </div>
     </div>
@@ -222,6 +206,48 @@ function FitCard({ c, hasProfile }: { c: CandidateDetail; hasProfile: boolean })
           ))}
         </ul>
       ) : null}
+    </SectionCard>
+  );
+}
+
+/**
+ * Protected attributes and pay expectation, apart from the working details
+ * (docs/blueprints/ux-p0.md, US-4). Each field keeps its own server-side gate —
+ * nationality and national ID need `hiring.viewPii`, gender and ethnicity
+ * `hiring.viewDei`, the expectation the comp rules — so a field the viewer may
+ * not see never reaches the browser. An interview panel sees none of them.
+ */
+function SensitiveCard({ c }: { c: CandidateDetail }) {
+  const t = useTranslations("hiring.candidate");
+  const contact = c.contact;
+  const items = [
+    ...(contact
+      ? [
+          { key: "nat", label: t("nationality"), value: contact.nationality || "—" },
+          { key: "nec", label: t("nec"), value: contact.nec || "—" },
+        ]
+      : []),
+    ...(c.dei
+      ? [
+          { key: "g", label: t("gender"), value: c.dei.gender ?? t("notDeclared") },
+          { key: "e", label: t("ethnicity"), value: c.dei.ethnicity ?? t("notDeclared") },
+        ]
+      : []),
+    ...(c.can.viewComp
+      ? [
+          {
+            key: "exp",
+            label: t("expectation"),
+            value:
+              c.salaryExpectation == null ? t("notDeclared") : formatMoney(c.salaryExpectation),
+          },
+        ]
+      : []),
+  ];
+  if (items.length === 0) return null;
+  return (
+    <SectionCard title={t("sensitiveTitle")} subtitle={t("sensitiveHint")}>
+      <DescriptionList columns={1} items={items} />
     </SectionCard>
   );
 }
