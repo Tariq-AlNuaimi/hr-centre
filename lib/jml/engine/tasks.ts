@@ -1,7 +1,7 @@
 import type { JmlComplianceCategory, JmlStage, Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
-import { utcDate } from "@/lib/working-time/calendar";
+import { DEFAULT_CALENDAR, utcDate, zonedToday } from "@/lib/working-time/calendar";
 import { JmlError } from "../errors";
 import { loadCaseFor, type JmlActor } from "../access";
 import { STAGE_ORDER, isLive } from "../vocab";
@@ -86,14 +86,34 @@ export type RefreshResult = {
   completedNow: boolean;
 };
 
+/** A move takes effect on its effective date, in the organisation's time zone. */
+export function isMoveDue(
+  effectiveDate: Date,
+  now: Date,
+  timeZone = DEFAULT_CALENDAR.schedule.timeZone,
+): boolean {
+  return utcDate(effectiveDate) <= zonedToday(now, timeZone);
+}
+
 /**
  * Recompute the case summary from its tasks, in the caller's transaction, so a
  * task write and the case's percentage/stage commit together.
  */
-export async function refreshCase(tx: Tx, caseId: string, actorUserId: string | null) {
+export async function refreshCase(
+  tx: Tx,
+  caseId: string,
+  actorUserId: string | null,
+  now: Date = new Date(),
+) {
   const kase = await tx.jmlCase.findUnique({
     where: { id: caseId },
-    select: { caseType: true, status: true, stage: true },
+    select: {
+      caseType: true,
+      status: true,
+      stage: true,
+      joinDetail: { select: { actualStartDate: true } },
+      moveDetail: { select: { effectiveDate: true } },
+    },
   });
   if (!kase) throw new JmlError("Case not found", 404);
   const tasks = await tx.jmlTask.findMany({
@@ -110,18 +130,31 @@ export async function refreshCase(tx: Tx, caseId: string, actorUserId: string | 
     if (isLive(kase.status)) stage = advancedLeaveStage(kase.stage, tasks);
   } else if (kase.status === "ACTIVE" || kase.status === "COMPLETED") {
     stage = deriveJoinStage(tasks, kase.caseType);
+    // QA D-02: a joiner's checklist can finish before day one (first-day and
+    // first-week tasks may be done early). Completing the case then would leave
+    // the employee PRE_JOINER for good, because the actual start is confirmed on
+    // an ACTIVE case. So a JOIN completes only once the start is confirmed;
+    // `confirmActualStart` re-runs this refresh and completes it then.
+    if (stage === "COMPLETED" && kase.caseType === "JOIN" && !kase.joinDetail?.actualStartDate) {
+      stage = "FIRST_WEEK";
+    }
     if (stage === "COMPLETED" && kase.status === "ACTIVE") {
       // Only on the transition, never cleared by a later recompute (Onboarding).
       data.status = "COMPLETED";
-      data.completedAt = new Date();
+      data.completedAt = now;
       completedNow = true;
     }
   }
   data.stage = stage;
   if (actorUserId) data.lastUpdatedBy = { connect: { id: actorUserId } };
   await tx.jmlCase.update({ where: { id: caseId }, data, select: { id: true } });
-  // D9: a mover's change reaches the employee record when its checklist completes.
-  if (completedNow && kase.caseType === "MOVE") await applyMove(tx, caseId);
+  // D9: a mover's change reaches the employee record when its checklist completes
+  // — but never before its effective date (QA D-05). A checklist finished early
+  // leaves the change pending; the hourly sweep applies it on the day
+  // (`applyDueMoves`).
+  if (completedNow && kase.caseType === "MOVE" && kase.moveDetail) {
+    if (isMoveDue(kase.moveDetail.effectiveDate, now)) await applyMove(tx, caseId);
+  }
   return { completionPct, stage, completedNow } satisfies RefreshResult;
 }
 

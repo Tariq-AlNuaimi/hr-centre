@@ -40,7 +40,9 @@ export function notApplicableData(
   if (kase.caseType === "LEAVE" && task.isReversal) {
     throw new JmlError("A reversal task cannot be marked Not Applicable — it must be done.", 409);
   }
-  if (kase.caseType === "LEAVE" && !input.notApplicableReason?.trim()) {
+  // QA D-09: a MANDATORY task set aside without a reason silently lowers the
+  // bar the case completes against, for every case type (as DELAYED does).
+  if ((kase.caseType === "LEAVE" || task.mandatory) && !input.notApplicableReason?.trim()) {
     throw new JmlError("notApplicableReason: say why it does not apply", 422);
   }
   return { notApplicableReason: input.notApplicableReason?.trim() || null };

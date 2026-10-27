@@ -7,6 +7,7 @@ import {
   checkHolders,
   decisionProblem,
   requiresSecondLevelDelegate,
+  segregationProblem,
 } from "./approval-rules";
 import { loadLeaveRow } from "./leave-data";
 import { noticeToOwners } from "./notices";
@@ -140,6 +141,16 @@ export async function decideApproval(
   if (!approval || approval.caseId !== caseId) throw new JmlError("Approval not found", 404);
   const problem = decisionProblem(approval, input);
   if (problem) throw new JmlError(problem, 409);
+  const [siblings, leaver] = await Promise.all([
+    prisma.jmlApproval.findMany({
+      where: { caseId, approvalType: approval.approvalType },
+      select: { id: true, holderRoleKey: true, decidedById: true },
+      take: 10,
+    }),
+    prisma.employee.findUnique({ where: { id: kase.employeeId }, select: { userId: true } }),
+  ]);
+  const sod = segregationProblem(approval, siblings, actor.userId, leaver?.userId ?? null);
+  if (sod) throw new JmlError(sod, 403);
   await assertEscalation(approval.approvalType, input.delegateUsed, input.secondLevelUsed);
   await auditedTransaction(async (tx) => {
     await tx.jmlApproval.update({

@@ -47,19 +47,58 @@ const dates = {
   departureDate: isoDay.nullable().default(null),
 };
 
-export const createExitSchema = z.object({
-  employeeId: id,
-  exitType: z.enum(EXIT_TYPES),
-  exitSubtype: z.enum(EXIT_SUBTYPES).nullable().default(null),
-  /** Defaults from the employee's nationality; required when none is on file. */
-  nationality: z.enum(NATIONALITY_BRANCHES).nullable().default(null),
-  ...dates,
-  settlementApplicable: z.boolean().default(true),
-  visaSupportApplicable: z.boolean().default(false),
-  docRefPerformanceHistory: ref.default(null),
-  docRefWrittenGrounds: ref.default(null),
-  docRefLegalReview: ref.default(null),
-});
+/**
+ * QA D-04: the exit dates must run in order. A last day of service (or last
+ * physical working day) before the notice starts was accepted, and the payment
+ * deadline was computed from it.
+ */
+function datesInOrder(
+  v: { noticeStartDate: Date; lastPhysicalWorkingDay: Date | null; lastDayOfService: Date | null },
+  ctx: z.RefinementCtx,
+) {
+  const start = v.noticeStartDate.getTime();
+  if (v.lastDayOfService && v.lastDayOfService.getTime() < start) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["lastDayOfService"],
+      message: "The last day of service cannot be before the notice start date.",
+    });
+  }
+  if (v.lastPhysicalWorkingDay && v.lastPhysicalWorkingDay.getTime() < start) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["lastPhysicalWorkingDay"],
+      message: "The last working day cannot be before the notice start date.",
+    });
+  }
+  if (
+    v.lastPhysicalWorkingDay &&
+    v.lastDayOfService &&
+    v.lastPhysicalWorkingDay.getTime() > v.lastDayOfService.getTime()
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["lastPhysicalWorkingDay"],
+      message: "The last working day cannot be after the last day of service.",
+    });
+  }
+}
+
+export const createExitSchema = z
+  .object({
+    employeeId: id,
+    exitType: z.enum(EXIT_TYPES),
+    exitSubtype: z.enum(EXIT_SUBTYPES).nullable().default(null),
+    /** Defaults from the employee's nationality; required when none is on file. */
+    nationality: z.enum(NATIONALITY_BRANCHES).nullable().default(null),
+    ...dates,
+    settlementApplicable: z.boolean().default(true),
+    visaSupportApplicable: z.boolean().default(false),
+    docRefPerformanceHistory: ref.default(null),
+    docRefWrittenGrounds: ref.default(null),
+    docRefLegalReview: ref.default(null),
+  })
+  .superRefine(datesInOrder);
 export type CreateExitInput = z.infer<typeof createExitSchema>;
 
 /** Edits outside the date model (Offboarding updateExitCaseSchema + backfill/rehire). */
@@ -79,15 +118,17 @@ export const updateExitSchema = z.object({
 export type UpdateExitInput = z.infer<typeof updateExitSchema>;
 
 /** The date model, the type and the branch (Offboarding PUT …/dates; on a draft too). */
-export const exitDatesSchema = z.object({
-  expectedVersion: z.number().int().min(0),
-  exitType: z.enum(EXIT_TYPES),
-  exitSubtype: z.enum(EXIT_SUBTYPES).nullable().default(null),
-  nationality: z.enum(NATIONALITY_BRANCHES),
-  ...dates,
-  earlyReleaseApproved: z.boolean().optional(),
-  changeReason: z.string().trim().max(1000).nullable().default(null),
-});
+export const exitDatesSchema = z
+  .object({
+    expectedVersion: z.number().int().min(0),
+    exitType: z.enum(EXIT_TYPES),
+    exitSubtype: z.enum(EXIT_SUBTYPES).nullable().default(null),
+    nationality: z.enum(NATIONALITY_BRANCHES),
+    ...dates,
+    earlyReleaseApproved: z.boolean().optional(),
+    changeReason: z.string().trim().max(1000).nullable().default(null),
+  })
+  .superRefine(datesInOrder);
 export type ExitDatesInput = z.infer<typeof exitDatesSchema>;
 
 export const cancelExitSchema = z.object({

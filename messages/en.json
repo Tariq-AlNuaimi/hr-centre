@@ -815,11 +815,11 @@
       "approve": "Approve and apply",
       "reject": "Reject",
       "approvedToast": "Change request approved and applied.",
-      "rejectedToast": "Change request rejected.",
+      "rejectedToast": "Change request rejected",
       "decideFailed": "The decision could not be recorded.",
       "withdraw": "Withdraw this request",
       "withdrawHelp": "The request stays on the record as withdrawn; nothing is deleted.",
-      "withdrawnToast": "Change request withdrawn.",
+      "withdrawnToast": "Change request withdrawn",
       "withdrawFailed": "The request could not be withdrawn.",
       "decisionReasonLabel": "HR's reason",
       "decidedBy": "Decided by {name} · {datetime}",
@@ -845,7 +845,7 @@
         "descriptorOutstanding": "Outstanding",
         "descriptorExcellent": "Excellent",
         "descriptorTarget": "Target",
-        "descriptorAlmostAchieved": "Almost Achieved",
+        "descriptorAlmostAchieved": "Almost achieved",
         "descriptorUnsatisfactory": "Unsatisfactory"
       },
       "notYours": "A change request is raised by your line manager, not by you. If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here.",
@@ -882,7 +882,7 @@
       "chooseLevel": "Choose the level that describes the year",
       "levelName": {
         "1": "Unsatisfactory",
-        "2": "Almost Achieved",
+        "2": "Almost achieved",
         "3": "Target",
         "4": "Excellent",
         "5": "Outstanding"
@@ -892,12 +892,12 @@
       "divergenceHelp": "This differs from the employee's self-assessment (level {employeeLevel}). The reason is shown to them and is what calibration reads later.",
       "saveRating": "Save rating",
       "saving": "Saving…",
-      "ratingSaved": "Rating saved.",
+      "ratingSaved": "Rating saved",
       "ratingFailed": "The rating could not be saved.",
       "signTitle": "Sign off",
       "signSubtitle": "Both parties sign the final ratings. There is no reject — an unsigned assessment is the signal that the discussion is not finished.",
       "sign": "Sign",
-      "signed": "Signed.",
+      "signed": "Signed",
       "signFailed": "The signature could not be recorded.",
       "signBlocked": "Signing opens once both parties have rated every KPI.",
       "hasSigned": "Signed",
@@ -937,7 +937,7 @@
       "OUTSTANDING": "Outstanding",
       "EXCELLENT": "Excellent",
       "TARGET": "Target",
-      "ALMOST_ACHIEVED": "Almost Achieved",
+      "ALMOST_ACHIEVED": "Almost achieved",
       "UNSATISFACTORY": "Unsatisfactory"
     },
     "scorecard": {
@@ -1080,7 +1080,7 @@
         "none": "No deadline was missed in this cycle.",
         "employeeOwn": "Employees' own missed signatures",
         "employeeOwnHelp": "Recorded, and deliberately kept off any manager's record.",
-        "noEmployeeOwn": "None.",
+        "noEmployeeOwn": "None",
         "loadFailed": "Could not load the compliance report",
         "loadFailedHelp": "Something went wrong fetching the report."
       },
@@ -1193,7 +1193,7 @@
       "reasonPlaceholder": "Why this person moves band",
       "moveAction": "Move band",
       "saving": "Saving…",
-      "adjusted": "{name}'s band was moved.",
+      "adjusted": "{name}'s band was moved",
       "notReady": "Calibration cannot start yet",
       "notReadyHelp": "Every participant needs a raw score before the curve can be looked at.",
       "notPermitted": "Calibration is HR Super Admin only",
@@ -1219,7 +1219,7 @@
       "mustTotal": "The five bands must total exactly 100%.",
       "minSize": "Smallest department to curve",
       "minSizeHelp": "Departments below this keep their raw scores as final. You can still move any individual by hand.",
-      "savedToast": "Target distribution saved."
+      "savedToast": "Target distribution saved"
     },
     "scoreRun": {
       "title": "Calculate raw scores",
@@ -1234,7 +1234,7 @@
       "unknownWho": "someone no longer on file",
       "worklist": "{count} could not be scored yet:",
       "rerunSafe": "Recalculating writes a new set of raw scores and never overwrites an earlier one, so any calibration already applied survives.",
-      "doneToast": "{count} employee(s) scored.",
+      "doneToast": "{count} employee(s) scored",
       "loadFailed": "Could not load previous score runs."
     },
     "publish": {
@@ -1259,7 +1259,7 @@
       "unpublishAction": "Un-publish results",
       "working": "Working…",
       "publishedToast": "Results are now visible to employees.",
-      "unpublishedToast": "Results are hidden again.",
+      "unpublishedToast": "Results are hidden again",
       "loadFailed": "Could not load the publication state."
     },
     "threeSixty": {
@@ -1272,7 +1272,7 @@
       "shortfall": "{count} short of three raters",
       "shortfallHelp": "{count} employees do not yet have three raters. The cycle cannot be activated until they do.",
       "templates": "Question sets",
-      "templatesHelp": "One per relationship direction.",
+      "templatesHelp": "One per relationship direction",
       "questions": "{count} questions",
       "noTemplates": "No question sets have been created for this 360.",
       "assignments": "Rater coverage",
@@ -1282,7 +1282,7 @@
       "noAssignments": "No assignments have been generated yet.",
       "generateAction": "Generate assignments",
       "generating": "Generating…",
-      "generated": "{count} assignments created.",
+      "generated": "{count} assignments created",
       "activateAction": "Activate",
       "activating": "Activating…",
       "activated": "The 360 cycle is now active.",
@@ -1325,9 +1325,9 @@
       "submitAction": "Submit assessment",
       "working": "Working…",
       "remaining": "{count} question(s) still need an answer",
-      "readyToSubmit": "Every question answered.",
-      "savedToast": "Progress saved.",
-      "submittedToast": "Assessment submitted.",
+      "readyToSubmit": "Every question answered",
+      "savedToast": "Progress saved",
+      "submittedToast": "Assessment submitted",
       "loadFailed": "Could not load this assessment.",
       "loadFailedHelp": "It may have been reassigned, or the 360 cycle may have closed.",
       "scale": {
@@ -1407,7 +1407,7 @@
       "help": "Exactly three per employee. Saving replaces the whole list.",
       "current": "Assigned",
       "count": "{count} of 3",
-      "noneYet": "Nobody is assigned yet.",
+      "noneYet": "Nobody is assigned yet",
       "remove": "Remove",
       "addLabel": "Add a rater",
       "searchPlaceholder": "Search by name or email",
@@ -1416,7 +1416,7 @@
       "cancel": "Cancel",
       "save": "Save raters",
       "saving": "Saving…",
-      "savedToast": "Raters updated for {name}.",
+      "savedToast": "Raters updated for {name}",
       "replace": "Replace",
       "submittedLocked": "Submitted — the rater cannot be changed",
       "discardAria": "Remove {name} from this employee's raters",
@@ -1450,14 +1450,14 @@
       "reason": "Reason (optional)",
       "reasonPlaceholder": "e.g. the original rater has left",
       "confirmReplace": "Replace rater",
-      "replacedToast": "{name}'s raters were updated.",
+      "replacedToast": "{name}'s raters were updated",
       "discardTitle": "Remove {name}?",
       "discardSubtitle": "They will no longer assess {ratee}.",
       "reasonRequired": "Reason (required)",
       "reasonRequiredHelp": "A submitted assessment cannot be discarded without a reason — it is recorded with what was deleted.",
       "discarding": "Removing…",
       "confirmDiscard": "Remove rater",
-      "discardedToast": "The assessment was removed."
+      "discardedToast": "The assessment was removed"
     },
     "projects": {
       "title": "Projects",
@@ -1473,11 +1473,11 @@
       "create": "Create project",
       "saveEdit": "Save changes",
       "saving": "Saving…",
-      "savedToast": "Project saved.",
+      "savedToast": "Project saved",
       "existing": "Projects this cycle",
       "existingHelp": "Membership feeds the peer pool when rater assignments are generated.",
       "none": "No projects yet — peers will be drawn from each person's own department.",
-      "noMembers": "No members linked.",
+      "noMembers": "No members linked",
       "edit": "Edit",
       "loadFailed": "Could not load the projects."
     },
@@ -1512,7 +1512,7 @@
         "newManager": "New manager (optional)",
         "action": "Record transfer",
         "working": "Recording…",
-        "savedToast": "{name}'s transfer recorded.",
+        "savedToast": "{name}'s transfer recorded",
         "consequences": "The year splits at this date. Each department's manager drafts and assesses their own portion, and the departmental and corporate scores follow the periods."
       },
       "bypassReason": "Why record it without the process?",
@@ -1534,7 +1534,7 @@
       "scaleHelp": "A score between 1.00 and 5.00.",
       "saveAction": "Save",
       "saving": "Saving…",
-      "saved": "{name} saved.",
+      "saved": "{name} saved",
       "notPermitted": "These figures are keyed in by HR",
       "notPermittedHelp": "Ask HR if a score looks wrong.",
       "noCycles": "No performance cycles yet",
@@ -1579,7 +1579,7 @@
       "days": "{days} days",
       "periodManager": "Manager",
       "kpis": "KPIs",
-      "noTransfers": "Nobody transferred mid-cycle.",
+      "noTransfers": "Nobody transferred mid-cycle",
       "notPermitted": "This screen is HR's",
       "notPermittedHelp": "Ask HR if a reporting line looks wrong.",
       "startTitle": "Leavers and transfers start in Joiners & leavers",
@@ -1600,7 +1600,7 @@
       "searchManager": "Search for the line manager",
       "change": "Change",
       "managerHelp": "The policy gives editing and sign-off to the direct line manager, so this decides who drafts and signs this person's KPIs.",
-      "managerHelpCLevel": "Optional for C-Level.",
+      "managerHelpCLevel": "Optional for C-Level",
       "notEditedHere": "Employee ID, salary and HR roles are not edited here. The ID never changes; HR roles go through the roles screen. To record a departure, use “Record departure” on this record — it also moves the direct reports up a level and flags the 360 assignments.",
       "saveAction": "Save record",
       "saving": "Saving…",
@@ -1617,7 +1617,7 @@
       "markAllRead": "Mark all read",
       "unread": "New",
       "loading": "Loading notifications…",
-      "loadFailed": "Could not load notifications.",
+      "loadFailed": "Could not load notifications",
       "bellWithCount": "Notifications, {count} unread",
       "moreInBell": "{count} more in the notifications menu.",
       "kind": {
@@ -1649,7 +1649,7 @@
       "title": "Cycle policy — {year}",
       "note": "Three points where the specification allows more than one reading. These are Rihal's answers for this performance year, and they can only be set while the cycle is a draft.",
       "frozen": "This cycle is no longer a draft. People have already signed and rated under these rules, so changing them now would move the goalposts after the fact — and re-price a bonus that was already calculated. These answers are shown for reference only.",
-      "saved": "Cycle policy saved.",
+      "saved": "Cycle policy saved",
       "saveFailed": "Could not save the cycle policy.",
       "loadFailed": "Could not load the cycle policy.",
       "divergence": {
@@ -1746,20 +1746,20 @@
       "link": "Link",
       "addedOn": "Added {datetime}",
       "remove": "Remove {label}",
-      "removed": "Evidence removed.",
+      "removed": "Evidence removed",
       "removeFailed": "That evidence could not be removed.",
       "addFailed": "That evidence could not be added.",
       "uploadFailed": "Upload failed before the file reached storage.",
       "typeNotAccepted": "That file type is not accepted. Allowed: {types}.",
-      "linkAdded": "Link added.",
-      "fileAdded": "File uploaded.",
+      "linkAdded": "Link added",
+      "fileAdded": "File uploaded",
       "tooLarge": "That file is over the {limit} MB limit.",
       "atLimit": "This KPI is at the evidence limit.",
       "filesUnavailable": "File storage is not set up yet — links still work.",
       "managerNote": "Manager's note: {comment}",
       "commentPlaceholder": "Comment on this evidence…",
       "saveComment": "Save note",
-      "commentSaved": "Note saved.",
+      "commentSaved": "Note saved",
       "commentFailed": "That note could not be saved.",
       "linkUrlPlaceholder": "https://…",
       "progressTitle": "Attaching a file — progress",
@@ -1802,7 +1802,7 @@
       "effectRecordKept": "Nothing is deleted — the record and its history are preserved.",
       "confirm": "Record without exit process",
       "recording": "Recording…",
-      "recorded": "{name}'s departure is recorded.",
+      "recorded": "{name}'s departure is recorded",
       "failed": "Could not record the departure.",
       "bypassWarning": "This records the departure without the exit process: no checklist, approvals, settlement or access revocation tasks. Use it only to correct a record or to enter a historical leaver. For a real departure, start a leaver case.",
       "bypassReason": "Why record it without the exit process?",
@@ -2058,7 +2058,7 @@
     "history": {
       "title": "History",
       "subtitle": "Changes to this record: what changed, who changed it and when. Values are not shown.",
-      "empty": "No changes recorded yet.",
+      "empty": "No changes recorded yet",
       "system": "System",
       "action": {
         "CREATE": "Record created",
@@ -2794,7 +2794,7 @@
         "subtitle": "Every statutory figure is a parameter with an effective-date range, never a value in code",
         "provisional": "{count, plural, one {# parameter is} other {# parameters are}} not yet confirmed. Settlements using them are provisional and cannot receive final approval.",
         "parameters": "Parameters",
-        "empty": "No statutory parameters.",
+        "empty": "No statutory parameters",
         "key": "Parameter",
         "value": "Value",
         "effective": "In force",
@@ -2835,7 +2835,7 @@
         "templateOption": "{name} (v{version})",
         "save": "Save",
         "saved": "Saved",
-        "saveFailed": "Could not save."
+        "saveFailed": "Could not save"
       },
       "employeeCode": {
         "title": "Employee codes",
@@ -2913,7 +2913,7 @@
         "caseType": "Case type",
         "allTypes": "All case types",
         "allVersions": "Show every version",
-        "empty": "No templates yet.",
+        "empty": "No templates yet",
         "name": "Name",
         "version": "Version",
         "tasks": "Tasks",
@@ -3039,7 +3039,7 @@
       "emails": {
         "title": "Joiner emails",
         "subtitle": "The approved copy, with your edits on top. Messages are queued and sent in working hours",
-        "smtpOn": "Email sending is on.",
+        "smtpOn": "Email sending is on",
         "smtpOff": "Email sending is off on this server — messages stay queued and nothing is lost. A platform administrator turns it on.",
         "audience": "Goes to: {audience}",
         "audienceValue": {
@@ -3111,7 +3111,7 @@
         "change": "Change",
         "none": "None",
         "save": "Save",
-        "saved": "Approval authority saved.",
+        "saved": "Approval authority saved",
         "failed": "The approval authority could not be saved."
       },
       "leaverLists": {
@@ -3133,7 +3133,7 @@
         "inactive": "Inactive",
         "activate": "Activate",
         "deactivate": "Deactivate",
-        "saved": "Saved.",
+        "saved": "Saved",
         "failed": "The list could not be saved."
       },
       "reasonCodes": {
@@ -3146,7 +3146,7 @@
         "inactive": "Inactive",
         "activate": "Activate",
         "deactivate": "Deactivate",
-        "saved": "Saved.",
+        "saved": "Saved",
         "failed": "The code could not be saved."
       },
       "documents": {
@@ -3159,7 +3159,7 @@
         "file": "Word file (.docx)",
         "upload": "Upload as draft",
         "uploaded": "Template uploaded as a draft.",
-        "noVersions": "No versions yet.",
+        "noVersions": "No versions yet",
         "versionLine": "v{version} — {name}",
         "isDefault": "default (replace with HR's letter)",
         "uploadedBy": "uploaded by {who}",
@@ -3170,9 +3170,9 @@
         },
         "download": "Download",
         "activate": "Activate",
-        "activated": "Template activated.",
+        "activated": "Template activated",
         "retire": "Retire",
-        "retired": "Template retired.",
+        "retired": "Template retired",
         "failed": "The template could not be saved."
       },
       "importExits": {
@@ -3187,7 +3187,7 @@
         "doneTitle": "Imported",
         "counts": "{create} to import, {skip} already imported, {problems} problems. Nothing is imported while any row has a problem.",
         "problem": "Line {line} ({ref}): {message}",
-        "imported": "Historical exits imported.",
+        "imported": "Historical exits imported",
         "failed": "The file could not be processed."
       }
     },
@@ -3225,8 +3225,8 @@
         "WAITING_FOR_PRO": "Waiting for PRO",
         "WAITING_FOR_EXTERNAL": "Waiting for external party",
         "WAITING_FOR_LINE_MANAGER": "Waiting for line manager",
-        "WAITING_FOR_FINANCE": "Waiting for Finance",
-        "WAITING_FOR_ADMIN": "Waiting for Admin",
+        "WAITING_FOR_FINANCE": "Waiting for finance",
+        "WAITING_FOR_ADMIN": "Waiting for admin",
         "WAITING_FOR_MOL_COORDINATOR": "Waiting for MOL coordinator",
         "WAITING_FOR_APPROVAL": "Waiting for approval",
         "COMPLETED": "Completed",
@@ -3367,7 +3367,7 @@
         "salary": "Salary",
         "salaryHint": "Restricted — stored encrypted and shown only to people allowed to see salary.",
         "salaryHidden": "Salary is restricted and hidden from you.",
-        "payNote": "Salary is restricted information.",
+        "payNote": "Salary is restricted information",
         "payrollApplicable": "Payroll applicable",
         "itNote": "Answer all three before activating — “No” is an answer, blank is not.",
         "msAccountRequired": "Microsoft account required",
@@ -3439,7 +3439,7 @@
         "archived": "Case archived",
         "reassign": "Reassign owner",
         "reassignTitle": "Reassign the case owner",
-        "reassignBody": "Currently owned by {name}.",
+        "reassignBody": "Currently owned by {name}",
         "nobody": "nobody",
         "newOwner": "New owner",
         "choose": "Choose…",
@@ -3509,7 +3509,7 @@
         "owner": "Task owner",
         "noOwner": "No owner",
         "comments": "{count, plural, =0 {Comments} one {# comment} other {# comments}}",
-        "noComments": "No comments yet.",
+        "noComments": "No comments yet",
         "comment": "Comment",
         "commentPlaceholder": "Add a comment — comments are permanent",
         "post": "Post",
@@ -3554,7 +3554,7 @@
         "externalNote": "Odoo and the Staffing Form are updated by hand; these open them.",
         "link": {
           "odoo": "Odoo employee profile",
-          "staffing-form": "Staffing Form"
+          "staffing-form": "Staffing form"
         },
         "linkMissing": "{name} — no link configured",
         "editJoiner": "Edit the joiner record",
@@ -3588,7 +3588,7 @@
         }
       },
       "activity": {
-        "empty": "No recorded activity yet.",
+        "empty": "No recorded activity yet",
         "byAt": "{who}, {at}",
         "system": "the system",
         "fields": "Changed: {list}",
@@ -3670,7 +3670,7 @@
       "everyone": "Everyone's",
       "includeScheduled": "Include tasks that are on schedule",
       "emptyAtRisk": "No statutory task is at risk.",
-      "emptyAll": "No open statutory tasks.",
+      "emptyAll": "No open statutory tasks",
       "dash": "—",
       "risk": {
         "overdue": "Overdue",
@@ -3742,7 +3742,7 @@
         },
         "all-companies": {
           "title": "All companies",
-          "note": "Onboarding totals per company."
+          "note": "Onboarding totals per company"
         }
       },
       "leaveGroup": "Leavers",
@@ -3854,7 +3854,7 @@
       "openCase": "Open it",
       "cannotStart": "You cannot start internal changes for this employee.",
       "historyTitle": "Change history",
-      "noHistory": "No internal changes yet.",
+      "noHistory": "No internal changes yet",
       "effective": "effective {date}",
       "changeType": {
         "INTERNSHIP_TO_TRAINING": "Internship to training",
@@ -3878,7 +3878,7 @@
       "failed": "The change could not be started.",
       "summaryTitle": "{type}",
       "applied": "Applied on {date}. {note}",
-      "notApplied": "Effective {date}. The record changes when this checklist completes.",
+      "notApplied": "Effective {date}. The record changes on that date once this checklist is complete.",
       "col": {
         "field": "Field",
         "previous": "Before",
@@ -3962,7 +3962,7 @@
         "docGrounds": "Written grounds reference",
         "docLegal": "Legal review reference",
         "save": "Save draft",
-        "created": "Exit draft saved.",
+        "created": "Exit draft saved",
         "failed": "The exit could not be saved."
       },
       "overview": {
@@ -4011,7 +4011,7 @@
         "liveNote": "Open tasks keyed to a date that moves are recalculated, and the case owners are told. Completed tasks keep their dates.",
         "earlyRelease": "Early release via leave is approved (needed to move only the last physical working day)",
         "save": "Save dates",
-        "saved": "Dates saved.",
+        "saved": "Dates saved",
         "failed": "The dates could not be saved."
       },
       "details": {
@@ -4030,15 +4030,15 @@
         "rehire": "Rehire eligibility",
         "notAssessed": "Not assessed",
         "save": "Save",
-        "saved": "Exit details saved.",
+        "saved": "Exit details saved",
         "failed": "The details could not be saved."
       },
       "activation": {
         "title": "Activate this exit",
         "subtitle": "Activation assigns the HR owner, generates the checklist and the access to revoke, and attaches the assets to return.",
-        "ready": "Nothing is blocking activation.",
+        "ready": "Nothing is blocking activation",
         "activate": "Activate",
-        "activated": "Exit activated.",
+        "activated": "Exit activated",
         "failed": "The exit could not be activated."
       },
       "rekey": {
@@ -4054,7 +4054,7 @@
         "completedOn": "Done on",
         "why": "Why it does not apply",
         "confirm": "Activate and record",
-        "done": "Exit re-keyed and activated.",
+        "done": "Exit re-keyed and activated",
         "failed": "The exit could not be re-keyed."
       },
       "withdraw": {
@@ -4063,7 +4063,7 @@
         "body": "Open tasks are cancelled. Every revocation already done gets a reversal task, and a departure already applied is undone. The case can be archived once the reversals are done.",
         "reason": "Reason",
         "confirm": "Withdraw",
-        "done": "Exit withdrawn.",
+        "done": "Exit withdrawn",
         "failed": "The exit could not be withdrawn."
       },
       "approvals": {
@@ -4075,10 +4075,10 @@
           "BACKFILL_DECISION": "The Operations Director decides whether the position is backfilled.",
           "FINAL_SETTLEMENT_APPROVAL": "HR Manager and Operations Director — two signatures before the settlement is paid."
         },
-        "none": "Not requested.",
+        "none": "Not requested",
         "request": "Request",
         "requestMissing": "Request missing holders",
-        "requested": "Approval requested.",
+        "requested": "Approval requested",
         "pendingSince": "pending since {date}",
         "decided": "{status} on {date} by {by} — {ref}",
         "decide": "Record decision",
@@ -4089,20 +4089,20 @@
         "rejected": "Refused",
         "decisionDate": "Decision date",
         "reference": "Reference",
-        "referenceHint": "Email, minute or memo.",
+        "referenceHint": "Email, minute or memo",
         "comments": "Comments",
-        "commentsHint": "Required for a refusal.",
+        "commentsHint": "Required for a refusal",
         "delegateUsed": "Decided by the configured delegate",
         "secondLevelUsed": "Decided by the second-level delegate",
         "record": "Record",
-        "recorded": "Decision recorded.",
+        "recorded": "Decision recorded",
         "failed": "The approval could not be saved."
       },
       "compliance": {
         "allClear": "Every applicable compliance gate is satisfied or overridden.",
         "outstanding": "{count, plural, one {# compliance gate is} other {# compliance gates are}} still open — the case cannot close until each is satisfied or overridden.",
         "gateLine": "{id} — {label}",
-        "notYet": "Not recorded yet.",
+        "notYet": "Not recorded yet",
         "satisfied": "Satisfied by {by} on {date} {ref}",
         "overridden": "Overridden by {by}: {reason}",
         "record": "Record",
@@ -4113,11 +4113,11 @@
         "overrideTitle": "Override gate {id}",
         "overrideBody": "An override is reported monthly and needs the reason.",
         "reason": "Reason",
-        "saved": "Gate recorded.",
+        "saved": "Gate recorded",
         "failed": "The gate could not be recorded.",
         "incidentsTitle": "Compliance incidents",
         "incidentsNote": "Logged by the daily scan whatever the case status; never deleted.",
-        "noIncidents": "No incidents.",
+        "noIncidents": "No incidents",
         "incidentLine": "{gate}: {note} — deadline {deadline}, {days} days late"
       },
       "reasons": {
@@ -4163,7 +4163,7 @@
         "narrative": "Narrative",
         "narrativeHint": "Restricted: visible on the case only, never in reports or exports.",
         "save": "Save interview",
-        "saved": "Interview saved.",
+        "saved": "Interview saved",
         "failed": "The interview could not be saved."
       },
       "assessment": {
@@ -4195,19 +4195,19 @@
           "OTHER": "Other"
         },
         "save": "Save assessment",
-        "saved": "Assessment saved.",
+        "saved": "Assessment saved",
         "failed": "The assessment could not be saved."
       },
       "settlement": {
         "notApplicable": "No final settlement applies to this exit.",
-        "statusNone": "Not calculated yet.",
+        "statusNone": "Not calculated yet",
         "statusCalculated": "Calculated — awaiting the two Final Settlement Approval signatures and approval.",
         "statusProvisional": "Provisional — statutory values unconfirmed ({keys}). It cannot be approved until they are verified.",
         "statusApproved": "Approved on {date} — awaiting payment.",
-        "statusPaid": "Paid on {date}.",
+        "statusPaid": "Paid on {date}",
         "recalcNeeded": "A line changed since the last calculation; recalculate.",
         "figuresTitle": "Calculation",
-        "notCalculated": "Not calculated yet.",
+        "notCalculated": "Not calculated yet",
         "hidden": "Amounts are visible to HR users who may see settlements.",
         "calculate": "Calculate",
         "recalculate": "Recalculate",
@@ -4216,7 +4216,7 @@
         "leaveBalance": "Leave balance at the last day of service (days)",
         "leaveBalanceHint": "Negative when leave was taken in excess of accrual.",
         "outstandingSalary": "Outstanding salary (OMR)",
-        "calculated": "Settlement calculated.",
+        "calculated": "Settlement calculated",
         "hireDate": "Hire date",
         "basic": "Basic monthly wage",
         "serviceDays": "Service (days)",
@@ -4232,7 +4232,7 @@
         "net": "Net",
         "omr": "{value} OMR",
         "linesTitle": "Additions and deductions",
-        "noLines": "No lines.",
+        "noLines": "No lines",
         "lineType": {
           "ADDITION": "Addition",
           "DEDUCTION": "Deduction"
@@ -4267,13 +4267,13 @@
         "approveTitle": "Approve the settlement",
         "approveBody": "Approval needs verified statutory values, referenced deductions, every asset settled and both signatures.",
         "signatureRef": "Signature reference (e.g. the signing envelope)",
-        "approved": "Settlement approved.",
+        "approved": "Settlement approved",
         "confirmPayment": "Confirm payment",
         "paymentTitle": "Confirm payment",
         "paymentBody": "The statutory window ends on {deadline}.",
         "paymentDate": "Paid on",
         "paymentRef": "Payment reference",
-        "paid": "Payment confirmed.",
+        "paid": "Payment confirmed",
         "paidLine": "Paid on {date}, reference {ref} (window ended {deadline}).",
         "failed": "The settlement could not be updated."
       },
@@ -4283,7 +4283,7 @@
         "body": "Every compliance gate is satisfied or overridden, the settlement is paid and the departure is applied (or will be now). Closing cannot be undone.",
         "blocked": "This exit cannot close yet:",
         "confirm": "Close",
-        "done": "Exit closed.",
+        "done": "Exit closed",
         "failed": "The exit could not be closed."
       },
       "documents": {
@@ -4299,9 +4299,9 @@
         "useCurrentTitle": "Regenerate on the current template",
         "useCurrentBody": "The first generation is pinned to its template version. Using the current one needs a reason.",
         "reason": "Reason",
-        "generated": "Document downloaded.",
+        "generated": "Document downloaded",
         "historyTitle": "Generated",
-        "none": "Nothing generated yet.",
+        "none": "Nothing generated yet",
         "historyLine": "{type} — template v{version}, by {by} at {at}"
       },
       "calendar": "Exit calendar"
@@ -4322,7 +4322,7 @@
         "title": "Assets",
         "joinNote": "Assets issued to the joiner; they come back on the exit case.",
         "leaveNote": "{count, plural, =0 {Every asset is accounted for.} one {# asset still to return.} other {# assets still to return.}}",
-        "empty": "No assets recorded.",
+        "empty": "No assets recorded",
         "add": "Add asset",
         "issueTitle": "Issue an asset",
         "addReturnTitle": "Add an asset to return",
@@ -4333,7 +4333,7 @@
         "issuedOn": "Issued on",
         "returnDue": "Return due",
         "returnDueHint": "Defaults to the last physical working day.",
-        "added": "Asset added.",
+        "added": "Asset added",
         "issued": "Issued {date}",
         "due": "Return due {date}",
         "returned": "Returned {date} — {condition}",
@@ -4347,18 +4347,18 @@
         "deductionApplies": "A deduction applies",
         "amount": "Amount (OMR)",
         "deductionNeedsSenior": "A deduction amount is recorded by Senior HR or the HR Manager.",
-        "returnedDone": "Return recorded.",
+        "returnedDone": "Return recorded",
         "writeOff": "Write off",
         "writeOffTitle": "Write off {type}",
         "reason": "Reason",
-        "writtenOffDone": "Asset written off.",
+        "writtenOffDone": "Asset written off",
         "failed": "The asset could not be saved."
       },
       "access": {
         "title": "Access",
         "openCount": "{count, plural, =0 {Every item is confirmed.} one {# item open.} other {# items open.}}",
         "unrotated": "Shared credentials not yet rotated: {list}",
-        "empty": "No access items.",
+        "empty": "No access items",
         "rotate": "rotate",
         "due": "due {date}",
         "confirmed": "confirmed {date} by {party} — {ref}",
@@ -4369,14 +4369,14 @@
         "shared": "A shared credential (must be rotated)",
         "dueDate": "Due",
         "dueHint": "Defaults to the last physical working day on an exit.",
-        "added": "Access item added.",
+        "added": "Access item added",
         "confirm": "Confirm",
         "confirmTitle": "Confirm {name}",
         "rotateNote": "This credential must be rotated; another account's disablement does not close it.",
         "party": "Confirmed by",
         "date": "Date",
         "reference": "Reference (ticket, email)",
-        "confirmedDone": "Access item confirmed.",
+        "confirmedDone": "Access item confirmed",
         "failed": "The access item could not be saved."
       }
     },
@@ -4388,7 +4388,7 @@
       "REPATRIATION_TICKET_REQUEST": "Repatriation ticket request",
       "IT_ACCESS_REVOCATION_INSTRUCTION": "IT access revocation instruction",
       "FINAL_SETTLEMENT_WORKSHEET": "Final settlement worksheet",
-      "SETTLEMENT_TRANSMITTAL_TO_FINANCE": "Settlement transmittal to Finance",
+      "SETTLEMENT_TRANSMITTAL_TO_FINANCE": "Settlement transmittal to finance",
       "CERTIFICATE_OF_SERVICE": "Certificate of service"
     },
     "exitCalendar": {
@@ -4420,9 +4420,9 @@
       "allMyTasks": "All my tasks",
       "noWork": "No open tasks assigned to you.",
       "delayed": "Delayed tasks",
-      "noDelayed": "Nothing is overdue.",
+      "noDelayed": "Nothing is overdue",
       "approvals": "Awaiting approval",
-      "noApprovals": "No approvals are pending.",
+      "noApprovals": "No approvals are pending",
       "approvalLine": "{name} — {holder}, pending since {since}",
       "statutory": "Statutory watch",
       "noStatutory": "No statutory deadline within three working days.",
@@ -4466,10 +4466,10 @@
       "statusLine": "{status} · {pct}% · {owner}",
       "historical": "Historical",
       "assets": "Assets held",
-      "noAssets": "No assets outstanding.",
+      "noAssets": "No assets outstanding",
       "assetLine": "{type} {id} — issued {date}",
       "access": "Access granted",
-      "noAccess": "No access recorded.",
+      "noAccess": "No access recorded",
       "accessLine": "{name} — granted {date}"
     }
   },
