@@ -107,7 +107,13 @@ export async function testAiConnection(userId: string) {
 /** The non-AI sections of Hiring settings, plus the companies they are keyed by. */
 export async function generalSettings() {
   const [s, entities] = await Promise.all([
-    readSettings(["ai.scoringWeights", "panel.aiMode", "budget.envelope", "approvals.config"]),
+    readSettings([
+      "ai.scoringWeights",
+      "panel.aiMode",
+      "budget.envelope",
+      "approvals.config",
+      "tawteen.targets",
+    ]),
     prisma.orgEntity.findMany({
       orderBy: { code: "asc" },
       select: { code: true, name: true },
@@ -123,6 +129,17 @@ export async function generalSettings() {
     panelAiMode: asPanelAiMode(s.get("panel.aiMode")),
     budget: budget.success ? budget.data : { entities: {} },
     approvals: approvals ?? { chains: {}, cooThreshold: COO_THRESHOLD_OMR },
+    tawteen: tawteenTargets(s.get("tawteen.targets")),
+  };
+}
+
+function tawteenTargets(raw: unknown): { targets: Record<string, number> } {
+  const t = (raw as { targets?: unknown } | null)?.targets;
+  if (!t || typeof t !== "object") return { targets: {} };
+  return {
+    targets: Object.fromEntries(
+      Object.entries(t).filter(([, v]) => typeof v === "number"),
+    ) as Record<string, number>,
   };
 }
 
@@ -130,5 +147,6 @@ export async function saveGeneral(input: GeneralSettingsInput) {
   if (input.section === "weights") return writeSetting("ai.scoringWeights", input.value);
   if (input.section === "panel") return writeSetting("panel.aiMode", input.value.mode);
   if (input.section === "budget") return writeSetting("budget.envelope", input.value);
+  if (input.section === "tawteen") return writeSetting("tawteen.targets", input.value);
   return writeSetting("approvals.config", input.value);
 }

@@ -99,6 +99,12 @@ export const generalSettingsSchema = z.discriminatedUnion("section", [
   z.object({ section: z.literal("panel"), value: panelModeSchema }),
   z.object({ section: z.literal("budget"), value: budgetEnvelopeSchema }),
   z.object({
+    section: z.literal("tawteen"),
+    value: z.object({
+      targets: z.record(z.string().min(1).max(20), z.number().int().min(0).max(100)),
+    }),
+  }),
+  z.object({
     section: z.literal("approvals"),
     value: z.object({
       chains: z.record(z.string().min(1).max(20), z.array(approvalRole).min(1).max(10)),

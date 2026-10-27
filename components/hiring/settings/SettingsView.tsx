@@ -9,6 +9,7 @@ import { AiLimitsCard } from "./AiLimitsCard";
 import { AiProviderCard } from "./AiProviderCard";
 import { ApprovalsCard } from "./ApprovalsCard";
 import { BudgetCard } from "./BudgetCard";
+import { TawteenCard } from "./TawteenCard";
 import { PanelModeCard, WeightsCard } from "./ScoringCards";
 
 /**
@@ -53,7 +54,16 @@ export function SettingsView() {
             ),
           },
           { key: "approvals", label: t("tabApprovals"), content: <ApprovalsCard /> },
-          { key: "budget", label: t("tabBudget"), content: <BudgetCard /> },
+          {
+            key: "budget",
+            label: t("tabBudget"),
+            content: (
+              <div className="space-y-4">
+                <BudgetCard />
+                <TawteenCard />
+              </div>
+            ),
+          },
         ]}
       />
     </div>
