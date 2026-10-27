@@ -29,8 +29,17 @@ import { buildOrgChart, type OrgNode } from "@/lib/pms/org-chart";
  * function so the shape is testable without a browser.
  */
 
-export default async function OrgPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function OrgPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
   const { locale } = await params;
+  // "View in org chart" from a record (UX P1 R10) opens the chart searched for that person.
+  const q = (await searchParams).q;
+  const initialQuery = typeof q === "string" ? q.slice(0, 100) : "";
   const session = await auth();
   if (!session) redirect(`/${locale}/login`);
 
@@ -69,7 +78,12 @@ export default async function OrgPage({ params }: { params: Promise<{ locale: st
         {entities.length === 0 ? (
           <EmptyState description={t("org.empty")} />
         ) : (
-          <OrgChart entities={entities} locale={locale} totalCount={nodes.length} />
+          <OrgChart
+            entities={entities}
+            locale={locale}
+            totalCount={nodes.length}
+            initialQuery={initialQuery}
+          />
         )}
       </SectionCard>
     </div>

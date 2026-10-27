@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useNotify } from "@/hooks/use-notify";
+import { useControllableOpen } from "@/hooks/use-controllable-open";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { RecordFields, recordPayload, type RecordValues } from "./RecordFields";
 
@@ -27,19 +28,33 @@ export function EmployeeRecordForm({
   initial,
   canEditPersonal,
   canEditIdDocuments,
+  open: openProp,
+  onOpenChange,
 }: {
   employeeId: string;
   initial: RecordValues;
   canEditPersonal: boolean;
   canEditIdDocuments: boolean;
+  /** Controlled open state (opened from the record's Edit menu); no own trigger then. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const t = useTranslations("people.record");
   const router = useRouter();
   const { success } = useNotify();
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState, controlled] = useControllableOpen(openProp, onOpenChange);
   const [values, setValues] = useState<RecordValues>(initial);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Every opening starts from the record as saved, never from an abandoned edit.
+  function setOpen(next: boolean) {
+    if (next) {
+      setValues(initial);
+      setFormError(null);
+    }
+    setOpenState(next);
+  }
 
   async function save() {
     setSubmitting(true);
@@ -67,16 +82,12 @@ export function EmployeeRecordForm({
 
   return (
     <>
-      <Button
-        variant="outline"
-        onClick={() => {
-          setValues(initial);
-          setOpen(true);
-        }}
-      >
-        <Pencil className="h-4 w-4" />
-        {t("edit")}
-      </Button>
+      {controlled ? null : (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          <Pencil className="h-4 w-4" />
+          {t("edit")}
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={(next) => !submitting && setOpen(next)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>

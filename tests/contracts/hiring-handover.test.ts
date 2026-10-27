@@ -92,5 +92,5 @@ test("the record's Hiring tab is scope-checked and never carries pay", () => {
   const src = read("lib/hiring/employee-tab.ts");
   assert.match(src, /can\(actor, "hiring\.view"/);
   assert.doesNotMatch(src, /salary|Enc\b/i);
-  assert.match(read("components/people/RecordTabs.tsx"), /"hiring"\] as const/);
+  assert.match(read("components/people/RecordTabs.tsx"), /"hiring",/);
 });

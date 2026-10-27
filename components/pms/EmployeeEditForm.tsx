@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useNotify } from "@/hooks/use-notify";
+import { useControllableOpen } from "@/hooks/use-controllable-open";
 import { apiClient, ApiError } from "@/lib/api-client";
 import {
   ROLE_TRACKS,
@@ -82,6 +83,9 @@ export interface EmployeeEditFormProps {
   initial: UpdateEmployeeInput;
   /** For the manager control, which shows a name rather than an id. */
   managerName: string | null;
+  /** Controlled open state (opened from the record's Edit menu); no own trigger then. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const SELECT_CLASS =
@@ -89,14 +93,20 @@ const SELECT_CLASS =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed " +
   "disabled:opacity-50 aria-[invalid=true]:border-destructive";
 
-export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeEditFormProps) {
+export function EmployeeEditForm({
+  employeeId,
+  initial,
+  managerName,
+  open: openProp,
+  onOpenChange,
+}: EmployeeEditFormProps) {
   const t = useTranslations("pms.editEmployee");
   const tPms = useTranslations("pms");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const { success } = useNotify();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen, controlled] = useControllableOpen(openProp, onOpenChange);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [manager, setManager] = useState<PickablePerson | null>(
@@ -194,10 +204,12 @@ export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeE
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        <Pencil className="h-4 w-4" />
-        {t("action")}
-      </Button>
+      {controlled ? null : (
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          <Pencil className="h-4 w-4" />
+          {t("action")}
+        </Button>
+      )}
 
       <Dialog
         open={open}

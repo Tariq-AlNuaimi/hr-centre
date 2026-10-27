@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { Users } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
 import type { SortChange } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { StatCard } from "@/components/shared/StatCard";
+import { FilterChips } from "@/components/shared/FilterBar";
+import { DirectoryFilters, type DirectoryFilterValues } from "@/components/people/DirectoryFilters";
 import { Button } from "@/components/ui/button";
 import { getEmployeeColumns, type EmployeeRecord } from "@/components/pms/EmployeeColumns";
 import { useEntityList } from "@/hooks/use-entity-queries";
@@ -25,7 +25,38 @@ import { usePmsActor } from "@/hooks/use-pms-actor";
  * permanently-empty salary column to a line manager would be noise, not a leak,
  * and hiding it is never what keeps the figure safe.
  */
+const FILTER_KEYS = [
+  "entityId",
+  "directorateId",
+  "departmentId",
+  "teamId",
+  "managerId",
+  "managerName",
+  "roleTrack",
+  "status",
+] as const;
+const STATUSES = ["ACTIVE", "PRE_JOINER", "LEAVER"] as const;
+
+type DirectoryList = {
+  data: EmployeeRecord[];
+  total: number;
+  statusCounts?: Record<string, number>;
+};
+
 export default function PeoplePage() {
+  // useSearchParams needs a Suspense boundary under the App Router.
+  return (
+    <Suspense>
+      <Directory />
+    </Suspense>
+  );
+}
+
+/**
+ * UX review R11 — filters live in the URL (shareable, back-button safe) and
+ * are applied server-side; salary is hidden until the viewer asks for it.
+ */
+function Directory() {
   const t = useTranslations("pms");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -36,7 +67,25 @@ export default function PeoplePage() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortChange>({});
-  const [status, setStatus] = useState<string>("");
+  const [showSalary, setShowSalary] = useState(false);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const filters = Object.fromEntries(
+    FILTER_KEYS.map((k) => [k, searchParams.get(k) ?? ""]),
+  ) as DirectoryFilterValues & { status: string };
+  const setFilters = (next: Partial<typeof filters>) => {
+    const sp = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(next)) {
+      if (v) sp.set(k, v);
+      else sp.delete(k);
+    }
+    setPage(1);
+    router.replace(`${pathname}${sp.size ? `?${sp}` : ""}`, { scroll: false });
+  };
+  const { status } = filters;
+  const apiFilters = Object.fromEntries(
+    FILTER_KEYS.filter((k) => k !== "managerName" && filters[k]).map((k) => [k, filters[k]]),
+  );
 
   const params: Record<string, string> = {
     page: String(page),
@@ -44,16 +93,20 @@ export default function PeoplePage() {
     ...(search ? { search } : {}),
     ...(sort.field ? { sort: sort.field } : {}),
     ...(sort.order ? { order: sort.order === "ascend" ? "asc" : "desc" } : {}),
-    ...(status ? { status } : {}),
+    ...apiFilters,
   };
 
-  const { data, isLoading } = useEntityList<EmployeeRecord>(
+  const { data: raw, isLoading } = useEntityList<EmployeeRecord>(
     "/api/employees",
     params,
     t("loadFailed"),
   );
 
+  const data = raw as DirectoryList | undefined;
   const rows = data?.data ?? [];
+  const counts = data?.statusCounts ?? {};
+  const allCount = Object.values(counts).reduce((a, b) => a + b, 0);
+  const filtering = search !== "" || Object.keys(apiFilters).length > 0;
   const total = data?.total ?? 0;
 
   // Money formatting is locale-aware but currency-neutral: §11 never names a
@@ -64,7 +117,7 @@ export default function PeoplePage() {
     );
 
   const columns = getEmployeeColumns({
-    showCompensation: capabilities.viewCompensation,
+    showCompensation: capabilities.viewCompensation && showSalary,
     locale,
     t,
     formatSalary,
@@ -77,52 +130,39 @@ export default function PeoplePage() {
         subtitle={
           capabilities.orgWide ? t("directory.subtitleOrgWide") : t("directory.subtitleChain")
         }
-        actions={
-          capabilities.previewImport || capabilities.peopleEdit ? (
-            <div className="flex flex-wrap gap-2">
-              {/* HR Centre F-b — typing is the second way in (blueprint §5). */}
-              {capabilities.peopleEdit ? (
-                <Button onClick={() => router.push(`/${locale}/people/new`)}>
-                  {t("directory.addAction")}
-                </Button>
-              ) : null}
-              {capabilities.previewImport ? (
-                <Button
-                  variant={capabilities.peopleEdit ? "outline" : "default"}
-                  onClick={() => router.push(`/${locale}/admin/import`)}
-                >
-                  {t("directory.importAction")}
-                </Button>
-              ) : null}
-            </div>
-          ) : undefined
-        }
+        actions={<DirectoryActions />}
       />
 
-      {/* §4.2 — say out loud whose people these are. A manager seeing 14 rows
-          should know that is their chain, not the company. */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title={t("directory.visibleCount")} value={total} icon={<Users />} />
-      </div>
+      <DirectoryFilters value={filters} onChange={setFilters} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor="status-filter" className="text-sm text-muted-foreground">
-          {t("status")}
-        </label>
-        <select
-          id="status-filter"
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* §4.2 — counts are of the people THIS viewer may see; the subtitle
+            says whose they are. */}
+        <FilterChips
+          label={t("status")}
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">{t("filter.allStatuses")}</option>
-          <option value="ACTIVE">{t("statusValue.ACTIVE")}</option>
-          <option value="LEAVER">{t("statusValue.LEAVER")}</option>
-          <option value="PRE_JOINER">{t("statusValue.PRE_JOINER")}</option>
-        </select>
+          onChange={(value) => setFilters({ status: value })}
+          chips={[
+            { value: "", label: t("filter.allStatuses"), count: allCount },
+            ...STATUSES.map((s) => ({
+              value: s,
+              label: t(`statusValue.${s}`),
+              count: counts[s] ?? 0,
+            })),
+          ]}
+        />
+        {/* R11 — pay is not on screen by default (a projected or shared
+            directory); entitled viewers turn the column on. */}
+        {capabilities.viewCompensation ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-pressed={showSalary}
+            onClick={() => setShowSalary((v) => !v)}
+          >
+            {showSalary ? t("directory.hideSalary") : t("directory.showSalary")}
+          </Button>
+        ) : null}
       </div>
 
       <DataTable<EmployeeRecord>
@@ -146,7 +186,7 @@ export default function PeoplePage() {
         emptyText={
           <EmptyState
             description={
-              search || status
+              filtering
                 ? tCommon("noResults")
                 : capabilities.previewImport
                   ? t("directory.emptyHr")
@@ -160,6 +200,32 @@ export default function PeoplePage() {
           />
         }
       />
+    </div>
+  );
+}
+
+/** HR Centre F-b — Add (typing is the second way in) and Import, for whoever may. */
+function DirectoryActions() {
+  const t = useTranslations("pms");
+  const router = useRouter();
+  const locale = useLocale();
+  const { capabilities } = usePmsActor();
+  if (!capabilities.previewImport && !capabilities.peopleEdit) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {capabilities.peopleEdit ? (
+        <Button onClick={() => router.push(`/${locale}/people/new`)}>
+          {t("directory.addAction")}
+        </Button>
+      ) : null}
+      {capabilities.previewImport ? (
+        <Button
+          variant={capabilities.peopleEdit ? "outline" : "default"}
+          onClick={() => router.push(`/${locale}/admin/import`)}
+        >
+          {t("directory.importAction")}
+        </Button>
+      ) : null}
     </div>
   );
 }

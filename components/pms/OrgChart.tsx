@@ -47,14 +47,17 @@ export function OrgChart({
   entities,
   locale,
   totalCount,
+  initialQuery = "",
 }: {
   entities: OrgChartEntity[];
   locale: string;
   totalCount: number;
+  /** Pre-filled search (`/org?q=` — "View in org chart" from a record). */
+  initialQuery?: string;
 }) {
   const t = useTranslations("pms.org");
   const tPms = useTranslations("pms");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   /**
    * Whether reporting lines start open — the "readable at 20 to 200 people"

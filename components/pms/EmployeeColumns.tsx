@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
+import { isPendingEmployeeId } from "@/lib/people/pending-id";
 
 export interface EmployeeRecord {
   id: string;
@@ -67,7 +68,13 @@ export function getEmployeeColumns({
       dataIndex: "odooId",
       key: "odooId",
       sorter: true,
-      render: (value: string) => <span className="font-mono text-xs">{value}</span>,
+      // R11 — a placeholder ID (pre-joiner, first-run admin) reads as pending, not as a code.
+      render: (value: string) =>
+        isPendingEmployeeId(value) ? (
+          <Badge variant="outline">{t("pendingId")}</Badge>
+        ) : (
+          <span className="font-mono text-xs">{value}</span>
+        ),
     },
     {
       title: t("name"),

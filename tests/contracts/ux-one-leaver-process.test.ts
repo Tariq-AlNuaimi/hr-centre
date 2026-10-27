@@ -54,7 +54,12 @@ test("the person record opens a pre-filled leaver case; the direct path is admin
   const page = src("app/[locale]/(dashboard)/people/[id]/page.tsx");
   assert.match(page, /\/jml\/leavers\/new\?/);
   assert.match(page, /canFor\(actor, "jml\.manageLeavers", subject\)/);
-  assert.match(page, /isHrSuperAdmin\(actor\) \? \(\s*<RecordDepartureDialog/);
+  // UX P1 R10: the direct path is the Actions menu's separated correction, HR Super Admin only.
+  assert.match(page, /departure:\s*isHrSuperAdmin\(actor\)/);
+  assert.match(
+    src("components/people/RecordActions.tsx"),
+    /\{departure \? \(\s*<RecordDepartureDialog/,
+  );
 });
 
 test("Performance's page starts JML cases and keeps the recorders behind the admin gate", () => {
