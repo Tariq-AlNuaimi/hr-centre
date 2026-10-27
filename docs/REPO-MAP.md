@@ -552,7 +552,7 @@
 - lib/date-input.ts: toDateInput, startOfDay, endOfDay
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
-- lib/format.ts: formatDateTime, formatDate
+- lib/format.ts: formatDateTime, formatDate, formatDay, daysUntil
 - lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, canErase, actsAs, canOverrideGates, canSignJdForHr, seesPii, seesComp, isPanelOnly
 - lib/hiring/actor.ts: resolveHiringActor
 - lib/hiring/agency-invite-admin.ts: listInvites, createInvite, revokeInvite
@@ -688,7 +688,7 @@
 - lib/jml/engine/activity.ts: caseActivity
 - lib/jml/engine/assignment.ts: RuleRow, Placement, resolveHrAssignment, userHolds, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules, listJmlHrUsers
 - lib/jml/engine/case-actions.ts: cancelOpenWork, cancelCase, archiveCase, reassignOwner, setLegalHold
-- lib/jml/engine/case-read.ts: CaseRow, listCases, getCaseDetail, listCaseEmails
+- lib/jml/engine/case-read.ts: CaseRow, CaseListRow, listCases, getCaseDetail, listCaseEmails
 - lib/jml/engine/case-ref.ts: nextCaseRef, withCaseRefRetry
 - lib/jml/engine/conditions.ts: ConditionFacts, taskApplies, conditionSource, criteriaScore
 - lib/jml/engine/gates.ts: GateResult, GateTask, canCompleteTask, canCloseStage, canAdvanceStage, advancedLeaveStage
@@ -1060,6 +1060,7 @@
 - components/jml/case/AssetsSection.tsx
 - components/jml/case/CaseActions.tsx
 - components/jml/case/CaseScreen.tsx
+- components/jml/case/CaseSummary.tsx
 - components/jml/case/ChecklistTab.tsx
 - components/jml/case/EmailsTab.tsx
 - components/jml/case/OverviewTab.tsx

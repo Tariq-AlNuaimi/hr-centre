@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { apiClient } from "@/lib/api-client";
 import { CaseStatusBadge, Progress } from "../CaseBits";
+import { CaseSummary, OpenCount } from "./CaseSummary";
 import { LoadFailed, LoadingBlock } from "../States";
 import { CaseActions } from "./CaseActions";
 import { ChecklistTab } from "./ChecklistTab";
@@ -19,38 +20,7 @@ import { InterviewTab } from "../leavers/InterviewTab";
 import { SettlementTab } from "../leavers/SettlementTab";
 import { DocumentsTab } from "../leavers/DocumentsTab";
 import type { CaseDetail } from "./types";
-
-const TABS = [
-  "checklist",
-  "overview",
-  "approvals",
-  "compliance",
-  "interview",
-  "settlement",
-  "documents",
-  "register",
-  "emails",
-  "activity",
-] as const;
-type Tab = (typeof TABS)[number];
-
-/** Approvals and compliance are leaver-only; the register serves joiners (issue) and leavers (return). */
-const TABS_FOR: Record<CaseDetail["caseType"], readonly Tab[]> = {
-  JOIN: ["checklist", "overview", "register", "emails", "activity"],
-  MOVE: ["checklist", "overview", "emails", "activity"],
-  LEAVE: [
-    "checklist",
-    "overview",
-    "approvals",
-    "compliance",
-    "interview",
-    "settlement",
-    "documents",
-    "register",
-    "emails",
-    "activity",
-  ],
-};
+import { TABS_FOR, tabFrom, type Tab } from "./tabs";
 
 /**
  * One case, any type — Onboarding `/onboarding/[id]` with the fourth tab the
@@ -61,8 +31,7 @@ export function CaseScreen({ caseId }: { caseId: string }) {
   const t = useTranslations("jml.case");
   const tv = useTranslations("jml.vocab");
   const search = useSearchParams();
-  const initial = (search.get("tab") as Tab | null) ?? "checklist";
-  const [tab, setTab] = useState<Tab>(TABS.includes(initial) ? initial : "checklist");
+  const [tab, setTab] = useState<Tab>(tabFrom(search.get("tab")));
   const detail = useQuery({
     queryKey: ["jml", "case", caseId],
     queryFn: () => apiClient.get<CaseDetail>(`/api/jml/cases/${caseId}`),
@@ -98,6 +67,7 @@ export function CaseScreen({ caseId }: { caseId: string }) {
           {t("onHold", { reason: c.legalHoldReason ?? "" })}
         </p>
       ) : null}
+      <CaseSummary detail={c} />
       <CaseActions detail={c} />
       <div role="tablist" aria-label={t("tabs")} className="flex gap-1 border-b border-border">
         {tabs.map((key) => (
@@ -114,22 +84,37 @@ export function CaseScreen({ caseId }: { caseId: string }) {
             }
           >
             {t(`tab.${key}`)}
+            {key === "checklist" ? <OpenCount caseId={c.id} /> : null}
           </button>
         ))}
       </div>
-      <div role="tabpanel">
+      <div role="tabpanel" className="space-y-6">
         {shown === "checklist" ? <ChecklistTab detail={c} /> : null}
-        {shown === "overview" ? <OverviewTab detail={c} /> : null}
-        {shown === "approvals" ? <ApprovalsTab caseId={c.id} /> : null}
-        {shown === "compliance" ? <ComplianceTab caseId={c.id} status={c.status} /> : null}
-        {shown === "interview" ? (
-          <InterviewTab caseId={c.id} exitType={c.exitType ?? ""} status={c.status} />
+        {shown === "overview" ? (
+          <>
+            <OverviewTab detail={c} />
+            {c.caseType === "LEAVE" ? <ApprovalsTab caseId={c.id} /> : null}
+            {c.caseType === "LEAVE" ? <ComplianceTab caseId={c.id} status={c.status} /> : null}
+          </>
         ) : null}
-        {shown === "settlement" ? <SettlementTab caseId={c.id} /> : null}
-        {shown === "documents" ? <DocumentsTab caseId={c.id} status={c.status} /> : null}
-        {shown === "register" ? <RegisterTab detail={c} /> : null}
-        {shown === "emails" ? <EmailsTab detail={c} /> : null}
-        {shown === "activity" ? <ActivityTab detail={c} /> : null}
+        {shown === "exit" ? (
+          <>
+            <InterviewTab caseId={c.id} exitType={c.exitType ?? ""} status={c.status} />
+            <SettlementTab caseId={c.id} />
+          </>
+        ) : null}
+        {shown === "documents" ? (
+          <>
+            {c.caseType === "LEAVE" ? <DocumentsTab caseId={c.id} status={c.status} /> : null}
+            <RegisterTab detail={c} />
+          </>
+        ) : null}
+        {shown === "activity" ? (
+          <>
+            <ActivityTab detail={c} />
+            <EmailsTab detail={c} />
+          </>
+        ) : null}
       </div>
     </div>
   );

@@ -2649,7 +2649,18 @@
       "previous": "Previous",
       "pageOf": "Page {page} of {total}",
       "percent": "{value}%",
-      "progress": "Progress"
+      "progress": "Progress",
+      "due": {
+        "none": "No due date",
+        "overdue": "{count, plural, one {# day overdue} other {# days overdue}}",
+        "today": "Due today",
+        "inDays": "{count, plural, one {Due tomorrow} other {Due in # days}}"
+      },
+      "rag": {
+        "GREEN": "On track",
+        "AMBER": "At risk",
+        "RED": "Off track"
+      }
     },
     "settings": {
       "title": "Joiners, movers & leavers settings",
@@ -3276,13 +3287,14 @@
       "col": {
         "case": "Case",
         "employee": "Employee",
-        "placement": "Placement",
         "owner": "HR owner",
-        "start": "Start",
+        "keyDate": "Key date",
+        "risk": "Risk",
+        "nextDue": "Next due",
         "stage": "Stage",
-        "progress": "Progress",
         "status": "Status"
-      }
+      },
+      "overdueTasks": "{count, plural, one {# overdue task} other {# overdue tasks}}"
     },
     "joiners": {
       "title": "Joiners",
@@ -3399,14 +3411,9 @@
       "tab": {
         "checklist": "Checklist",
         "overview": "Overview",
-        "emails": "Emails & notifications",
-        "activity": "Activity",
-        "approvals": "Approvals",
-        "compliance": "Compliance",
-        "register": "Assets & access",
-        "interview": "Interview",
-        "settlement": "Settlement",
-        "documents": "Documents"
+        "exit": "Exit",
+        "documents": "Documents & access",
+        "activity": "Activity"
       },
       "actions": {
         "failed": "That could not be done.",
@@ -3453,7 +3460,9 @@
         "liftHold": "Lift legal hold",
         "liftHoldTitle": "Lift the legal hold?",
         "liftHoldBody": "Retention will treat the case normally again.",
-        "holdLifted": "Legal hold lifted"
+        "holdLifted": "Legal hold lifted",
+        "more": "More actions",
+        "protective": "Protective or irreversible"
       },
       "checklist": {
         "summary": "{done} of {total} mandatory tasks — {pct}%",
@@ -3471,7 +3480,16 @@
           "mandatory": "Counts toward progress",
           "added": "Task added",
           "failed": "The task could not be added."
-        }
+        },
+        "filterLabel": "Show open tasks",
+        "filter": {
+          "all": "All",
+          "mine": "Mine",
+          "overdue": "Overdue",
+          "blocking": "Blocking"
+        },
+        "stageCount": "{open} open · {done} done",
+        "doneCount": "{count, plural, one {# done} other {# done}}"
       },
       "task": {
         "failed": "The task could not be updated.",
@@ -3515,7 +3533,8 @@
         "commentPlaceholder": "Add a comment — comments are permanent",
         "post": "Post",
         "posted": "Comment posted",
-        "someone": "Someone"
+        "someone": "Someone",
+        "more": "More"
       },
       "overview": {
         "dash": "—",
@@ -3605,6 +3624,21 @@
           "JmlTask": "a task",
           "JmlMoveDetail": "the change details"
         }
+      },
+      "summary": {
+        "plannedStart": "Planned start",
+        "actualStart": "Actual start",
+        "effective": "Effective date",
+        "noticeStart": "Notice started",
+        "lastPhysicalDay": "Last physical day",
+        "lastDayOfService": "Last day of service",
+        "owner": "HR owner",
+        "noOwner": "Unassigned",
+        "risk": "Risk",
+        "nextDue": "Next due",
+        "nothingDue": "Nothing due",
+        "overdue": "Overdue tasks",
+        "blocking": "Open blocking tasks"
       }
     },
     "calendar": {

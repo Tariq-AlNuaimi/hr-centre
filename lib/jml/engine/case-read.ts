@@ -5,7 +5,7 @@ import { isProvisionalOdooId } from "@/lib/people/provisional-id";
 import type { CaseListInput } from "@/lib/validations/jml/case";
 import { canFor, caseScopeWhere, loadCaseFor, MANAGE_PERMISSION, type JmlActor } from "../access";
 import { externalSystems } from "../desks";
-import { TASK_STATUSES } from "../vocab";
+import { SETTLED_TASK_STATUSES, TASK_STATUSES } from "../vocab";
 
 /**
  * Reading cases — every type. The list defaults to work in flight plus
@@ -50,6 +50,8 @@ const CASE_ROW_SELECT = {
   activatedAt: true,
   hrOwner: { select: { id: true, name: true } },
   joinDetail: { select: { plannedStartDate: true, actualStartDate: true } },
+  moveDetail: { select: { effectiveDate: true } },
+  leaveDetail: { select: { lastDayOfService: true } },
   employee: {
     select: {
       id: true,
@@ -64,21 +66,27 @@ const CASE_ROW_SELECT = {
 } as const satisfies Prisma.JmlCaseSelect;
 
 export type CaseRow = Prisma.JmlCaseGetPayload<{ select: typeof CASE_ROW_SELECT }>;
+export type CaseListRow = CaseRow & { overdueTasks: number; nextDue: Date | null };
 
 export async function listCases(actor: JmlActor, f: CaseListInput, page: PaginationParams) {
   const where = caseListWhere(actor, f);
-  if (!where) return { rows: [] as CaseRow[], total: 0 };
+  if (!where) return { rows: [] as CaseListRow[], total: 0 };
   const [rows, total] = await Promise.all([
     prisma.jmlCase.findMany({
       where,
-      orderBy: [{ activatedAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
+      // UX P1 (perf-jml P1-5): riskiest first — RED, AMBER, GREEN — then newest.
+      orderBy: [
+        { ragFlag: "desc" },
+        { activatedAt: { sort: "desc", nulls: "last" } },
+        { id: "asc" },
+      ],
       skip: page.skip,
       take: page.take,
       select: CASE_ROW_SELECT,
     }),
     prisma.jmlCase.count({ where }),
   ]);
-  return { rows, total };
+  return { rows: await withTaskSignals(rows), total };
 }
 
 const DETAIL_SELECT = {
@@ -118,7 +126,14 @@ const DETAIL_SELECT = {
       itIntakeError: true,
     },
   },
-  leaveDetail: { select: { exitType: true } },
+  leaveDetail: {
+    select: {
+      exitType: true,
+      noticeStartDate: true,
+      lastPhysicalWorkingDay: true,
+      lastDayOfService: true,
+    },
+  },
   moveDetail: {
     select: {
       changeType: true,
@@ -156,6 +171,14 @@ export async function getCaseDetail(actor: JmlActor, caseId: string) {
   return {
     ...rest,
     exitType: leaveDetail?.exitType ?? null,
+    // UX P1 (perf-jml P1-3a): the leaver's three dates for the case summary strip.
+    leaveDates: leaveDetail
+      ? {
+          noticeStartDate: leaveDetail.noticeStartDate,
+          lastPhysicalWorkingDay: leaveDetail.lastPhysicalWorkingDay,
+          lastDayOfService: leaveDetail.lastDayOfService,
+        }
+      : null,
     employee: {
       ...row.employee,
       odooId: isProvisionalOdooId(row.employee.odooId) ? null : row.employee.odooId,
@@ -194,4 +217,34 @@ export async function listCaseEmails(actor: JmlActor, caseId: string) {
       sentBy: { select: { name: true } },
     },
   });
+}
+
+/**
+ * UX P1 (perf-jml P1-5): each listed case's overdue-task count and next due
+ * date — two grouped queries over the page's cases (never one per row).
+ */
+async function withTaskSignals(rows: CaseRow[]): Promise<CaseListRow[]> {
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const open = { caseId: { in: ids }, status: { notIn: [...SETTLED_TASK_STATUSES] } };
+  const today = new Date(new Date().toISOString().slice(0, 10));
+  const [overdue, next] = await Promise.all([
+    prisma.jmlTask.groupBy({
+      by: ["caseId"],
+      where: { ...open, dueDate: { lt: today } },
+      _count: { _all: true },
+    }),
+    prisma.jmlTask.groupBy({
+      by: ["caseId"],
+      where: { ...open, dueDate: { gte: today } },
+      _min: { dueDate: true },
+    }),
+  ]);
+  const overdueBy = new Map(overdue.map((g) => [g.caseId, g._count._all]));
+  const nextBy = new Map(next.map((g) => [g.caseId, g._min.dueDate]));
+  return rows.map((r) => ({
+    ...r,
+    overdueTasks: overdueBy.get(r.id) ?? 0,
+    nextDue: nextBy.get(r.id) ?? null,
+  }));
 }

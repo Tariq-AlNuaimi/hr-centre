@@ -4,6 +4,12 @@ export type CaseDetail = {
   caseRef: string;
   caseType: "JOIN" | "MOVE" | "LEAVE";
   exitType: string | null;
+  leaveDates: {
+    noticeStartDate: string;
+    lastPhysicalWorkingDay: string | null;
+    lastDayOfService: string | null;
+  } | null;
+  ragFlag: "GREEN" | "AMBER" | "RED";
   status: string;
   stage: string;
   completionPct: number;

@@ -1,5 +1,7 @@
 "use client";
 
+import { daysUntil, formatDay } from "@/lib/format";
+
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,5 +78,42 @@ export function Pager({
 /** A YYYY-MM-DD for display, or a dash. */
 export function DateText({ value }: { value: string | null | undefined }) {
   const t = useTranslations("jml.common");
-  return <span className="tabular-nums">{value ? value.slice(0, 10) : t("dash")}</span>;
+  return <span className="tabular-nums">{value ? formatDay(value) : t("dash")}</span>;
+}
+
+/**
+ * A due date said relatively (UX P1 perf-jml P1-3e): "3 days overdue", "Due
+ * today", "Due in 4 days" — with the calendar date on hover. A settled task
+ * shows the plain date.
+ */
+export function DueLabel({ value, settled = false }: { value: string | null; settled?: boolean }) {
+  const tDue = useTranslations("jml.common.due");
+  if (!value) return <span className="text-muted-foreground">{tDue("none")}</span>;
+  if (settled) return <span className="tabular-nums">{formatDay(value)}</span>;
+  const days = daysUntil(value);
+  const tone =
+    days < 0
+      ? "text-destructive-emphasis font-medium"
+      : days <= 2
+        ? "text-foreground"
+        : "text-muted-foreground";
+  const text =
+    days < 0
+      ? tDue("overdue", { count: -days })
+      : days === 0
+        ? tDue("today")
+        : tDue("inDays", { count: days });
+  return (
+    <span className={tone} title={formatDay(value)}>
+      {text}
+    </span>
+  );
+}
+
+const RAG_VARIANT = { GREEN: "success", AMBER: "warning", RED: "danger" } as const;
+
+/** The case's risk flag (computed by the engine; shown, finally — perf-jml headline 5). */
+export function RagBadge({ flag }: { flag: "GREEN" | "AMBER" | "RED" }) {
+  const tRag = useTranslations("jml.common.rag");
+  return <Badge variant={RAG_VARIANT[flag]}>{tRag(flag)}</Badge>;
 }
