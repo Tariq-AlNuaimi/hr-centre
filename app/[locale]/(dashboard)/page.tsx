@@ -21,8 +21,8 @@ import {
   type DashboardData,
   type RecentAudit,
 } from "@/components/dashboard/DashboardContent";
-import { MyTasksOversight } from "@/components/pms/MyTasksOversight";
-import { TicketTasks } from "@/components/hive/TicketTaskPanels";
+import { PmsOversight } from "@/components/pms/MyTasksOversight";
+import { MyWork } from "@/components/home/MyWork";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { getTranslations } from "next-intl/server";
 
@@ -117,12 +117,11 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
 }
 
 /**
- * HR Centre F-e — home is "what is waiting on me" first: My tasks (Performance
- * today; later modules add theirs), then — for platform admins only — the
- * platform overview that used to be the whole page.
+ * HR Centre home: "what is waiting on me" first — one My work list across
+ * Performance, Joiners & leavers, Hiring and HR tickets — then Performance
+ * oversight, then (platform admins only) the platform overview.
  */
-export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
+export default async function DashboardPage() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
   const data = isAdmin ? await getDashboardData() : null;
@@ -134,9 +133,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         title={t("title")}
         subtitle={session?.user?.name ? t("greeting", { name: session.user.name }) : t("subtitle")}
       />
-      <MyTasksOversight />
-      {/* HR tickets (HIVE port): what is waiting on this person, if they draft or approve. */}
-      {session?.user?.id ? <TicketTasks userId={session.user.id} locale={locale} /> : null}
+      {/* UX review P0 (docs/blueprints/ux-p0.md, US-1): ONE list of what is
+          waiting on this person, from every module, then Performance oversight. */}
+      <MyWork />
+      <PmsOversight />
       {isAdmin && data ? <DashboardContent isAdmin data={data} embedded /> : null}
     </div>
   );
