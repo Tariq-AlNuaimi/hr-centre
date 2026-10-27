@@ -20,8 +20,6 @@ import { OrgRuleError, departmentPlacementProblem, retireRefusal } from "./rules
  * with a count while anything still hangs off the unit (AC-F1.3).
  */
 
-export { OrgRuleError } from "./rules";
-
 const COMPANY_SELECT = { id: true, code: true, name: true } as const;
 
 /**

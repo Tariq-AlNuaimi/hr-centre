@@ -8,7 +8,7 @@ import { LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess } from "../use-jml";
 
 /** Every JML configuration screen, grouped — the Onboarding hr-admin and Offboarding admin tabs, together. */
-export const SETTINGS_SECTIONS = [
+const SETTINGS_SECTIONS = [
   {
     group: "process",
     keys: ["templates", "rules", "contract-types", "employment-types", "email-templates"],

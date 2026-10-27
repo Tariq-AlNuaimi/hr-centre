@@ -19,7 +19,7 @@ import { canPost } from "./posting-rules";
  * transaction.
  */
 
-export const INVITE_TOKEN_BYTES = 32;
+const INVITE_TOKEN_BYTES = 32;
 export const generateInviteToken = () => randomBytes(INVITE_TOKEN_BYTES).toString("base64url");
 export const hashInviteToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
 
@@ -68,7 +68,7 @@ export const INVITE_SELECT = {
 } as const;
 
 /** Resolve a raw token. Details come back ONLY for a usable invite. */
-export async function resolveInvite(raw: string) {
+async function resolveInvite(raw: string) {
   const invite = await prisma.hiringAgencyInvite.findUnique({
     where: { tokenHash: hashInviteToken(raw) },
     select: INVITE_SELECT,

@@ -57,10 +57,62 @@ function dockerDaemonUp() {
   return res.status === 0;
 }
 
+/**
+ * The suites need the demo fixture (`SEED_DEMO=1` seed: org, employees, starter
+ * roles). Against an empty migrated DB ~95 tests failed with 403/404s that named
+ * nothing about seeding (QA 2026-10-27). Returns the number of employees, or
+ * null when the database cannot be read at all.
+ */
+async function fixtureEmployees(databaseUrl) {
+  const { default: pg } = await import("pg");
+  const client = new pg.Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    const r = await client.query("SELECT count(*)::int AS n FROM employees");
+    return r.rows[0].n;
+  } catch {
+    return null;
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+/** Seed the demo fixture into `env.DATABASE_URL`. Exit status of the seed. */
+function seedFixture(env) {
+  console.log("integration: seeding the demo fixture (SEED_DEMO=1 prisma db seed) ...");
+  const seed = spawnSync("npx", ["prisma", "db", "seed"], {
+    stdio: "inherit",
+    env: { ...env, SEED_DEMO: "1" },
+  });
+  return seed.status ?? 1;
+}
+
 async function main() {
-  // (1) Caller already provided a reachable DB — use it as-is.
+  // (1) Caller already provided a reachable DB — use it as-is, but never against
+  //     an unseeded one: seed it when asked (INTEGRATION_SEED=1), else fail fast.
   if (haveRealDbUrl()) {
     console.log("integration: using the existing DATABASE_URL (no container provisioned).");
+    const n = await fixtureEmployees(process.env.DATABASE_URL);
+    if (n === 0) {
+      if (process.env.INTEGRATION_SEED === "1") {
+        const status = seedFixture(process.env);
+        if (status !== 0) process.exit(status);
+      } else {
+        console.error(
+          "integration: the database has no employees — the suites need the demo fixture.\n" +
+            "  Seed it first (`SEED_DEMO=1 npx prisma db seed`, after `prisma migrate deploy`),\n" +
+            "  or re-run with INTEGRATION_SEED=1 to let this runner seed it. Never point this at\n" +
+            "  production: the suites write.",
+        );
+        process.exit(1);
+      }
+    } else if (n === null) {
+      console.error(
+        "integration: cannot read the `employees` table — run `prisma migrate deploy` against\n" +
+          "  DATABASE_URL first.",
+      );
+      process.exit(1);
+    }
     process.exit(runSuite(process.env));
   }
 
@@ -90,7 +142,9 @@ async function main() {
       console.error("integration: `prisma migrate deploy` failed against the container.");
       code = migrate.status ?? 1;
     } else {
-      code = runSuite(env);
+      // A fresh container is empty: the suites need the demo fixture.
+      code = seedFixture(env);
+      if (code === 0) code = runSuite(env);
     }
   } finally {
     console.log("integration: stopping the ephemeral container ...");

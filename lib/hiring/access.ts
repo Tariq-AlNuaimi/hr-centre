@@ -65,9 +65,6 @@ export function canOverrideGates(actor: HiringActor, subject: ScopeSubject): boo
   return isHiringAdmin(actor) || actsAs(actor, "HR_MANAGER", subject);
 }
 
-/** Edit the assessment policy, or its locked threshold: HR Manager or admin. */
-export const canEditAssessmentPolicy = canOverrideGates;
-
 /** The JD's HR signature slot: HR Manager, HR Specialist or admin. */
 export function canSignJdForHr(actor: HiringActor, subject: ScopeSubject): boolean {
   return (

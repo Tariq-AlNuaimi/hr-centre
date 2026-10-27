@@ -95,7 +95,6 @@ export const addEmployeeSchema = z.object({
 });
 
 export type EmployeeRecordBody = z.infer<typeof employeeRecordSchema>;
-export type AddEmployeeBody = z.infer<typeof addEmployeeSchema>;
 
 /** ISO day strings → the writer's Date values; other fields pass through. */
 export function recordFromBody(body: EmployeeRecordBody) {

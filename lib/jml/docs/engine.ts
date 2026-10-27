@@ -8,10 +8,10 @@ import PizZip from "pizzip";
  * is Restricted, so no money and no narrative can be merged.
  */
 
-export const MAX_TEMPLATE_BYTES = 2 * 1024 * 1024;
+const MAX_TEMPLATE_BYTES = 2 * 1024 * 1024;
 const REQUIRED_PARTS = ["[Content_Types].xml", "word/document.xml"];
 
-export const TEMPLATE_PLACEHOLDERS = [
+const TEMPLATE_PLACEHOLDERS = [
   "caseRef",
   "employeeName",
   "employeeExternalId",
@@ -123,7 +123,7 @@ export function docxHeaders(filename: string): Record<string, string> {
 }
 
 /** Summary dismissal: documents are held until these confirmations are done (Offboarding documents.ts). */
-export const SUMMARY_DISMISSAL_GATE_TASKS = ["S1-05", "S3-04", "S3-05", "S3-06", "S3-07"] as const;
+const SUMMARY_DISMISSAL_GATE_TASKS = ["S1-05", "S3-04", "S3-05", "S3-06", "S3-07"] as const;
 
 export function summaryDismissalHold(
   exitType: string,

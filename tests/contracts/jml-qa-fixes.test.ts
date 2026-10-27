@@ -195,3 +195,14 @@ test("D-13: one person cannot record both holders' decisions on a two-holder app
     /your own exit/,
   );
 });
+
+test("D-10: activation refusals list every blocker in one message", async () => {
+  const { joinProblems } = await import("../../lib/jml/join/activation");
+  assert.equal(joinProblems(["One thing."]), "One thing.");
+  assert.equal(
+    joinProblems(["No contract type.", "No HR rule.", "No cutover."]),
+    "Activation is blocked by 3 things: (1) No contract type; (2) No HR rule; (3) No cutover.",
+  );
+  const src = (await import("node:fs")).readFileSync("lib/jml/join/activation.ts", "utf8");
+  assert.match(src, /\.\.\.\(await setupProblems\(row\)\)/, "activate checks the setup too");
+});

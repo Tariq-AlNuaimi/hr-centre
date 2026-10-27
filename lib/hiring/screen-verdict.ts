@@ -4,7 +4,7 @@
  * the band.
  */
 
-export type ScreenVerdict = "SHORTLIST" | "OVER_BAND" | "REJECT";
+type ScreenVerdict = "SHORTLIST" | "OVER_BAND" | "REJECT";
 
 export type VerdictResult = { verdict: ScreenVerdict | null; why: string };
 

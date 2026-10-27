@@ -27,7 +27,7 @@ import { proratedComponent, type PeriodWindow, type WeightedPeriodScore } from "
  * `description` is carried for the same reason: a count is not actionable, and
  * "starting with “Quality”" tells HR which conversation to have.
  */
-export type RatedKpi = {
+type RatedKpi = {
   description: string;
   /** §7.1's MANAGER rating — the assessed result. Null when not yet rated. */
   level: number | null;

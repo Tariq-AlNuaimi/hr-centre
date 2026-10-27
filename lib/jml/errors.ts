@@ -29,7 +29,7 @@ export class ValidationFailure extends Error {
 }
 
 /** "field: why" — every zod issue, joined (Onboarding/Offboarding both did this). */
-export function jmlValidationError(error: z.ZodError): NextResponse {
+function jmlValidationError(error: z.ZodError): NextResponse {
   return err(
     error.issues
       .map((i) => (i.path.length ? `${i.path.join(".")}: ${i.message}` : i.message))
@@ -47,13 +47,4 @@ export function jmlErrorResponse(e: unknown): NextResponse {
   if (e instanceof StatutoryParameterMissingError) return err(e.message, 422);
   if (e instanceof IdDocumentKeyError) return err(e.message, 503);
   throw e;
-}
-
-/** Run a route body, translating refusals. */
-export async function jmlHandle(run: () => Promise<NextResponse>): Promise<NextResponse> {
-  try {
-    return await run();
-  } catch (e) {
-    return jmlErrorResponse(e);
-  }
 }

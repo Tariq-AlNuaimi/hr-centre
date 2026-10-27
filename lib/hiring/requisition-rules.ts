@@ -34,7 +34,7 @@ export function isAllowedTransition(from: HiringRequisitionStatus, to: HiringReq
 }
 
 /** The ten fields a requisition needs before an approver sees it (artboard T21). */
-export const REQUIRED_FIELDS = [
+const REQUIRED_FIELDS = [
   "title",
   "entityId",
   "departmentId",
@@ -88,7 +88,7 @@ export function readinessProblems(input: ReadinessInput): RequiredField[] {
 // Reject and send-back are the same transition (→ DRAFT) with different meanings;
 // the verb rides as a stable prefix on the mandatory history note.
 
-export const REQUISITION_DECISIONS = ["APPROVE", "REJECT", "SEND_BACK"] as const;
+const REQUISITION_DECISIONS = ["APPROVE", "REJECT", "SEND_BACK"] as const;
 export type RequisitionDecision = (typeof REQUISITION_DECISIONS)[number];
 
 const DECISION_PREFIX: Record<RequisitionDecision, string> = {

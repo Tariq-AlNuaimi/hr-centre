@@ -70,5 +70,3 @@ export async function getExit(actor: JmlActor, caseId: string) {
     can,
   };
 }
-
-export type ExitView = Awaited<ReturnType<typeof getExit>>;

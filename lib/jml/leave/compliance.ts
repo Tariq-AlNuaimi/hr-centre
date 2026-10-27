@@ -18,7 +18,7 @@ export const COMPLIANCE_GATES = {
 } as const;
 
 export type GateId = keyof typeof COMPLIANCE_GATES;
-export const GATE_IDS = Object.keys(COMPLIANCE_GATES) as GateId[];
+const GATE_IDS = Object.keys(COMPLIANCE_GATES) as GateId[];
 
 export function isGateId(v: string): v is GateId {
   return v in COMPLIANCE_GATES;
@@ -80,7 +80,7 @@ export const INCIDENT_KINDS = {
   },
 } as const;
 
-export type IncidentKind = keyof typeof INCIDENT_KINDS;
+type IncidentKind = keyof typeof INCIDENT_KINDS;
 
 const DAY = 86_400_000;
 

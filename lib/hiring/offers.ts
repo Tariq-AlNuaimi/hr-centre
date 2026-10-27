@@ -66,11 +66,7 @@ export type LoadedOffer = {
 };
 
 /** Holds any approval-role permission for this subject (an approver may read the offer). */
-export function isOfferApprover(
-  actor: HiringActor,
-  subject: ScopeSubject,
-  chain?: unknown,
-): boolean {
+function isOfferApprover(actor: HiringActor, subject: ScopeSubject, chain?: unknown): boolean {
   if (isHiringAdmin(actor)) return true;
   // Only roles on the submitted chain count: before submission nobody is routed yet.
   const roles = chainFromSnapshot(chain)?.map((s) => s.role) ?? [];
@@ -123,7 +119,7 @@ export function offerPay(o: Pick<HiringOffer, "id" | "salaryEnc" | "allowancesEn
 }
 
 /** THE offer projection. Fails closed: a non-comp reader can never receive a figure. */
-export function offerJson(o: OfferRow, comp: boolean, entity: OfferEntity) {
+function offerJson(o: OfferRow, comp: boolean, entity: OfferEntity) {
   const pay = comp ? offerPay(o) : { salary: null, allowances: null, unreadable: false };
   const out = {
     id: o.id,

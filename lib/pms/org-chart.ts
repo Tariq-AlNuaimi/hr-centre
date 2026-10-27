@@ -62,7 +62,7 @@ export type OrgChartPerson = {
   descendantCount: number;
 };
 
-export type OrgChartDepartment = {
+type OrgChartDepartment = {
   /** Null for the entity-level group — §1.2 makes that exactly the C-Level. */
   id: string | null;
   name: string | null;

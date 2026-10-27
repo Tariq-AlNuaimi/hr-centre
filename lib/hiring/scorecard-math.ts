@@ -14,13 +14,13 @@ export function isHireVote(v: unknown): v is HireVote {
   return typeof v === "string" && (HIRE_VOTES as readonly string[]).includes(v);
 }
 
-export function normalizeCompetencyKey(key: string): string {
+function normalizeCompetencyKey(key: string): string {
   return key.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-export type NormalizedScores = { byKey: Map<string, number>; byNormalized: Map<string, number> };
+type NormalizedScores = { byKey: Map<string, number>; byNormalized: Map<string, number> };
 
-export function normalizeScores(raw: unknown): NormalizedScores {
+function normalizeScores(raw: unknown): NormalizedScores {
   const byKey = new Map<string, number>();
   const byNormalized = new Map<string, number>();
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return { byKey, byNormalized };
@@ -34,7 +34,7 @@ export function normalizeScores(raw: unknown): NormalizedScores {
 }
 
 /** Exact key first, then a forgiving match ("System Design" ≈ "system-design"). */
-export function scoreFor(scores: NormalizedScores, competency: string): number | null {
+function scoreFor(scores: NormalizedScores, competency: string): number | null {
   return (
     scores.byKey.get(competency) ??
     scores.byNormalized.get(normalizeCompetencyKey(competency)) ??
@@ -125,9 +125,7 @@ export type VerdictSummary = {
 };
 
 /** One vote per panelist: the latest round they submitted. */
-export function latestVotePerPanelist(
-  scorecards: readonly PreparedScorecard[],
-): PreparedScorecard[] {
+function latestVotePerPanelist(scorecards: readonly PreparedScorecard[]): PreparedScorecard[] {
   const best = new Map<string, PreparedScorecard>();
   for (const card of scorecards) {
     if (card.hireVote === null) continue;
@@ -172,7 +170,7 @@ export function initialsOf(name: string): string {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-export type Divergence =
+type Divergence =
   { kind: "majority"; vote: HireVote } | { kind: "one"; vote: HireVote } | { kind: "split" };
 
 /**

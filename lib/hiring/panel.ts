@@ -6,6 +6,7 @@ import { HiringRuleError } from "./http";
 import { canReveal, resolveBriefForRound } from "./interview-rules";
 import { panelAiMode } from "./interview-views";
 import { loadInterview, loadRoundPlan, type LoadedInterview } from "./interviews";
+import { resolveUserNotices } from "@/lib/notifications/user-notify";
 import { peopleById } from "./people";
 
 /**
@@ -202,7 +203,7 @@ export async function saveScorecard(actor: HiringActor, l: LoadedInterview, body
     submitted: body.submit,
     submittedAt: body.submit ? new Date() : null,
   };
-  return existing
+  const card = await (existing
     ? prisma.hiringScorecard.update({ where: { id: existing.id }, data, select: CARD_SELECT })
     : prisma.hiringScorecard.create({
         data: {
@@ -212,7 +213,10 @@ export async function saveScorecard(actor: HiringActor, l: LoadedInterview, body
           ...data,
         },
         select: CARD_SELECT,
-      });
+      }));
+  // QA D-14: "Score the candidate" is done once the scorecard is submitted.
+  if (body.submit) await resolveUserNotices(`hiring:scorecard:${l.iv.id}:`, [actor.userId]);
+  return card;
 }
 
 /** After the reveal, a changed scorecard is kept — with the panelist's reason on the audit trail. */

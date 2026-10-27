@@ -10,23 +10,23 @@ import { isoDay } from "./config";
 const id = z.string().trim().min(1).max(64);
 const ref = z.string().trim().max(255).nullable();
 
-export const EXIT_TYPES = [
+const EXIT_TYPES = [
   "RESIGNATION",
   "TERMINATION",
   "CONTRACT_EXPIRY",
   "PROBATION_EXIT",
   "SUMMARY_DISMISSAL",
 ] as const;
-export const EXIT_SUBTYPES = ["PERFORMANCE", "CONDUCT", "BUSINESS", "OTHER"] as const;
-export const NATIONALITY_BRANCHES = ["OMANI", "EXPATRIATE"] as const;
-export const APPROVAL_TYPE_VALUES = [
+const EXIT_SUBTYPES = ["PERFORMANCE", "CONDUCT", "BUSINESS", "OTHER"] as const;
+const NATIONALITY_BRANCHES = ["OMANI", "EXPATRIATE"] as const;
+const APPROVAL_TYPE_VALUES = [
   "EXIT_CONFIRMATION",
   "TERMINATION_AUTHORISATION",
   "EARLY_RELEASE_VIA_LEAVE",
   "BACKFILL_DECISION",
   "FINAL_SETTLEMENT_APPROVAL",
 ] as const;
-export const ACCESS_DOMAIN_VALUES = [
+const ACCESS_DOMAIN_VALUES = [
   "IDENTITY",
   "COMMUNICATION",
   "NETWORK",
@@ -168,10 +168,6 @@ export const gateSchema = z
     path: ["satisfied"],
   });
 
-export const stageAdvanceSchema = z.object({
-  to: z.enum(["STAGE_2_IMMEDIATE", "STAGE_3_NOTICE_HANDOVER", "STAGE_4_SETTLEMENT"]),
-});
-
 export const addAssetSchema = z.object({
   assetTypeId: id,
   description: z.string().trim().max(500).nullable().default(null),
@@ -300,7 +296,7 @@ export const paymentSchema = z.object({
   paymentReference: z.string().trim().min(1).max(200),
 });
 
-export const REASON_LEVEL1 = [
+const REASON_LEVEL1 = [
   "VOLUNTARY_ATTRACTED_AWAY",
   "VOLUNTARY_DISSATISFACTION",
   "VOLUNTARY_PERSONAL",
@@ -339,7 +335,7 @@ export const interviewSchema = z.object({
   interviewedAt: isoDay.nullable().default(null),
 });
 
-export const PREVENTION_FACTOR_VALUES = [
+const PREVENTION_FACTOR_VALUES = [
   "COMPENSATION",
   "CAREER_PROGRESSION",
   "MANAGER_RELATIONSHIP",

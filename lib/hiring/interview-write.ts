@@ -5,6 +5,9 @@ import { HiringRuleError } from "./http";
 import { notifyScorecardDue } from "./notify";
 import { assertPanel, isPanelistOn, setPanel, type LoadedInterview } from "./interviews";
 import { requisitionSubject } from "./scope";
+import { applyStageChange } from "./candidate-stage";
+import { skippedGates } from "./stage-gates";
+import { stageRank, TERMINAL_STAGES, type Stage } from "./stage-rules";
 
 /**
  * Scheduling writes. The requisition comes from the candidate — Interview Hub
@@ -28,6 +31,9 @@ export async function createInterview(actor: HiringActor, data: InterviewInput) 
     where: { id: data.candidateId },
     select: {
       id: true,
+      stage: true,
+      requisitionId: true,
+      preferredAt: true,
       referredById: true,
       erasedAt: true,
       requisition: { select: { id: true, entityId: true, departmentId: true } },
@@ -63,7 +69,36 @@ export async function createInterview(actor: HiringActor, data: InterviewInput) 
     scheduledDate: data.scheduledDate ?? null,
     panelistIds: data.panelistIds,
   });
+  await enterInterviews(cand, actor.userId);
   return iv;
+}
+
+/**
+ * QA D-08 — scheduling an interview puts a screened candidate into the
+ * interview stage. Before, the stage stayed SHORTLISTED however many interviews
+ * were held, so Decide was refused as "skips the first interview". Only a move
+ * that jumps no mandatory step is made here (a candidate still at
+ * NEW_APPLICATION has not been CV-screened, and stays put for a person to move);
+ * a candidate already at or past the first interview is left alone.
+ */
+export function stageOnScheduling(stage: Stage): Stage | null {
+  if (TERMINAL_STAGES.has(stage)) return null;
+  if (stageRank(stage) >= stageRank("FIRST_INTERVIEW")) return null;
+  return skippedGates(stage, "FIRST_INTERVIEW", []).length === 0 ? "FIRST_INTERVIEW" : null;
+}
+
+async function enterInterviews(
+  cand: { id: string; stage: Stage; requisitionId: string | null; preferredAt: Date | null },
+  movedById: string,
+) {
+  const toStage = stageOnScheduling(cand.stage);
+  if (!toStage) return;
+  try {
+    await applyStageChange({ cand, toStage, movedById, reason: "First interview scheduled." });
+  } catch (e) {
+    // Someone moved the candidate meanwhile (CAS miss): their move stands.
+    if ((e as { code?: string }).code !== "P2025") throw e;
+  }
 }
 
 export type InterviewUpdate = Partial<Omit<InterviewInput, "candidateId" | "panelistIds">> & {

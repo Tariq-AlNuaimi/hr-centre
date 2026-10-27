@@ -18,5 +18,3 @@ export const changePasswordSchema = z
     message: "Choose a password different from the temporary one",
     path: ["newPassword"],
   });
-
-export type ChangePasswordBody = z.infer<typeof changePasswordSchema>;

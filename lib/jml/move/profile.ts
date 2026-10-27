@@ -10,7 +10,7 @@ import { CHANGE_FIELDS, changeRefusal, type ChangeField, type EmployeeDetails } 
  * whether they may change, and the history of their changes.
  */
 
-export const MOVE_EMPLOYEE_SELECT = {
+const MOVE_EMPLOYEE_SELECT = {
   id: true,
   name: true,
   status: true,
@@ -70,7 +70,7 @@ export async function loadMoveEmployee(actor: JmlActor, employeeId: string) {
 }
 
 /** Display names for the id-valued fields, resolved now (snapshots keep them). */
-export async function labelsFor(values: string[]): Promise<Map<string, string>> {
+async function labelsFor(values: string[]): Promise<Map<string, string>> {
   const ids = [...new Set(values.filter(Boolean))];
   if (ids.length === 0) return new Map();
   const [entities, departments, teams, contractTypes, managers] = await Promise.all([

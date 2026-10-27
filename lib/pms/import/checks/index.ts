@@ -8,7 +8,7 @@
  * `validate.ts` composes them; the batch-level rules that need the whole file
  * (ID uniqueness, reporting cycles) stay there.
  */
-export { issue, normalize, type Check, type ValidationContext } from "./shared";
+export { issue, type ValidationContext } from "./shared";
 export { checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus } from "./identity";
 export { checkPlacement, checkManager } from "./placement";
 export { checkUnits } from "./units";

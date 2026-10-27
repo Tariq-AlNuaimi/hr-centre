@@ -89,7 +89,7 @@ export function isWorkingDay(date: Date, calendar: WorkingCalendar = DEFAULT_CAL
 const MAX_WALK = 400;
 
 /** The date itself if it is a working day, otherwise the next one. */
-export function rollForward(date: Date, calendar: WorkingCalendar = DEFAULT_CALENDAR): Date {
+function rollForward(date: Date, calendar: WorkingCalendar = DEFAULT_CALENDAR): Date {
   assertHasWorkingDays(calendar.schedule);
   const cursor = utcDate(date);
   for (let i = 0; i < MAX_WALK; i++) {
@@ -192,7 +192,7 @@ export function signedWorkingDays(
 const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** Wall-clock parts of an instant in a zone (Intl — never the host's zone). */
-export function zonedParts(
+function zonedParts(
   instant: Date,
   timeZone: string,
 ): { year: number; month: number; day: number; hour: number; minute: number; weekday: IsoWeekday } {

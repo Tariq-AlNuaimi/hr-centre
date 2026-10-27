@@ -17,7 +17,7 @@ import { handToJml, type HandoffResult } from "./prejoiner";
  * on the requisition are released and the seat is counted.
  */
 
-export const signedLetterPathname = (offerId: string) => `hiring/offers/${offerId}/signed.pdf`;
+const signedLetterPathname = (offerId: string) => `hiring/offers/${offerId}/signed.pdf`;
 
 export async function recordAcceptance(
   actor: HiringActor,

@@ -30,12 +30,12 @@ export async function loadAssessmentConfig(): Promise<AssessmentConfig> {
   return parsed.success ? parsed.data : DEFAULT_ASSESSMENT_CONFIG;
 }
 
-export function completedResultCount() {
+function completedResultCount() {
   return prisma.hiringAssessment.count({ where: { status: "COMPLETED" } });
 }
 
 /** The policy is org-wide, so editing it needs an org-wide HR Manager (or admin). */
-export function mayEditPolicy(actor: HiringActor) {
+function mayEditPolicy(actor: HiringActor) {
   return isHiringAdmin(actor) || hasGroup(actor.grants, "hiring.hrManager");
 }
 

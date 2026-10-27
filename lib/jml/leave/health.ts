@@ -26,7 +26,7 @@ export type HealthInput = {
 
 const LIVE: ReadonlySet<JmlCaseStatus> = new Set(["ACTIVE", "AT_RISK", "PENDING_SETTLEMENT"]);
 
-export function leaveRag(h: HealthInput): JmlRagFlag {
+function leaveRag(h: HealthInput): JmlRagFlag {
   const worst = Math.max(0, ...h.overdueWorkingDays);
   const breached = h.statutoryDaysLeft !== null && h.statutoryDaysLeft < 0;
   if (worst > ESCALATION_WORKING_DAYS || breached) return "RED";

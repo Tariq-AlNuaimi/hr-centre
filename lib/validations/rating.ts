@@ -14,7 +14,7 @@ import { z } from "zod";
  * `lib/pms/rating.ts` owns it; see `divergenceBlockedReason`.
  */
 
-export const ratingLevelSchema = z
+const ratingLevelSchema = z
   .number()
   .int("A rating must be one of the five levels")
   .min(1, "The lowest level is 1 (Unsatisfactory)")
@@ -39,5 +39,3 @@ export const yearEndSignOffSchema = z.object({
   participantId: z.string().min(1),
   party: z.enum(["EMPLOYEE", "MANAGER"]),
 });
-
-export type UpsertRatingInput = z.infer<typeof upsertRatingSchema>;

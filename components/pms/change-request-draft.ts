@@ -1,4 +1,4 @@
-import { KPI_LEVEL_FIELDS, type KpiLevelField } from "@/components/pms/KpiForm";
+import { KPI_LEVEL_FIELDS } from "@/components/pms/KpiForm";
 
 /**
  * The shapes and the arithmetic the §6 screens share.
@@ -95,4 +95,3 @@ export function proposedTotal(kpis: ComposerKpi[], drafts: Record<string, Draft>
 }
 
 export { KPI_LEVEL_FIELDS };
-export type { KpiLevelField };

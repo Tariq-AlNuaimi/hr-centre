@@ -221,7 +221,7 @@ async function approvalReminders(
  * — C5 (settlement not paid within the window, calendar days from the LDS)
  * and C7 (visa cancellation after the departure date). Resolution never deletes.
  */
-export async function incidentScan(now: Date) {
+async function incidentScan(now: Date) {
   const rows = await prisma.leaveCaseDetail.findMany({
     where: {
       migrated: false,

@@ -15,7 +15,7 @@ import { JmlError } from "../errors";
  * accessible cases").
  */
 
-export const JOINER_SELECT = {
+const JOINER_SELECT = {
   id: true,
   caseRef: true,
   status: true,
@@ -209,8 +209,6 @@ export function serializeJoiner(row: JoinerRow, actor: JmlActor) {
     ...detailView(row.joinDetail ?? EMPTY_DETAIL),
   };
 }
-
-export type Joiner = ReturnType<typeof serializeJoiner>;
 
 export async function loadJoinerRow(caseId: string): Promise<JoinerRow> {
   const row = await prisma.jmlCase.findUnique({ where: { id: caseId }, select: JOINER_SELECT });

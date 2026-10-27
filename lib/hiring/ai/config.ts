@@ -11,7 +11,7 @@ import { asNumber, readSettings, type HiringSettingKey } from "../settings";
  * logged or returned to a client: `publicAiConfig` is the client view.
  */
 
-export type AiProvider = "anthropic" | "openai";
+type AiProvider = "anthropic" | "openai";
 export type AiConfig = {
   provider: AiProvider;
   baseUrl: string;
@@ -26,7 +26,7 @@ const DEFAULTS: Record<AiProvider, { baseUrl: string; model: string }> = {
   openai: { baseUrl: "", model: "" },
 };
 
-export const AI_KEYS = [
+const AI_KEYS = [
   "ai.provider",
   "ai.baseUrl",
   "ai.model",
@@ -40,7 +40,7 @@ export const AI_KEYS = [
   "ai.pricePer1kOut",
 ] as const satisfies readonly HiringSettingKey[];
 
-export const readAiSettings = cache(async () => readSettings(AI_KEYS));
+const readAiSettings = cache(async () => readSettings(AI_KEYS));
 
 /**
  * The key is stored as `{ apiKey: <envelope> }`: the audit extension scrubs a

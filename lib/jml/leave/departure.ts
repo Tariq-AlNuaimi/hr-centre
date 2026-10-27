@@ -13,7 +13,7 @@ import { utcDate } from "@/lib/working-time/calendar";
 
 type Outcome = { caseId: string; done: boolean; note: string };
 
-export async function revokeLeaverLogin(caseId: string): Promise<Outcome> {
+async function revokeLeaverLogin(caseId: string): Promise<Outcome> {
   return auditedTransaction(async (tx) => {
     const d = await tx.leaveCaseDetail.findUniqueOrThrow({
       where: { caseId },

@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
  * SCRUB_FIELDS then redacts by name.
  */
 
-export const HIRING_SETTING_KEYS = [
+const HIRING_SETTING_KEYS = [
   "approvals.config",
   "assessment.config",
   "budget.envelope",

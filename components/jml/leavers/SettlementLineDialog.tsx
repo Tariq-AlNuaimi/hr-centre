@@ -10,7 +10,7 @@ import { ActionDialog } from "../ActionDialog";
 import { Field } from "../Field";
 import { useJmlAction, useJmlLookups } from "../use-jml";
 
-export const DEDUCTION_TYPES = [
+const DEDUCTION_TYPES = [
   "VISA_COST_RECOVERY",
   "MEDICAL_INSURANCE",
   "NEGATIVE_LEAVE_BALANCE",

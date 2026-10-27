@@ -15,6 +15,7 @@ import { bandVerdict } from "./offer-package";
 import { nextOfferStep, offerDecisionRefusal } from "./offer-rules";
 import { offerPay, type LoadedOffer } from "./offers";
 import { notifyApprovalStep, notifyOfferDecided } from "./notify";
+import { resolveUserNotices } from "@/lib/notifications/user-notify";
 import { orgNames, peopleById } from "./people";
 
 /**
@@ -204,6 +205,8 @@ async function notifyAfterDecision(
   final: boolean,
 ) {
   const o = l.offer;
+  // QA D-14: the decided step's "waiting on you" notices are done.
+  await resolveUserNotices(`hiring:offer:${o.id}:`);
   if (action === "APPROVED" && !final) {
     const nextStep = steps.find((s) => s.sequence > decided.sequence);
     if (!nextStep) return;

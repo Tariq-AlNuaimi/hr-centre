@@ -17,7 +17,7 @@ import { del, issueSignedToken, presignUrl, put } from "@vercel/blob";
  */
 
 /** Short. A forwarded link should die long before anyone can use it. */
-export const SIGNED_URL_TTL_SECONDS = 300;
+const SIGNED_URL_TTL_SECONDS = 300;
 
 /** The env var Vercel injects when a Blob store is attached to the project. */
 const TOKEN_ENV = "BLOB_READ_WRITE_TOKEN";
@@ -103,7 +103,7 @@ export function isWithinEvidencePrefix(params: {
  * string. Guessing any one of those compiles into a runtime failure on a path
  * this container cannot exercise.
  */
-export async function signedReadUrls(pathnames: readonly string[]): Promise<Map<string, string>> {
+async function signedReadUrls(pathnames: readonly string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (pathnames.length === 0) return out;
 

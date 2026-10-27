@@ -21,7 +21,7 @@ import { readSetting } from "./settings";
  * actually sign is decided by `actsAs` in the approval route.
  */
 
-export const approvalConfigSchema = z.object({
+const approvalConfigSchema = z.object({
   chains: z.record(z.string().min(1).max(20), z.array(z.enum(APPROVAL_ROLES)).min(1).max(10)),
   cooThreshold: z.number().nonnegative().max(1_000_000),
 });
@@ -36,7 +36,7 @@ export function configToChainOptions(cfg: ApprovalConfig | null): ChainOptions {
   return cfg ? { overrides: cfg.chains, threshold: cfg.cooThreshold } : {};
 }
 
-export type Approver = { id: string; name: string; email: string };
+type Approver = { id: string; name: string; email: string };
 export type RoutedStep = ChainStep & { approvers: Approver[] };
 
 /** Resolve each step's role to its holders in this scope (name order). */
@@ -78,44 +78,6 @@ export async function getRoutedChain(
     steps: await routeChain(steps, subject),
     threshold: opts.threshold ?? COO_THRESHOLD_OMR,
   };
-}
-
-/** The roles-only chain stamped on an offer at submit (no comp in it). */
-export async function computeChainSnapshot(
-  entityCode: string,
-  totalComp: number | null | undefined,
-): Promise<ChainStep[]> {
-  return computeChain(entityCode, totalComp, configToChainOptions(await loadApprovalConfig()));
-}
-
-/**
- * Chain roles that nobody holds for a company — the gap that made Interview
- * Hub's requisition gate unenforceable (D1). Shown in Hiring settings.
- */
-export async function vacantApprovalRoles(
-  companies: { id: string; code: string }[],
-): Promise<{ code: string; role: HiringApprovalRole }[]> {
-  const opts = configToChainOptions(await loadApprovalConfig());
-  const out: { code: string; role: HiringApprovalRole }[] = [];
-  for (const c of companies) {
-    const required = new Set<HiringApprovalRole>();
-    for (const kind of ["offer", "requisition"] as const) {
-      for (const s of computeChain(c.code, Number.MAX_SAFE_INTEGER, { ...opts, kind })) {
-        required.add(s.role);
-      }
-    }
-    for (const role of required) {
-      const holders = await usersHoldingPermission(
-        ROLE_PERMISSION[role],
-        { entityId: c.id },
-        {
-          limit: 1,
-        },
-      );
-      if (holders.length === 0) out.push({ code: c.code, role });
-    }
-  }
-  return out;
 }
 
 /** "OPERATIONS_DIRECTOR" → "Operations director"; acronyms stay as they are. */

@@ -80,7 +80,7 @@ export function joinWhere(ctx: ReportContext, extra: Prisma.JmlCaseWhereInput = 
   } satisfies Prisma.JmlCaseWhereInput;
 }
 
-export const CASE_SELECT = {
+const CASE_SELECT = {
   caseRef: true,
   stage: true,
   status: true,
@@ -110,7 +110,7 @@ export const CASE_SELECT = {
 type CaseShape = Prisma.JmlCaseGetPayload<{ select: typeof CASE_SELECT }>;
 
 /** One case as a report row; salary only when asked AND permitted for that person. */
-export function caseRow(r: CaseShape, ctx: ReportContext, withSalary: boolean): ReportRow {
+function caseRow(r: CaseShape, ctx: ReportContext, withSalary: boolean): ReportRow {
   const e = r.employee;
   const row: ReportRow = {
     caseRef: r.caseRef,

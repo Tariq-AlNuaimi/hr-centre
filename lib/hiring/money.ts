@@ -18,7 +18,7 @@ export const CURRENCY_CODES = [
   "INR",
   "EGP",
 ] as const;
-export type CurrencyCode = (typeof CURRENCY_CODES)[number];
+type CurrencyCode = (typeof CURRENCY_CODES)[number];
 
 /** OMR per 1 unit of the currency. */
 const RATES_TO_OMR: Record<CurrencyCode, number> = {

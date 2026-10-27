@@ -18,7 +18,7 @@ export const POSTING_CHANNELS: HiringPostingChannel[] = [
 ];
 
 /** Candidate sources counted against each channel. */
-export const CHANNEL_SOURCES: Record<HiringPostingChannel, string[]> = {
+const CHANNEL_SOURCES: Record<HiringPostingChannel, string[]> = {
   CAREERS_PAGE: ["CAREERS_PAGE"],
   LINKEDIN: ["LINKEDIN_PASTE"],
   AGENCY: ["AGENCY"],

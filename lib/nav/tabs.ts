@@ -11,9 +11,9 @@ export type Gate = (ctx: NavContext) => boolean;
 export const always: Gate = () => true;
 export const hr: Gate = (c) => c.pms.hr;
 export const teamLead: Gate = (c) => [c.pms.lineManager, c.pms.hr].some(Boolean);
-export const orgWide: Gate = (c) => c.pms.orgWide;
+const orgWide: Gate = (c) => c.pms.orgWide;
 export const admin: Gate = (c) => c.isAdmin;
-export const jml =
+const jml =
   (p: Permission): Gate =>
   (c) =>
     c.jml(p);
@@ -25,7 +25,7 @@ export const hiring =
 export const ownsRequisitions: Gate = (c) =>
   [c.hiring("hiring.hiringManager"), c.hiring("hiring.manage")].some(Boolean);
 /** Tabs-only entries are shown when any tab is (see `resolve.ts`). */
-export const byTabs: Gate = always;
+export const byTabs: Gate = () => true;
 
 /** Joiners & leavers (was 11 sidebar rows). Reports → Insights, Settings → Admin › Settings. */
 export const JML_TABS: readonly NavLink[] = [

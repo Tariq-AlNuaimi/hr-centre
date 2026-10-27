@@ -29,7 +29,6 @@ export {
   isPastGrace,
   hoursOverdue,
   type StageWindow,
-  type StageState,
 } from "./stage";
 
 /**

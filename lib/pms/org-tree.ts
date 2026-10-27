@@ -35,7 +35,7 @@ import { prisma } from "@/lib/prisma";
  * five: C-Level → Director → Manager → Lead → Individual) while keeping a
  * pathological graph cheap to abandon.
  */
-export const MAX_ORG_DEPTH = 32;
+const MAX_ORG_DEPTH = 32;
 
 /**
  * Every employee below `managerEmployeeId`, at any depth. Excludes the manager

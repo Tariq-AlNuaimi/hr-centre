@@ -20,7 +20,7 @@ import { classifyStageMove, stageTransitionError } from "./stage-rules";
  * at all (ADR-059), so the action always reported every row as skipped.
  */
 
-export type BulkSummary = {
+type BulkSummary = {
   requested: number;
   processed: number;
   skipped: number;
@@ -121,7 +121,7 @@ export async function exportRows(
 
 // ---------------------------------------------------------------- import
 
-export const IMPORT_ROW_CAP = 500;
+const IMPORT_ROW_CAP = 500;
 type ImportField = "name" | "email" | "phone" | "currentEmployer";
 const HEADER_MAP: Record<string, ImportField> = {
   name: "name",

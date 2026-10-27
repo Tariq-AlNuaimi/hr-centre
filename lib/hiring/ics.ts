@@ -20,7 +20,7 @@ export type InterviewEventSource = {
 
 const UID_DOMAIN = "hr-centre-hiring";
 
-export function toIcsDate(d: Date): string {
+function toIcsDate(d: Date): string {
   return d
     .toISOString()
     .replace(/[-:]/g, "")

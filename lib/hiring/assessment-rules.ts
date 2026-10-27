@@ -6,7 +6,7 @@ import { z } from "zod";
  * low score HOLDS a candidate for a recorded decision; it never rejects one.
  */
 
-export const RESULTS_USE = ["ADVISORY", "HARD_CUTOFF"] as const;
+const RESULTS_USE = ["ADVISORY", "HARD_CUTOFF"] as const;
 
 export const assessmentConfigSchema = z.object({
   name: z.string().trim().min(1, "Name the assessment.").max(200),

@@ -39,7 +39,7 @@ export type NotificationItem = {
 
 export type NotificationFeed = { items: NotificationItem[]; unread: number };
 
-export const NOTIFICATIONS_KEY = ["notifications", "mine"] as const;
+const NOTIFICATIONS_KEY = ["notifications", "mine"] as const;
 
 /**
  * Polled rather than pushed.

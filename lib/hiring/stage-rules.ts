@@ -27,7 +27,7 @@ export const PIPELINE_STAGES = [
 ] as const satisfies readonly HiringStage[];
 
 export type Stage = (typeof PIPELINE_STAGES)[number];
-export type PipelinePhase = "Screening" | "Interviews" | "Offers" | "Onboarding" | "Terminal";
+type PipelinePhase = "Screening" | "Interviews" | "Offers" | "Onboarding" | "Terminal";
 
 export const LINEAR_STAGES: readonly Stage[] = PIPELINE_STAGES.slice(0, 15);
 export const TERMINAL_STAGES: ReadonlySet<Stage> = new Set(["REJECTED", "WITHDRAWN"]);
@@ -56,7 +56,7 @@ export function isStage(v: unknown): v is Stage {
   return typeof v === "string" && (PIPELINE_STAGES as readonly string[]).includes(v);
 }
 
-export function getPhase(stage: Stage): PipelinePhase {
+function getPhase(stage: Stage): PipelinePhase {
   return STAGE_PHASE[stage];
 }
 

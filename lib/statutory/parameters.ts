@@ -82,35 +82,6 @@ export function isStatutoryKey(key: string): key is StatutoryKey {
   return (STATUTORY_KEYS as readonly string[]).includes(key);
 }
 
-/** One effective-dated row, as loaded from `StatutoryParameter`. */
-/**
- * The "has always applied" sentinel for `effectiveFrom`.
- *
- * Most of §17.2's figures have no start date anyone can name — 30 days in a
- * month has been 30 days in a month for as long as the law has existed — so the
- * seed dates them from the Unix epoch and lets `resolve` treat them as always
- * in force. Only the gratuity split (31 July 2023, Royal Decree 52/2023) has a
- * real start.
- *
- * Module-PRIVATE: `isOpenStart` below is the whole public surface, and an
- * exported constant nothing imports is dead surface knip is right to flag.
- *
- * The ADMINISTRATION SCREEN is why the predicate exists at all. Rendering the
- * sentinel literally puts "Effective Jan 1, 1970" in front of the HR Manager
- * whose job on that screen is to confirm each figure against its legal source —
- * and a 1970 date reads as a stale or broken record, not as "always".
- * `effectiveTo: null` already renders as "open"; this is the same idea at the
- * other end, and it is a DISPLAY concern only: the stored value does not
- * change, so no figure already computed from it moves.
- */
-const STATUTORY_EPOCH_MS = Date.UTC(1970, 0, 1);
-
-/** True when a row's `effectiveFrom` is the always-applied sentinel above. */
-export function isOpenStart(effectiveFrom: Date | string): boolean {
-  const at = effectiveFrom instanceof Date ? effectiveFrom : new Date(effectiveFrom);
-  return at.getTime() === STATUTORY_EPOCH_MS;
-}
-
 export type StatutoryRow = {
   key: string;
   /** Carried as a string, not a number: the column is Decimal(18,6) precisely

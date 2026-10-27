@@ -4,7 +4,7 @@ import { JmlError } from "../errors";
 
 /** The leaver view of a case — header + detail + the employee as they are now. */
 
-export const LEAVE_SELECT = {
+const LEAVE_SELECT = {
   id: true,
   caseRef: true,
   caseType: true,

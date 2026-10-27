@@ -20,11 +20,7 @@ import type {
  */
 
 /** The company + department exist, agree, and are inside the actor's manage scope. */
-export async function assertPlacement(
-  actor: HiringActor,
-  entityId: string,
-  departmentId: string | null,
-) {
+async function assertPlacement(actor: HiringActor, entityId: string, departmentId: string | null) {
   const entity = await prisma.orgEntity.findFirst({
     where: { id: entityId, deletedAt: null },
     select: { id: true },
@@ -62,7 +58,13 @@ export async function createRequisition(
   await assertPeople([data.hiringManagerId, data.ownerId]);
   return auditedTransaction(async (tx) => {
     const req = await tx.hiringRequisition.create({
-      data: { ...data, status: "DRAFT", jdAuthorId: actor.userId },
+      // QA D-11: an owner is always on record — the creator unless one was chosen.
+      data: {
+        ...data,
+        ownerId: data.ownerId ?? actor.userId,
+        status: "DRAFT",
+        jdAuthorId: actor.userId,
+      },
     });
     await tx.hiringRequisitionStatusHistory.create({
       data: {
@@ -107,6 +109,10 @@ export async function createHiringRequest(actor: HiringActor, input: CreateHirin
         entityId: r.entityId,
         departmentId: r.departmentId ?? null,
         hiringManagerId: r.hiringManagerId!,
+        // QA D-11: the request flow never captured an owner, so the accepted
+        // offer's handover was refused (NO_OWNER). The requester owns it until
+        // HR reassigns it on the requisition.
+        ownerId: actor.userId,
         openings: r.openings ?? 1,
         targetCloseDate: r.targetCloseDate ?? null,
         salaryCurrency: r.salaryCurrency,

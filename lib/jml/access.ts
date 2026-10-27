@@ -54,7 +54,7 @@ export function heldJmlPermissions(actor: JmlActor): string[] {
  * an OR over company / directorate / department scopes, or null when the
  * permission is not held at all.
  */
-export function employeeScopeWhere(
+function employeeScopeWhere(
   actor: JmlActor,
   permission: Permission,
 ): Prisma.EmployeeWhereInput | null {

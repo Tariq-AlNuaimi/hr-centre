@@ -45,8 +45,6 @@ export const RATING_LEVELS = [
   { level: 1, field: "descriptorUnsatisfactory" },
 ] as const;
 
-export type RatingLevelField = (typeof RATING_LEVELS)[number]["field"];
-
 /** True for a level §8.1 recognises. Anything else is not a rating. */
 export function isRatingLevel(level: number): boolean {
   return Number.isInteger(level) && level >= 1 && level <= 5;

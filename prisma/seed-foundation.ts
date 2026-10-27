@@ -175,7 +175,7 @@ async function bootstrapAdminEmployee(
  * Existing databases got the same grant once from migration
  * 20261027180000_ux_p0_bootstrap_admin_roles. Never re-grants on later deploys.
  */
-export const MODULE_ADMIN_STARTER_KEYS = [
+const MODULE_ADMIN_STARTER_KEYS = [
   "HR_SUPER_ADMIN",
   "JML_HR_MANAGER",
   "HIRING_ADMIN",

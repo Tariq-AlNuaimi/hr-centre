@@ -8,7 +8,7 @@ import { LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess } from "../use-jml";
 
 /** §13.1's eight onboarding reports, in order. */
-export const JOIN_REPORTS = [
+const JOIN_REPORTS = [
   "monthly-onboarding",
   "hr-workload",
   "onboarding-completion",
@@ -20,7 +20,7 @@ export const JOIN_REPORTS = [
 ] as const;
 
 /** Offboarding Module 16 — the eight leaver reports, in order. */
-export const LEAVE_REPORTS = [
+const LEAVE_REPORTS = [
   "r1-exit-reasons",
   "r2-attrition",
   "r3-regrettable",

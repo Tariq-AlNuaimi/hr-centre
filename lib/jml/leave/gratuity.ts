@@ -39,7 +39,7 @@ export class GratuityUnavailableError extends Error {
   }
 }
 
-export const SUMMARY_DISMISSAL_UNCONFIGURED =
+const SUMMARY_DISMISSAL_UNCONFIGURED =
   "Gratuity treatment on summary dismissal for cause is not configured (artifact open item O2). " +
   "The artifact does not assert whether entitlement is affected, and legal review owns that " +
   "decision — so this settlement is refused rather than calculated on an assumption. " +
@@ -213,7 +213,7 @@ export function computeLeave(
 
 // --- §16.1 deductions -------------------------------------------------------
 
-export const DEDUCTION_TYPES = {
+const DEDUCTION_TYPES = {
   VISA_COST_RECOVERY: {
     label: "Visa cost recovery",
     rule: "Applies to expatriate employees with less than the configured months of service",
@@ -246,7 +246,7 @@ export const DEDUCTION_TYPES = {
   },
 } as const;
 
-export type DeductionTypeKey = keyof typeof DEDUCTION_TYPES;
+type DeductionTypeKey = keyof typeof DEDUCTION_TYPES;
 
 export type SettlementLineInput = {
   lineType: "ADDITION" | "DEDUCTION";

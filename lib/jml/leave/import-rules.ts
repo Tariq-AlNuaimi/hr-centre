@@ -12,20 +12,13 @@ import { parseCsv } from "./csv";
 
 export { parseCsv };
 
-export const REQUIRED_COLUMNS = [
+const REQUIRED_COLUMNS = [
   "caseRef",
   "employeeExternalId",
   "exitType",
   "nationality",
   "noticeStartDate",
   "lastDayOfService",
-] as const;
-export const OPTIONAL_COLUMNS = [
-  "lastPhysicalWorkingDay",
-  "primaryL1",
-  "primaryL2Code",
-  "secondaryL2Code",
-  "closedAt",
 ] as const;
 
 const EXIT_TYPES = new Set([

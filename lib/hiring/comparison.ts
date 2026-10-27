@@ -27,7 +27,7 @@ import { LINEAR_STAGES, isPastFirstInterview, stageRank } from "./stage-rules";
  * slot, submitted or not, so the coverage is honest about who has not reported.
  */
 
-export const FINALIST_STAGES: readonly HiringStage[] = LINEAR_STAGES.filter(isPastFirstInterview);
+const FINALIST_STAGES: readonly HiringStage[] = LINEAR_STAGES.filter(isPastFirstInterview);
 const MAX_FINALISTS = 24;
 const MAX_INTERVIEWS = 200;
 
@@ -37,7 +37,7 @@ const MAX_INTERVIEWS = 200;
  * are included only then — Interview Hub used the requisition's list alone,
  * which left every round-specific score off the matrix.
  */
-export function matrixCompetencies(
+function matrixCompetencies(
   plan: readonly RoundPlanEntry[],
   requisition: readonly string[],
 ): string[] {

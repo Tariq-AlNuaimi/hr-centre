@@ -13,7 +13,7 @@
  * (LEAVE applicability lives in ./leave-applicability.ts.)
  */
 
-export const CONDITION_FIELDS = [
+const CONDITION_FIELDS = [
   "companyId",
   "employmentType",
   "contractTypeId",
@@ -22,7 +22,7 @@ export const CONDITION_FIELDS = [
   "payrollApplicable",
 ] as const;
 
-export type ConditionField = (typeof CONDITION_FIELDS)[number];
+type ConditionField = (typeof CONDITION_FIELDS)[number];
 
 export type ConditionFacts = Record<ConditionField, string | null>;
 
@@ -39,7 +39,7 @@ function ruleAdmits(rule: Rule, fact: string | null): boolean {
   return true;
 }
 
-export function readConditions(value: unknown): Rules | null {
+function readConditions(value: unknown): Rules | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const source = value as Record<string, unknown>;
   const rules: Rules = {};

@@ -64,7 +64,7 @@ async function resolveHeaders(
 const BATCH = 25;
 
 /** What the drain may send now: queued, due, and not on a cancelled case. */
-export function sendableNow(now: Date) {
+function sendableNow(now: Date) {
   return prisma.jmlEmailLog.findMany({
     where: {
       status: "QUEUED",
@@ -175,7 +175,7 @@ const NO_CONTEXT: TemplateContext = {
   hrOwnerName: "",
 };
 
-export async function renderBody(
+async function renderBody(
   type: string,
   caseId: string | null,
   resolved?: ResolvedTemplate,
