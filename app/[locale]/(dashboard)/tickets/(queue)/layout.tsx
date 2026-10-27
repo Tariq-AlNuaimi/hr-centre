@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getHivePermissions } from "@/lib/hive/services/permissions";
+import { getHivePermissions, opensQueue } from "@/lib/hive/services/permissions";
 
 /**
  * Server gate for the escalation queue, matching its routes' `draftEscalation`.
@@ -19,6 +19,6 @@ export default async function HiveEscalationsLayout({ children }: { children: Re
   const session = await auth();
   if (!session?.user?.id) notFound();
   const permissions = await getHivePermissions(session.user.id);
-  if (!permissions.seeTickets) notFound();
+  if (!opensQueue(permissions)) notFound();
   return <>{children}</>;
 }

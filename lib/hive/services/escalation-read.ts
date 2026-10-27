@@ -39,6 +39,8 @@ export interface QueueFilter {
   status?: EscalationStatus;
   cursor?: string;
   pairId?: string;
+  /** QA D-03: a drafter/approver without See tickets reads only these pairs. */
+  pairIds?: readonly string[];
   source?: EscalationSource;
   /** Instant range on `createdAt`, half-open: `[gte, lt)`. */
   gte?: Date;
@@ -64,7 +66,15 @@ function ticketNumberIn(q: string): number | null {
 export function queueWhere(f: QueueFilter): Prisma.EscalationWhereInput {
   const where: Prisma.EscalationWhereInput = {};
   if (f.status) where.status = f.status;
-  if (f.pairId) where.hrPairId = f.pairId;
+  if (f.pairIds) {
+    // A pair filter outside the reader's reach matches nothing, never everything.
+    where.hrPairId =
+      f.pairId !== undefined
+        ? f.pairIds.includes(f.pairId)
+          ? f.pairId
+          : { in: [] }
+        : { in: [...f.pairIds] };
+  } else if (f.pairId) where.hrPairId = f.pairId;
   if (f.source) where.source = f.source;
   if (f.gte || f.lt) where.createdAt = { ...(f.gte && { gte: f.gte }), ...(f.lt && { lt: f.lt }) };
   if (f.q) {
@@ -132,8 +142,9 @@ export async function listEscalations(filter: QueueFilter = {}) {
 }
 
 /** The HR pairs, for the queue's pair filter. A handful; bounded anyway. */
-export async function listQueuePairs() {
+export async function listQueuePairs(pairIds?: readonly string[]) {
   return prisma.hrTagPair.findMany({
+    ...(pairIds ? { where: { id: { in: [...pairIds] } } } : {}),
     select: { id: true, name: true },
     orderBy: { name: "asc" },
     take: 100,

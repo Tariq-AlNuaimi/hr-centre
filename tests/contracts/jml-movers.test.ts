@@ -128,7 +128,17 @@ test("one starter per change type, schema-valid conditions", () => {
 
 test("D9: a completed MOVE applies through the shared transfer split", () => {
   const tasks = readFileSync("lib/jml/engine/tasks.ts", "utf8");
-  assert.match(tasks, /completedNow && kase\.caseType === "MOVE"\) await applyMove\(tx, caseId\)/);
+  // Applied on completion only once the effective date has come (QA D-05); the
+  // sweep applies a change whose checklist finished early.
+  assert.match(tasks, /completedNow && kase\.caseType === "MOVE"/);
+  assert.match(
+    tasks,
+    /isMoveDue\(kase\.moveDetail\.effectiveDate, now\)\) await applyMove\(tx, caseId\)/,
+  );
+  assert.match(
+    readFileSync("lib/jml/sweep.ts", "utf8"),
+    /name: "moveEffective", run: applyDueMoves/,
+  );
   const route = readFileSync("app/api/transfers/route.ts", "utf8");
   assert.match(route, /splitAndMove\(tx,/);
   const apply = readFileSync("lib/jml/move/apply.ts", "utf8");
