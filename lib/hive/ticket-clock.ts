@@ -7,7 +7,7 @@ import type { EscalationStatus, Prisma } from "@/generated/prisma/client";
  */
 
 /** Statuses where the ticket still needs HR. */
-export const OPEN_STATUSES: readonly EscalationStatus[] = [
+const OPEN_STATUSES: readonly EscalationStatus[] = [
   "OPEN",
   "IN_PROGRESS",
   "PENDING_APPROVAL",

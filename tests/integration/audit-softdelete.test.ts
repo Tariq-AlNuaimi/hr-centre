@@ -181,7 +181,9 @@ test(
       const filteredCount = async () => {
         const g = await prisma.user.groupBy({
           by: ["role"],
-          where: { role },
+          // Only this run's rows: other suites create VIEWER logins concurrently
+          // (test files run in parallel), which made the deltas flaky.
+          where: { role, email: { startsWith: RUN } },
           _count: { _all: true },
         });
         return g[0]?._count._all ?? 0;
@@ -189,7 +191,7 @@ test(
       const unfilteredCount = async () => {
         const g = await prismaUnfiltered.user.groupBy({
           by: ["role"],
-          where: { role },
+          where: { role, email: { startsWith: RUN } },
           _count: { _all: true },
         });
         return g[0]?._count._all ?? 0;
