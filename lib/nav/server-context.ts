@@ -3,6 +3,7 @@ import { resolveActor } from "@/lib/pms/actor";
 import { grantsOf } from "@/lib/pms/permissions";
 import { has } from "@/lib/rbac/grants";
 import { permissionsFrom } from "@/lib/hive/services/permissions";
+import { hasWorkerTasks } from "@/lib/jml/routing/worker";
 import type { NavContext } from "./config";
 
 /**
@@ -37,6 +38,7 @@ export async function navContextFor(session: Session): Promise<NavContext> {
       configure: hive.configure,
     },
     jml: (p) => has(grants, p),
+    jmlTaskWorker: await hasWorkerTasks(actor),
     hiring: (p) => has(grants, p),
   };
 }

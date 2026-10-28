@@ -6,6 +6,8 @@ import type { JmlActor } from "../access";
 import { TASK_STATUSES } from "../vocab";
 import { canCompleteTask, type GateTask } from "./gates";
 import { notApplicableData, reopenData } from "./task-status-rules";
+import { reconcileLineManagerTasks } from "../routing/assign";
+import { workerChangeProblem } from "../routing/rules";
 import { GATE_SELECT, TASK_SELECT, assertOwner, loadTaskForWork, refreshCase } from "./tasks";
 
 /**
@@ -82,6 +84,7 @@ async function statusData(
 
 async function fieldData(
   kase: LoadedCase,
+  task: LoadedTask,
   input: UpdateTaskInput,
 ): Promise<Prisma.JmlTaskUpdateInput> {
   const data: Prisma.JmlTaskUpdateInput = {};
@@ -93,7 +96,12 @@ async function fieldData(
     data.dueDateOverrideReason = input.dueDateOverrideReason?.trim() || null;
   }
   if (input.ownerUserId !== undefined) {
-    if (input.ownerUserId) await assertOwner(input.ownerUserId, kase.subject);
+    if (input.ownerUserId) {
+      await assertOwner(input.ownerUserId, kase.subject, {
+        assigneeRole: task.assigneeRole,
+        caseId: task.caseId,
+      });
+    }
     data.owner = input.ownerUserId ? { connect: { id: input.ownerUserId } } : { disconnect: true };
   }
   if (input.externalReference !== undefined) data.externalReference = input.externalReference;
@@ -112,18 +120,23 @@ async function fieldData(
  *  - a LEAVE due-date override needs a reason (§9.6).
  */
 export async function updateTask(actor: JmlActor, taskId: string, input: UpdateTaskInput) {
-  const { task, kase } = await loadTaskForWork(actor, taskId);
+  const { task, kase, limited } = await loadTaskForWork(actor, taskId);
+  if (limited) {
+    // A desk member or line manager working a routed task: the work, not its planning.
+    const problem = workerChangeProblem(input, task.status);
+    if (problem) throw new JmlError(problem, 403);
+  }
   if (input.expectedVersion !== undefined && input.expectedVersion !== task.version) {
     throw new JmlError("This task was changed by someone else a moment ago — reload it.", 409);
   }
   const data: Prisma.JmlTaskUpdateInput = {
-    ...(await fieldData(kase, input)),
+    ...(await fieldData(kase, task, input)),
     ...(await statusData(actor, task, kase, input)),
   };
   if (Object.keys(data).length === 0) return getTaskWithSummary(task.id);
   data.version = { increment: 1 };
 
-  return auditedTransaction(async (tx) => {
+  const result = await auditedTransaction(async (tx) => {
     // Conditional on the version we read (Offboarding AC-6.2: a racing write loses).
     const updated = await tx.jmlTask
       .update({ where: { id: task.id, version: task.version }, data, select: TASK_SELECT })
@@ -136,6 +149,12 @@ export async function updateTask(actor: JmlActor, taskId: string, input: UpdateT
     const summary = await refreshCase(tx, task.caseId, actor.userId);
     return { task: updated, ...summary };
   });
+  // A mover's change may have just reached the employee record (D9) — a new
+  // line manager takes over the open LINE_MANAGER tasks (task routing D6).
+  if (result.completedNow && kase.caseType === "MOVE") {
+    await reconcileLineManagerTasks([kase.employeeId]);
+  }
+  return result;
 }
 
 async function getTaskWithSummary(taskId: string) {

@@ -54,6 +54,7 @@ function blankTask(caseType: CaseType, index: number): TaskDraft {
     appliesToExitTypes: [],
     appliesToNationality: "ANY",
     appliesToSettlement: null,
+    assigneeRole: "HR",
   };
 }
 

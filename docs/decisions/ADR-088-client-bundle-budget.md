@@ -1,9 +1,9 @@
 # ADR-088 — Client bundle: Sentry on demand, and a budget sized for five modules
 
-**Status:** Proposed — budget number awaiting operator adjudication (findings register, 2026-10-27)
+**Status:** Accepted — the operator approved the 1.8 MB budget on 2026-10-28 (findings register)
 **Date:** 2026-10-27
 **Decision owner:** Tariq Al-Naaimi (operator)
-**Reviewers:** —
+**Reviewers:** Tariq Al-Naaimi (operator), 2026-10-28
 
 ## Context
 

@@ -39,6 +39,7 @@ const EXIT_TYPES = [
   "PROBATION_EXIT",
   "SUMMARY_DISMISSAL",
 ] as const;
+const ASSIGNEE_ROLES = ["HR", "LINE_MANAGER", "IT", "FINANCE"] as const;
 const NATIONALITY_SCOPES = ["OMANI", "EXPATRIATE", "ANY"] as const;
 const EMPLOYMENT_SCOPES = ["FULL", "LIGHT", "ANY"] as const;
 
@@ -94,6 +95,8 @@ const templateTaskSchema = z
     statutory: z.boolean().default(false),
     complianceCategory: z.enum(COMPLIANCE_CATEGORIES).nullable().default(null),
     conditions: conditionsSchema,
+    /** Task routing (docs/blueprints/jml-task-routing.md). */
+    assigneeRole: z.enum(ASSIGNEE_ROLES).default("HR"),
     appliesToExitTypes: z.array(z.enum(EXIT_TYPES)).max(5).default([]),
     appliesToNationality: z.enum(NATIONALITY_SCOPES).default("ANY"),
     appliesToSettlement: z.boolean().nullable().default(null),

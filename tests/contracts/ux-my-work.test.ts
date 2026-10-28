@@ -76,7 +76,12 @@ test("the route is authenticated, rate-limited, takes no viewer parameter, and w
 
 test("providers apply their module's own permission rules", () => {
   const jml = src("lib/jml/work-items.ts");
-  assert.match(jml, /ownerUserId: userId/, "tasks: assignment is the filter");
+  // Task routing: owned tasks plus the desk / line-manager tasks routed to the viewer.
+  assert.match(jml, /await myTaskWhere\(actor\)/, "tasks: assignment (own + routed) is the filter");
+  assert.match(
+    src("lib/jml/routing/worker.ts"),
+    /\{ OR: \[\{ ownerUserId: actor\.userId \}, routed\] \}/,
+  );
   assert.match(jml, /caseScopeWhere\(actor, "jml\.decideApprovals"\)/, "approvals: in scope only");
   const hiring = src("lib/hiring/work-items.ts");
   assert.match(hiring, /requisitionScopeWhere\(actor, "hiring\.view"\)/);

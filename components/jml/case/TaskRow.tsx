@@ -53,9 +53,29 @@ function Badges({ task }: { task: TaskDto }) {
   );
 }
 
+/** Who a routed task is for, and who holds it (task routing). */
+function useOwnerLabel() {
+  const t = useTranslations("jml.case.task");
+  const tv = useTranslations("jml.vocab");
+  return (task: Pick<TaskDto, "assigneeRole" | "owner">) => {
+    if (task.owner) return task.owner.name;
+    if (task.assigneeRole === "IT" || task.assigneeRole === "FINANCE") {
+      return t("deskOwner", { desk: tv(`assigneeRole.${task.assigneeRole}`) });
+    }
+    return null;
+  };
+}
+
 function OwnerSelect({ task }: { task: TaskDto }) {
   const t = useTranslations("jml.case.task");
+  const tv = useTranslations("jml.vocab");
   const lookups = useJmlLookups();
+  const desk = task.assigneeRole === "IT" || task.assigneeRole === "FINANCE";
+  const users = lookups.data?.hrUsers ?? [];
+  const current =
+    task.owner && !users.some((u) => u.id === task.owner!.id)
+      ? [{ id: task.owner.id, name: task.owner.name, email: "" }]
+      : [];
   const { run, busy } = useJmlAction(t("failed"));
   return (
     <NativeSelect
@@ -73,8 +93,10 @@ function OwnerSelect({ task }: { task: TaskDto }) {
         )
       }
     >
-      <option value="">{t("noOwner")}</option>
-      {(lookups.data?.hrUsers ?? []).map((u) => (
+      <option value="">
+        {desk ? t("deskOwner", { desk: tv(`assigneeRole.${task.assigneeRole}`) }) : t("noOwner")}
+      </option>
+      {[...current, ...users].map((u) => (
         <option key={u.id} value={u.id}>
           {u.name ?? u.email}
         </option>
@@ -156,6 +178,9 @@ export function TaskRow({
   editable: boolean;
 }) {
   const t = useTranslations("jml.case.task");
+  const tv = useTranslations("jml.vocab");
+  const ownerLabel = useOwnerLabel();
+  const owner = ownerLabel(task);
   const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
   const settled = ["COMPLETED", "NOT_APPLICABLE", "CANCELLED"].includes(task.status);
@@ -170,7 +195,12 @@ export function TaskRow({
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <Badges task={task} />
             <DueLabel value={task.dueDate} settled={settled} />
-            {task.owner ? <span className="text-muted-foreground">· {task.owner.name}</span> : null}
+            {task.assigneeRole !== "HR" ? (
+              <span className="text-muted-foreground">
+                · {t("routedTo", { who: tv(`assigneeRole.${task.assigneeRole}`) })}
+              </span>
+            ) : null}
+            {owner ? <span className="text-muted-foreground">· {owner}</span> : null}
             <TaskNotes task={task} />
           </div>
         </div>

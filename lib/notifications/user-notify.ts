@@ -22,7 +22,7 @@ export const PREVIEW_CHARS = 80;
 
 export type UserNotice = {
   kind: NotificationKind;
-  module: "hiring" | "tickets";
+  module: "hiring" | "tickets" | "jml";
   /** One plain sentence. */
   body: string;
   /** Locale-less path the bell opens. */

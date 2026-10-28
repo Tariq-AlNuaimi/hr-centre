@@ -1,4 +1,5 @@
 import type {
+  JmlAssigneeRole,
   JmlCaseType,
   JmlComplianceCategory,
   JmlDateBasis,
@@ -42,6 +43,8 @@ export type TemplateTaskDef = LeaveApplicability & {
   statutory: boolean;
   complianceCategory: JmlComplianceCategory | null;
   conditions: unknown;
+  /** Task routing — who the task is for (docs/blueprints/jml-task-routing.md). */
+  assigneeRole: JmlAssigneeRole;
 };
 
 export type Anchors = Partial<Record<JmlDateBasis, Date | null>>;
@@ -70,6 +73,7 @@ export type GeneratedTask = {
   complianceCategory: JmlComplianceCategory | null;
   complianceDeadline: Date | null;
   conditionSource: unknown;
+  assigneeRole: JmlAssigneeRole;
 };
 
 /** AC-5.1 / BR-OFF-008: summary dismissal re-anchors every Stage 3 task to the decision date. */
@@ -127,6 +131,7 @@ export function generateTasks(
       // Onboarding: a statutory task's compliance deadline is its due date.
       complianceDeadline: def.statutory ? dueDate : null,
       conditionSource: profile.caseType === "LEAVE" ? null : conditionSource(def.conditions),
+      assigneeRole: def.assigneeRole,
     });
   }
   const present = new Set(out.map((t) => t.code));

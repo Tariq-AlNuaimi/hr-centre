@@ -983,3 +983,16 @@ Considered:
   need sanitising. A small block parser rendered as React text nodes cannot inject markup.
 
 Decision: build.
+
+### 2026-10-28 — JML task routing (IT / Finance desks, line-manager tasks)
+
+Scope: lib/jml/routing/**, lib/validations/jml/routing.ts
+Considered: **Workflow / BPM engines with assignment rules (Camunda, Temporal human tasks)**
+(rejected — a whole runtime to route four task roles; the JML engine already generates and owns
+tasks). **ITSM hand-off (raise the IT/Finance work as tickets in an external desk such as Jira
+Service Management or Freshservice)** (rejected for v1 — IT and Finance want the work in HR
+Centre's "My work" next to everything else, and the IT intake integration stays gated at G6).
+**A new catalogue role for desk staff** (rejected by the operator — desks are named people in a
+setting; line-manager authority is derived from `Employee.managerId`, as Performance does).
+Decision: build — an assignee role on template/case tasks, a desk-member table and a derived
+authority check in the existing task engine.

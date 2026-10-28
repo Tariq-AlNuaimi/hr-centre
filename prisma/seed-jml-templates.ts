@@ -6,6 +6,7 @@ import type {
   JmlStage,
   PrismaClient,
 } from "../generated/prisma/client";
+import { seededAssigneeRole } from "./seed-jml-routing";
 
 /**
  * Starter checklist templates — REAL configuration from the source artifacts,
@@ -239,6 +240,7 @@ export async function seedTemplateOnce(prisma: PrismaClient, tpl: SeedTemplate):
         statutory: task.statutory ?? false,
         complianceCategory: task.complianceCategory ?? null,
         conditions: task.conditions ?? {},
+        assigneeRole: seededAssigneeRole(tpl.name, task.code),
       },
       select: { id: true },
     });

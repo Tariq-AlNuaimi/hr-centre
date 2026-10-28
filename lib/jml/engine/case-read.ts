@@ -5,6 +5,7 @@ import { isProvisionalOdooId } from "@/lib/people/provisional-id";
 import type { CaseListInput } from "@/lib/validations/jml/case";
 import { canFor, caseScopeWhere, loadCaseFor, MANAGE_PERMISSION, type JmlActor } from "../access";
 import { externalSystems } from "../desks";
+import { caseRoutingWarnings } from "../routing/assign";
 import { SETTLED_TASK_STATUSES, TASK_STATUSES } from "../vocab";
 
 /**
@@ -184,6 +185,8 @@ export async function getCaseDetail(actor: JmlActor, caseId: string) {
       odooId: isProvisionalOdooId(row.employee.odooId) ? null : row.employee.odooId,
     },
     externalLinks: externalSystems(),
+    // Task routing (US-5): open routed tasks the HR owner is holding for lack of a route.
+    routingWarnings: await caseRoutingWarnings(caseId, row.employee.id),
     // What a person may set by hand: CANCELLED is the case's to apply, not a task's.
     taskStatuses: TASK_STATUSES[row.caseType].filter((x) => x !== "CANCELLED"),
     can: {

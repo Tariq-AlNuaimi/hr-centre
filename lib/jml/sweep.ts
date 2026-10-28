@@ -6,6 +6,7 @@ import { notifyJml } from "./engine/notify";
 import { runRetention } from "./join/retention";
 import { itReadinessReminders, overdueDigests } from "./join/sweep-steps";
 import { applyDueMoves } from "./move/apply";
+import { reconcileLineManagerTasks } from "./routing/assign";
 import { leaveDailyNotices, leaveDepartures, leaveHealthRefresh } from "./leave/sweep-steps";
 import { isLocalHour } from "@/lib/working-time/calendar";
 
@@ -55,6 +56,9 @@ const SWEEP_STEPS: SweepStep[] = [
   { name: "itReadinessReminders", run: itReadinessReminders },
   { name: "overdueDigests", run: overdueDigests },
   { name: "moveEffective", run: applyDueMoves },
+  // Task routing D6: after any writer moved a reporting line (import, roll-up,
+  // transfer, a move that just applied), open LINE_MANAGER tasks follow it.
+  { name: "lineManagerTasks", run: () => reconcileLineManagerTasks() },
   { name: "leaveDepartures", run: leaveDepartures },
   { name: "leaveHealth", run: leaveHealthRefresh },
   { name: "leaveDailyNotices", run: leaveDailyNotices },

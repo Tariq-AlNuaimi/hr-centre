@@ -38,6 +38,7 @@ const TEMPLATE_TASK_SELECT = {
   statutory: true,
   complianceCategory: true,
   conditions: true,
+  assigneeRole: true,
   appliesToExitTypes: true,
   appliesToNationality: true,
   appliesToSettlement: true,

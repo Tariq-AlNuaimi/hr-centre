@@ -61,6 +61,7 @@ export function useNavContext(): NavContext {
       configure: hive.configure,
     },
     jml: jml.can,
+    jmlTaskWorker: jml.taskWorker,
     hiring: hiring.has,
   };
 }

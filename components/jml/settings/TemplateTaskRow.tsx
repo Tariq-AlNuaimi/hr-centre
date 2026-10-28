@@ -75,7 +75,12 @@ export type TaskDraft = {
   appliesToExitTypes: string[];
   appliesToNationality: string;
   appliesToSettlement: boolean | null;
+  /** Task routing: who the task is for. */
+  assigneeRole: AssigneeRole;
 };
+
+const ASSIGNEE_ROLES = ["HR", "LINE_MANAGER", "IT", "FINANCE"] as const;
+type AssigneeRole = (typeof ASSIGNEE_ROLES)[number];
 
 const list = (v: string) =>
   v
@@ -97,6 +102,7 @@ export function TaskRowEditor({
   onRemove?: () => void;
 }) {
   const t = useTranslations("jml.settings.templates");
+  const tv = useTranslations("jml.vocab");
   const id = (s: string) => `task-${index}-${s}`;
   const check = (key: keyof TaskDraft, label: string) => (
     <label className="flex items-center gap-2 text-sm text-foreground">
@@ -130,6 +136,20 @@ export function TaskRowEditor({
             />
           </Field>
         </div>
+        <Field id={id("assignee")} label={t("assigneeRole")}>
+          <NativeSelect
+            id={id("assignee")}
+            value={task.assigneeRole}
+            onChange={(e) => onChange({ assigneeRole: e.target.value as AssigneeRole })}
+            className="w-full"
+          >
+            {ASSIGNEE_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {tv(`assigneeRole.${r}`)}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
         <Field id={id("stage")} label={t("stage")}>
           <NativeSelect
             id={id("stage")}

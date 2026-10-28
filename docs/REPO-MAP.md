@@ -101,6 +101,7 @@
 - app/[locale]/(dashboard)/jml/settings/retention/page.tsx
 - app/[locale]/(dashboard)/jml/settings/rules/page.tsx
 - app/[locale]/(dashboard)/jml/settings/statutory/page.tsx
+- app/[locale]/(dashboard)/jml/settings/task-routing/page.tsx
 - app/[locale]/(dashboard)/jml/settings/templates/page.tsx
 - app/[locale]/(dashboard)/jml/statutory/page.tsx
 - app/[locale]/(dashboard)/mid-year/[cycleId]/participants/[participantId]/page.tsx
@@ -321,6 +322,7 @@
 - app/api/jml/config/schedule/route.ts  [GET,PUT]
 - app/api/jml/config/statutory/[id]/verify/route.ts  [POST]
 - app/api/jml/config/statutory/route.ts  [GET,POST]
+- app/api/jml/config/task-routing/route.ts  [GET,PUT]
 - app/api/jml/config/templates/[id]/route.ts  [GET,PATCH]
 - app/api/jml/config/templates/route.ts  [GET,POST]
 - app/api/jml/dashboard/route.ts  [GET]
@@ -427,7 +429,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -526,7 +528,8 @@
 - JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, leaveDetail, interview, documents, settlement, approvals, assetsIssued, assetsReturned, accessItems, gateRecords, incidents, deletedAt, deletedBy, createdAt, updatedAt
 - JmlTaskTemplate: id, name, version, active, caseType, changeType, criteria
 - JmlTemplateTask: id, templateId, template, code, name, stage, sortOrder, dateBasis, offsetDays, offsetUnit, mandatory, blocking, confirmationRequired, defaultConfirmingParty, reversalFlag, dependsOnCodes, statutory, complianceCategory
-- JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
+- JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, assigneeRole, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
+- JmlDeskMember: id, desk, userId, user, createdAt
 - JmlTaskComment: id, taskId, task, body, authorId, author, createdAt
 - JmlHrAssignmentRule: id, scope, scopeId, priority, active, caseTypes, juniorHrUserId, juniorHr, seniorHrUserId, seniorHr, createdAt, updatedAt
 - JmlContractType: id, name, code, sortOrder, active, createdAt, updatedAt, joiners
@@ -689,7 +692,7 @@
 - lib/hive/tools/orgchart.ts: runOrgChart
 - lib/hive/tools/providers.ts: runProviders
 - lib/hive/tools/rotation.ts: loadRotationConfig, runRotation
-- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, caseScopeWhere, AccessibleCase, subjectOf, loadCaseFor, MANAGE_PERMISSION
+- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, caseScopeWhere, AccessibleCase, subjectOf, loadCaseHead, loadCaseFor, MANAGE_PERMISSION
 - lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
 - lib/jml/dashboard-rules.ts: WorkBucket, workBucket, BUCKET_ORDER, defaultMine
 - lib/jml/dashboard.ts: myTasks, jmlDashboard
@@ -785,6 +788,10 @@
 - lib/jml/reports/months.ts: monthBuckets
 - lib/jml/reports/registry.ts: runReport, exportReport
 - lib/jml/route.ts: jml, body, query, requireAnywhere, requireGroup
+- lib/jml/routing/assign.ts: managerLogin, routingContextFor, caseRoutingWarnings, notifyRoutedTasks, reconcileLineManagerTasks
+- lib/jml/routing/desks.ts: getDeskSettings, saveDeskSettings, desksOf, deskMembers, staffedDesks
+- lib/jml/routing/rules.ts: TASK_DESKS, deskOf, RoutingContext, resolveTaskOwner, RoutingWarning, routingWarnings, WorkerFacts, workerMayWork, workerChangeProblem
+- lib/jml/routing/worker.ts: workerFacts, workerTaskWhere, mayWorkAsWorker, isRoutedParticipant, hasWorkerTasks, myTaskWhere
 - lib/jml/search.ts: searchCases
 - lib/jml/sweep.ts: SweepStep, runSweep
 - lib/jml/vocab.ts: STAGE_ORDER, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, CASE_REF_PREFIX, isLive
@@ -924,6 +931,7 @@
 - lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
+- lib/validations/jml/routing.ts: deskSettingsSchema, DeskSettingsInput
 - lib/validations/jml/task.ts: updateTaskSchema, manualTaskSchema, commentSchema
 - lib/validations/jml/template.ts: CASE_TYPES, CHANGE_TYPES, STAGES, COMPLIANCE_CATEGORIES, conditionsSchema, templateShapeProblem, createTemplateSchema, updateTemplateSchema, CreateTemplateInput, UpdateTemplateInput, TemplateTaskInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema
@@ -1090,6 +1098,7 @@
 - components/jml/case/EmailsTab.tsx
 - components/jml/case/OverviewTab.tsx
 - components/jml/case/RegisterTab.tsx
+- components/jml/case/RoutingWarnings.tsx
 - components/jml/case/TaskActions.tsx
 - components/jml/case/TaskRow.tsx
 - components/jml/cases/CaseList.tsx
@@ -1140,6 +1149,7 @@
 - components/jml/settings/RulesSettings.tsx
 - components/jml/settings/SettingsHub.tsx
 - components/jml/settings/StatutorySettings.tsx
+- components/jml/settings/TaskRoutingSettings.tsx
 - components/jml/settings/TemplateEditor.tsx
 - components/jml/settings/TemplateTaskRow.tsx
 - components/jml/settings/TemplatesSettings.tsx

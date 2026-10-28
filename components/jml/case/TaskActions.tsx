@@ -16,7 +16,7 @@ import type { TaskDto } from "./types";
  * screen), not applicable / delayed with a reason, reopen, a due-date change.
  */
 
-function usePatch(task: TaskDto) {
+function usePatch(task: Pick<TaskDto, "id" | "version">) {
   const t = useTranslations("jml.case.task");
   const { run, busy } = useJmlAction(t("failed"));
   const patch = async (body: Record<string, unknown>, done: string) =>
@@ -30,7 +30,18 @@ function usePatch(task: TaskDto) {
   return { patch, busy, t };
 }
 
-export function CompleteAction({ task }: { task: TaskDto }) {
+/** What completing needs — also used by My tasks, where routed workers complete in place. */
+export type CompletableTask = Pick<
+  TaskDto,
+  | "id"
+  | "version"
+  | "confirmationRequired"
+  | "confirmingParty"
+  | "confirmationDate"
+  | "externalReference"
+>;
+
+export function CompleteAction({ task }: { task: CompletableTask }) {
   const { patch, busy, t } = usePatch(task);
   const [party, setParty] = useState(task.confirmingParty ?? "");
   const [date, setDate] = useState(

@@ -8,6 +8,7 @@ import { resolveHrAssignment } from "../engine/assignment";
 import { nextCaseRef, withCaseRefRetry } from "../engine/case-ref";
 import { generateTasks } from "../engine/generate";
 import { materialiseTasks } from "../engine/materialise";
+import { notifyRoutedTasks, routingContextFor } from "../routing/assign";
 import { selectJoinOrMoveTemplate, templateTaskDefs } from "../engine/templates";
 import { joinerSubject, loadJoinerRow, type JoinerRow } from "./joiner-data";
 import { readinessProblem } from "./readiness";
@@ -212,7 +213,8 @@ export async function activateJoiner(
           },
           select: { id: true },
         });
-        const taskCount = await materialiseTasks(tx, caseId, tasks, owner.rule.juniorHr.id);
+        const routing = await routingContextFor(tx, row.employee.id, owner.rule.juniorHr.id);
+        const taskCount = await materialiseTasks(tx, caseId, tasks, routing);
         return {
           caseId,
           caseRef,
@@ -225,6 +227,7 @@ export async function activateJoiner(
       { timeout: 20_000 },
     ),
   );
+  await notifyRoutedTasks(result.caseId);
   try {
     await onActivated(result.caseId);
   } catch (e) {

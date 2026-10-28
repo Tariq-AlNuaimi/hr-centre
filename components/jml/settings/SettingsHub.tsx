@@ -11,7 +11,14 @@ import { useJmlAccess } from "../use-jml";
 const SETTINGS_SECTIONS = [
   {
     group: "process",
-    keys: ["templates", "rules", "contract-types", "employment-types", "email-templates"],
+    keys: [
+      "templates",
+      "task-routing",
+      "rules",
+      "contract-types",
+      "employment-types",
+      "email-templates",
+    ],
   },
   { group: "calendar", keys: ["calendar", "statutory", "employee-code"] },
   { group: "lists", keys: ["classifications", "asset-types", "access-checklist"] },

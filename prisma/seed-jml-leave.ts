@@ -5,6 +5,7 @@ import {
   LEAVE_TASKS,
   type LeaveSeedTask,
 } from "./seed-jml-leave-data";
+import { seededAssigneeRole } from "./seed-jml-routing";
 
 /**
  * Leaver configuration (port spec §5.1) — find-then-create, never overwriting a
@@ -61,6 +62,7 @@ async function seedLeaveTemplates(prisma: PrismaClient) {
           appliesToNationality: t.appliesToNationality ?? "ANY",
           appliesToSettlement: t.appliesToSettlement ?? null,
           conditions: {},
+          assigneeRole: seededAssigneeRole(tpl.name, t.code),
         },
         select: { id: true },
       });
