@@ -14,6 +14,7 @@ import { actorCan, canViewEmployee } from "@/lib/pms/permissions";
 import { placementOf, subjectForPlacement } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
+import { reconcileLineManagerTasks } from "@/lib/jml/routing/assign";
 import { teamPlacementProblem } from "@/lib/org/teams";
 
 /**
@@ -132,7 +133,7 @@ export const PUT = withRateLimit(
     // encrypted under is the AAD it will always be read under.
     const target = await prisma.employee.findUnique({
       where: { id },
-      select: { odooId: true, status: true },
+      select: { odooId: true, status: true, managerId: true },
     });
     if (!target) return notFound("Employee not found");
 
@@ -195,6 +196,10 @@ export const PUT = withRateLimit(
         select: employeeSelect(actor),
       });
     });
+
+    // JML task routing D6: a new line manager takes over this person's open
+    // LINE_MANAGER tasks (never throws; the hourly sweep is the backstop).
+    if ((data.managerId ?? null) !== target.managerId) await reconcileLineManagerTasks([id]);
 
     return ok(serializeEmployee(updated));
   }),

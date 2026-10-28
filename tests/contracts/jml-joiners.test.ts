@@ -125,6 +125,7 @@ test("the starter generates on the working calendar: no task is due on a weekend
     appliesToExitTypes: [],
     appliesToNationality: "ANY" as const,
     appliesToSettlement: null,
+    assigneeRole: "HR" as const,
   }));
   const tasks = generateTasks(
     defs,

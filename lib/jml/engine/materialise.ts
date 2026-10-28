@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import type { auditedTransaction } from "@/lib/prisma";
+import { resolveTaskOwner, type RoutingContext } from "../routing/rules";
 import type { GeneratedTask } from "./generate";
 
 type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
@@ -7,13 +8,15 @@ type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
 /**
  * Write a generated task set onto a case, in the caller's transaction — one
  * audited `create` per task (a bulk insert would bypass the audit extension,
- * ADR-010). Every type's activation lands here.
+ * ADR-010). Every type's activation lands here. Each task's owner comes from
+ * its assignee role (docs/blueprints/jml-task-routing.md): HR owner, the
+ * line manager, or the desk as a group (owner null) — with the HR fallback.
  */
 export async function materialiseTasks(
   tx: Tx,
   caseId: string,
   tasks: readonly GeneratedTask[],
-  ownerUserId: string | null,
+  routing: RoutingContext,
 ): Promise<number> {
   for (const t of tasks) {
     await tx.jmlTask.create({
@@ -29,7 +32,8 @@ export async function materialiseTasks(
         offsetDays: t.offsetDays,
         offsetUnit: t.offsetUnit,
         dueDate: t.dueDate,
-        ownerUserId,
+        ownerUserId: resolveTaskOwner(t.assigneeRole, routing),
+        assigneeRole: t.assigneeRole,
         mandatory: t.mandatory,
         blocking: t.blocking,
         confirmationRequired: t.confirmationRequired,

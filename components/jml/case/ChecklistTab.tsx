@@ -13,6 +13,7 @@ import { LoadFailed, LoadingBlock } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
 import { FilterChips } from "@/components/shared/FilterBar";
 import { daysUntil } from "@/lib/format";
+import { RoutingWarnings } from "./RoutingWarnings";
 import { TaskRow } from "./TaskRow";
 import { LIVE, type CaseDetail, type TaskDto } from "./types";
 
@@ -70,6 +71,7 @@ export function ChecklistTab({ detail }: { detail: CaseDetail }) {
         </p>
         {editable ? <ManualTask detail={detail} /> : null}
       </div>
+      <RoutingWarnings detail={detail} />
       {!LIVE.has(detail.status) ? (
         <p className="text-sm text-muted-foreground">{t("readOnly")}</p>
       ) : null}

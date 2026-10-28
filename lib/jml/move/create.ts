@@ -8,6 +8,7 @@ import { resolveHrAssignment } from "../engine/assignment";
 import { nextCaseRef, withCaseRefRetry } from "../engine/case-ref";
 import { generateTasks } from "../engine/generate";
 import { materialiseTasks } from "../engine/materialise";
+import { notifyRoutedTasks, routingContextFor } from "../routing/assign";
 import { selectJoinOrMoveTemplate, templateTaskDefs } from "../engine/templates";
 import { joinFacts } from "../join/facts";
 import { placementSubject } from "../join/joiner-data";
@@ -128,7 +129,8 @@ async function buildCase(
     },
     select: { caseId: true },
   });
-  const taskCount = await materialiseTasks(tx, kase.id, tasks, owner.rule.juniorHr.id);
+  const routing = await routingContextFor(tx, e.id, owner.rule.juniorHr.id);
+  const taskCount = await materialiseTasks(tx, kase.id, tasks, routing);
   return { caseId: kase.id, caseRef: kase.caseRef, templateId: template.id, taskCount };
 }
 
@@ -173,9 +175,11 @@ export async function createMove(actor: JmlActor, input: CreateMoveInput) {
     directorateId: target.directorateId ?? null,
     departmentId: target.departmentId ?? null,
   };
-  return withCaseRefRetry(() =>
+  const result = await withCaseRefRetry(() =>
     auditedTransaction((tx) => buildCase(tx, actor, e, input, placement, facts, snap), {
       timeout: 20_000,
     }),
   );
+  await notifyRoutedTasks(result.caseId);
+  return result;
 }

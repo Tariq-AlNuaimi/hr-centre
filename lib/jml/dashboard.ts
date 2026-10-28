@@ -2,7 +2,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { signedWorkingDays, zonedToday } from "@/lib/working-time/calendar";
 import { loadWorkingCalendar } from "@/lib/working-time/load";
-import { caseScopeWhere, holdsAnywhere, type JmlActor } from "./access";
+import { canFor, caseScopeWhere, holdsAnywhere, subjectOf, type JmlActor } from "./access";
+import { myTaskWhere } from "./routing/worker";
 import { BUCKET_ORDER, defaultMine, workBucket } from "./dashboard-rules";
 import { SETTLED_TASK_STATUSES } from "./vocab";
 
@@ -71,21 +72,57 @@ const TASK_ROW = {
   },
 } as const;
 
+/** What My tasks needs to complete a task in place (routed workers cannot open the case). */
+const MY_TASK_ROW = {
+  ...TASK_ROW,
+  version: true,
+  assigneeRole: true,
+  confirmationRequired: true,
+  confirmingParty: true,
+  confirmationDate: true,
+  externalReference: true,
+  case: {
+    select: {
+      ...TASK_ROW.case.select,
+      employee: {
+        select: {
+          name: true,
+          entityId: true,
+          departmentId: true,
+          department: { select: { directorateId: true } },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * My tasks: what I own plus what is routed to me (task routing — desk and
+ * line-manager tasks). `canOpenCase` says whether the case page will open for
+ * me; a routed worker without `jml.view` there works the task from this list.
+ */
 export async function myTasks(actor: JmlActor, caseType?: "JOIN" | "MOVE" | "LEAVE") {
   const calendar = await loadWorkingCalendar();
   const today = zonedToday(new Date(), calendar.schedule.timeZone);
   const rows = await prisma.jmlTask.findMany({
     where: {
-      ownerUserId: actor.userId,
-      status: { notIn: [...SETTLED_TASK_STATUSES] },
-      case: { status: { in: [...LIVE, "CANCELLED"] }, ...(caseType ? { caseType } : {}) },
+      AND: [
+        await myTaskWhere(actor),
+        { status: { notIn: [...SETTLED_TASK_STATUSES] } },
+        { case: { status: { in: [...LIVE, "CANCELLED"] }, ...(caseType ? { caseType } : {}) } },
+      ],
     },
     orderBy: [{ dueDate: "asc" }],
-    select: TASK_ROW,
+    select: MY_TASK_ROW,
     take: 200,
   });
   return rows
-    .map((t) => ({ ...t, bucket: workBucket(t.dueDate, today) }))
+    .map(({ case: { employee, ...kase }, ...t }) => ({
+      ...t,
+      case: { ...kase, employee: { name: employee.name } },
+      canOpenCase: canFor(actor, "jml.view", subjectOf(employee)),
+      bucket: workBucket(t.dueDate, today),
+    }))
     .sort((a, b) => BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket]);
 }
 

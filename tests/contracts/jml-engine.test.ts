@@ -196,6 +196,7 @@ const def = (code: string, over: Partial<TemplateTaskDef> = {}): TemplateTaskDef
   appliesToExitTypes: [],
   appliesToNationality: "ANY",
   appliesToSettlement: null,
+  assigneeRole: "HR",
   ...over,
 });
 

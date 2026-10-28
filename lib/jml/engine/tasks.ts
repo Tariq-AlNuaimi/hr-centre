@@ -2,7 +2,9 @@ import type { JmlComplianceCategory, JmlStage, Prisma } from "@/generated/prisma
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { DEFAULT_CALENDAR, utcDate, zonedToday } from "@/lib/working-time/calendar";
 import { JmlError } from "../errors";
-import { loadCaseFor, type JmlActor } from "../access";
+import { loadCaseFor, loadCaseHead, type JmlActor } from "../access";
+import { workerMayWork } from "../routing/rules";
+import { mayWorkAsWorker, workerFacts } from "../routing/worker";
 import { STAGE_ORDER, isLive } from "../vocab";
 import { userHolds } from "./assignment";
 import { computeProgress, deriveJoinStage } from "./progress";
@@ -54,6 +56,7 @@ export const TASK_SELECT = {
   conditionSource: true,
   completedAt: true,
   version: true,
+  assigneeRole: true,
   owner: { select: { id: true, name: true, email: true } },
   completedBy: { select: { id: true, name: true } },
   _count: { select: { comments: true } },
@@ -155,13 +158,35 @@ export async function refreshCase(
   return { completionPct, stage, completedNow } satisfies RefreshResult;
 }
 
+/**
+ * The case behind a task, for working it: HR with `jml.workTasks` in scope, or
+ * — when they lack it — a DERIVED worker on a routed task (a desk member, the
+ * employee's line manager; docs/blueprints/jml-task-routing.md). `limited` is
+ * true for the latter, whose changes are narrowed by `workerChangeProblem`.
+ * Anyone else gets the refusal `loadCaseFor` chose (404, or 403 to someone
+ * with other routed work on the case).
+ */
+async function caseForTask(
+  actor: JmlActor,
+  task: { caseId: string; assigneeRole: Parameters<typeof mayWorkAsWorker>[1]["assigneeRole"] },
+  permission: "jml.workTasks" | "jml.view",
+) {
+  try {
+    return { kase: await loadCaseFor(actor, task.caseId, permission), limited: false };
+  } catch (e) {
+    if (!(e instanceof JmlError) || (e.status !== 403 && e.status !== 404)) throw e;
+    if (!(await mayWorkAsWorker(actor, task))) throw e;
+    return { kase: await loadCaseHead(task.caseId), limited: true };
+  }
+}
+
 export async function loadTaskForWork(actor: JmlActor, taskId: string) {
   const task = await prisma.jmlTask.findUnique({
     where: { id: taskId },
-    select: { ...GATE_SELECT, caseId: true, version: true, isReversal: true },
+    select: { ...GATE_SELECT, caseId: true, version: true, isReversal: true, assigneeRole: true },
   });
   if (!task) throw new JmlError("Task not found", 404);
-  const kase = await loadCaseFor(actor, task.caseId, "jml.workTasks");
+  const { kase, limited } = await caseForTask(actor, task, "jml.workTasks");
   // A withdrawn exit's reversal tasks are the one work left on a cancelled case (AC-2.3).
   const reversalWork = task.isReversal && kase.status === "CANCELLED";
   if (!isLive(kase.status) && !reversalWork) {
@@ -169,16 +194,35 @@ export async function loadTaskForWork(actor: JmlActor, taskId: string) {
       `This case is ${kase.status.toLowerCase().replace("_", " ")}, so its checklist can no longer change.`,
     );
   }
-  return { task, kase };
+  return { task, kase, limited };
 }
 
-export async function assertOwner(userId: string, subject: Parameters<typeof userHolds>[2]) {
-  if (!(await userHolds(userId, "jml.workTasks", subject))) {
-    throw new JmlError(
-      "A task owner must be an HR user who may work this case (Work checklist tasks permission)",
-      422,
-    );
+/**
+ * A task owner must be an HR user who may work this case — or, for a routed
+ * task, someone the route itself allows (a member of the task's desk, the
+ * employee's current line manager).
+ */
+export async function assertOwner(
+  userId: string,
+  subject: Parameters<typeof userHolds>[2],
+  routed?: { assigneeRole: Parameters<typeof workerMayWork>[1]["assigneeRole"]; caseId: string },
+) {
+  if (await userHolds(userId, "jml.workTasks", subject)) return;
+  if (routed && routed.assigneeRole !== "HR") {
+    const [kase, user] = await Promise.all([
+      prisma.jmlCase.findUnique({
+        where: { id: routed.caseId },
+        select: { employee: { select: { managerId: true } } },
+      }),
+      prisma.employee.findUnique({ where: { userId }, select: { id: true } }),
+    ]);
+    const facts = await workerFacts({ userId, employeeId: user?.id ?? null });
+    if (kase && workerMayWork(facts, routed, kase.employee)) return;
   }
+  throw new JmlError(
+    "A task owner must be an HR user who may work this case, or someone this task is routed to",
+    422,
+  );
 }
 
 export type ManualTaskInput = {
@@ -261,10 +305,10 @@ export async function addManualTask(actor: JmlActor, caseId: string, input: Manu
 export async function addComment(actor: JmlActor, taskId: string, body: string) {
   const task = await prisma.jmlTask.findUnique({
     where: { id: taskId },
-    select: { id: true, caseId: true },
+    select: { id: true, caseId: true, assigneeRole: true },
   });
   if (!task) throw new JmlError("Task not found", 404);
-  await loadCaseFor(actor, task.caseId, "jml.workTasks");
+  await caseForTask(actor, task, "jml.workTasks");
   return prisma.jmlTaskComment.create({
     data: { taskId, body, authorId: actor.userId },
     select: { id: true, body: true, createdAt: true, author: { select: { id: true, name: true } } },
@@ -274,10 +318,10 @@ export async function addComment(actor: JmlActor, taskId: string, body: string) 
 export async function listComments(actor: JmlActor, taskId: string) {
   const task = await prisma.jmlTask.findUnique({
     where: { id: taskId },
-    select: { caseId: true },
+    select: { caseId: true, assigneeRole: true },
   });
   if (!task) throw new JmlError("Task not found", 404);
-  await loadCaseFor(actor, task.caseId, "jml.view");
+  await caseForTask(actor, task, "jml.view");
   return prisma.jmlTaskComment.findMany({
     where: { taskId },
     orderBy: { createdAt: "asc" },

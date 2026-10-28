@@ -12,13 +12,16 @@ import { ApiError, apiClient } from "@/lib/api-client";
 export function useJmlAccess() {
   const q = useQuery({
     queryKey: ["jml", "me"],
-    queryFn: () => apiClient.get<{ permissions: string[]; userId: string }>("/api/jml/me"),
+    queryFn: () =>
+      apiClient.get<{ permissions: string[]; userId: string; taskWorker?: boolean }>("/api/jml/me"),
     staleTime: 60_000,
   });
   const held = new Set(q.data?.permissions ?? []);
   return {
     isLoading: q.isLoading,
     userId: q.data?.userId ?? null,
+    /** Desk or line-manager tasks are routed to them (task routing; not a permission). */
+    taskWorker: q.data?.taskWorker === true,
     can: (permission: string) => held.has(permission),
   };
 }

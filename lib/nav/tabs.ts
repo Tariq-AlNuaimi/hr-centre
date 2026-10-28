@@ -34,7 +34,7 @@ export const JML_TABS: readonly NavLink[] = [
     key: "jml-my-tasks",
     label: "jmlMyTasks",
     href: "/jml/my-tasks",
-    show: jml("jml.workTasks"),
+    show: (c) => [c.jml("jml.workTasks"), c.jmlTaskWorker].some(Boolean),
   },
   { key: "jml-cases", label: "jmlCases", href: "/jml/cases", show: jml("jml.view") },
   {

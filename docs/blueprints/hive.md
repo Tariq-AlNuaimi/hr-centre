@@ -138,6 +138,9 @@ closed, link revoked.
 - OQ-S1: does Siraaj send `X-Siraaj-User-Email`? Default: optional, verified when present.
 - Linking unverified tickets to an Employee: default — linked, and labelled "unverified" wherever shown.
 - Ticket numbering restarts at 1001 so no HIVE-xxxx an employee holds from the old app repeats.
+- Codeline's work-email domain — **RESOLVED 2026-10-28 (operator):** Codeline staff use
+  `@rihal.om` addresses, so the ticket email domain allow-list (`WORK_EMAIL_DOMAINS` in
+  `lib/validations/hive/escalation.ts`: `rihal.om`, `tp.rihal.om`) stays unchanged.
 
 ## Build notes
 

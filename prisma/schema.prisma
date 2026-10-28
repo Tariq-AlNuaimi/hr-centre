@@ -99,6 +99,7 @@ model User {
   jmlCasesArchived         JmlCase[]                  @relation("JmlCaseArchivedBy")
   jmlTasksOwned            JmlTask[]                  @relation("JmlTaskOwner")
   jmlTasksCompleted        JmlTask[]                  @relation("JmlTaskCompletedBy")
+  jmlDeskMemberships       JmlDeskMember[]            @relation("JmlDeskMember")
   jmlTaskComments          JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
   jmlRulesAsOwner          JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
   jmlRulesAsSenior         JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
@@ -788,6 +789,7 @@ enum NotificationKind {
   JML_CASE_ACTIVATED
   JML_RECALCULATION_NOTICE // Offboarding AC-3.6: due dates moved
   JML_CASE_CLOSED
+  JML_TASK_ASSIGNED // JML task routing — a desk or line-manager task was assigned to you
   // UX review P0 (US-6) — Hiring and HR tickets, addressed to a User.
   HIRING_APPROVAL_REQUESTED // a requisition, JD or offer step is waiting on you
   HIRING_OFFER_DECIDED // an offer you submitted was approved, rejected or sent back
@@ -3534,6 +3536,21 @@ enum JmlTaskStatus {
   CANCELLED
 }
 
+/// JML task routing (docs/blueprints/jml-task-routing.md) — who a template task
+/// is for. Resolved to an owner when the case's tasks are generated.
+enum JmlAssigneeRole {
+  HR
+  LINE_MANAGER
+  IT
+  FINANCE
+}
+
+/// The two named desks JML routes tasks to (Admin › Settings › Joiners & leavers).
+enum JmlTaskDesk {
+  IT
+  FINANCE
+}
+
 enum JmlTaskSource {
   TEMPLATE
   MANUAL
@@ -3742,6 +3759,8 @@ model JmlTemplateTask {
   complianceCategory     JmlComplianceCategory? @map("compliance_category")
   /// JOIN/MOVE conditions (Onboarding §14): per fact {in?, notIn?}.
   conditions             Json                   @default("{}")
+  /// Task routing: who the task is for (HR | LINE_MANAGER | IT | FINANCE).
+  assigneeRole           JmlAssigneeRole        @default(HR) @map("assignee_role")
   /// LEAVE applicability (Offboarding §8.4): empty = every exit type.
   appliesToExitTypes     LeaveExitType[]        @default([]) @map("applies_to_exit_types")
   appliesToNationality   JmlNationalityScope    @default(ANY) @map("applies_to_nationality")
@@ -3774,6 +3793,10 @@ model JmlTask {
   dueDateOverrideReason String?                @map("due_date_override_reason")
   ownerUserId           String?                @map("owner_user_id")
   owner                 User?                  @relation("JmlTaskOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  /// Task routing: copied from the template. IT / FINANCE tasks are owned by the
+  /// desk as a group (owner null) unless the desk is empty, when the HR owner
+  /// holds them; LINE_MANAGER tasks are owned by the employee's current manager.
+  assigneeRole          JmlAssigneeRole        @default(HR) @map("assignee_role")
   mandatory             Boolean                @default(true)
   blocking              Boolean                @default(false)
   confirmationRequired  Boolean                @default(false) @map("confirmation_required")
@@ -3807,8 +3830,23 @@ model JmlTask {
   @@index([caseId, stage, sortOrder])
   @@index([status, dueDate])
   @@index([ownerUserId, status, dueDate])
+  @@index([assigneeRole, status])
   @@index([statutory, complianceDeadline])
   @@map("jml_tasks")
+}
+
+/// JML task routing — the named people on the IT and Finance desks. A desk task
+/// is visible to, and may be completed by, anyone listed on its desk.
+model JmlDeskMember {
+  id        String      @id @default(cuid())
+  desk      JmlTaskDesk
+  userId    String      @map("user_id")
+  user      User        @relation("JmlDeskMember", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@unique([desk, userId])
+  @@index([userId])
+  @@map("jml_desk_members")
 }
 
 /// Insert-only (Onboarding §10.3, Offboarding §9.6: not editable after submission).

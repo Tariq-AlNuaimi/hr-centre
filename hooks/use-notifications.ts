@@ -25,7 +25,8 @@ export type NotificationKind =
   | "JML_APPROVAL_REMINDER"
   | "JML_CASE_ACTIVATED"
   | "JML_RECALCULATION_NOTICE"
-  | "JML_CASE_CLOSED";
+  | "JML_CASE_CLOSED"
+  | "JML_TASK_ASSIGNED";
 
 export type NotificationItem = {
   id: string;

@@ -1653,7 +1653,8 @@
         "TICKET_TO_APPROVE": "HR ticket answer to approve",
         "TICKET_RETURNED": "Your ticket answer was returned",
         "CHANGE_REQUEST_RAISED": "KPI change waiting for your acknowledgment",
-        "CHANGE_REQUEST_ACKNOWLEDGED": "KPI change ready for HR's decision"
+        "CHANGE_REQUEST_ACKNOWLEDGED": "KPI change ready for HR's decision",
+        "JML_TASK_ASSIGNED": "Checklist task assigned to you"
       },
       "dismiss": "Dismiss"
     },
@@ -2865,6 +2866,10 @@
         "import-exits": {
           "title": "Import historical exits",
           "note": "Load closed exits from a spreadsheet for attrition history."
+        },
+        "task-routing": {
+          "title": "Task routing",
+          "note": "The people on the IT and Finance desks who receive those checklist tasks."
         }
       },
       "list": {
@@ -3175,7 +3180,8 @@
         "settlementAny": "Either",
         "settlementYes": "Only when a settlement applies",
         "settlementNo": "Only when no settlement applies",
-        "removeTask": "Remove task"
+        "removeTask": "Remove task",
+        "assigneeRole": "Assigned to"
       },
       "emails": {
         "title": "Joiner emails",
@@ -3330,6 +3336,26 @@
         "problem": "Line {line} ({ref}): {message}",
         "imported": "Historical exits imported.",
         "failed": "The file could not be processed."
+      },
+      "taskRouting": {
+        "title": "Task routing",
+        "subtitle": "Checklist tasks marked IT desk or Finance desk go to the people listed here. Anyone on a desk can complete its tasks; the case records who did. Line managers get their tasks automatically.",
+        "desk": {
+          "IT": "IT desk",
+          "FINANCE": "Finance desk"
+        },
+        "deskNote": {
+          "IT": "Laptops, access, credentials and email.",
+          "FINANCE": "Payroll changes and settlement payments."
+        },
+        "empty": "Nobody is on this desk yet. Its tasks stay with the case's HR owner until someone is added.",
+        "add": "Add a person",
+        "addPlaceholder": "Choose a person",
+        "remove": "Remove {name}",
+        "save": "Save",
+        "saved": "Task routing saved",
+        "failed": "Could not save task routing.",
+        "count": "{count, plural, one {# person} other {# people}}"
       }
     },
     "vocab": {
@@ -3387,6 +3413,12 @@
         "VISA": "Visa",
         "MOL": "MOL",
         "OTHER": "Other"
+      },
+      "assigneeRole": {
+        "HR": "HR owner",
+        "LINE_MANAGER": "Line manager",
+        "IT": "IT desk",
+        "FINANCE": "Finance desk"
       }
     },
     "cases": {
@@ -3663,7 +3695,9 @@
         "post": "Post",
         "posted": "Comment posted",
         "someone": "Someone",
-        "more": "More"
+        "more": "More",
+        "routedTo": "For {who}",
+        "deskOwner": "{desk} (anyone listed)"
       },
       "overview": {
         "dash": "—",
@@ -3768,6 +3802,13 @@
         "nothingDue": "Nothing due",
         "overdue": "Overdue tasks",
         "blocking": "Open blocking tasks"
+      },
+      "routing": {
+        "title": "Some tasks have nowhere to go",
+        "IT_DESK_EMPTY": "Nobody is on the IT desk, so its tasks are with the HR owner.",
+        "FINANCE_DESK_EMPTY": "Nobody is on the Finance desk, so its tasks are with the HR owner.",
+        "NO_LINE_MANAGER": "This employee has no line manager with a login, so the line manager's tasks are with the HR owner.",
+        "fix": "Set up task routing"
       }
     },
     "calendar": {
@@ -4619,7 +4660,9 @@
       "myTasksSubtitle": "Every open joiner, mover and leaver task assigned to you, overdue first.",
       "caseType": "Case type",
       "allTypes": "All types",
-      "allMyTasksCount": "All my tasks ({count})"
+      "allMyTasksCount": "All my tasks ({count})",
+      "routedTo": "For {who}",
+      "caseHidden": "You can see only your own tasks on this case."
     },
     "recordTab": {
       "cases": "Cases",

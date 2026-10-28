@@ -33,6 +33,7 @@ const NONE: NavContext = {
   },
   hive: { seeTickets: false, viewReports: false, editContent: false, configure: false },
   jml: () => false,
+  jmlTaskWorker: false,
   hiring: () => false,
 };
 
@@ -50,6 +51,7 @@ const ALL: NavContext = {
   },
   hive: { seeTickets: true, viewReports: true, editContent: true, configure: true },
   jml: () => true,
+  jmlTaskWorker: true,
   hiring: () => true,
 };
 

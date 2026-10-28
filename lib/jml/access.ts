@@ -6,6 +6,7 @@ import { grantsOf } from "@/lib/pms/permissions";
 import { canInScope, has, hasGroup, type ScopeSubject } from "@/lib/rbac/grants";
 import type { Permission } from "@/lib/rbac/catalogue";
 import { JmlError } from "./errors";
+import { isRoutedParticipant } from "./routing/worker";
 
 /**
  * JML authority (docs/blueprints/jml.md D12). Every check is a catalogue
@@ -116,9 +117,22 @@ export function subjectOf(employee: {
   };
 }
 
+/** A case's access head with NO permission check — callers decide (task routing). */
+export async function loadCaseHead(caseId: string): Promise<AccessibleCase> {
+  const row = await prisma.jmlCase.findUnique({
+    where: { id: caseId },
+    select: CASE_ACCESS_SELECT,
+  });
+  if (!row) throw new JmlError("Case not found", 404);
+  return { ...row, subject: subjectOf(row.employee) };
+}
+
 /**
  * Load a case for an action: 404 if it does not exist, is of another type, or
  * the actor cannot even SEE it; 403 if they can see it but lack `permission`.
+ * Someone with a ROUTED task on the case (a desk member, the line manager —
+ * docs/blueprints/jml-task-routing.md) knows it exists, so they get 403, never
+ * the case: their tasks have their own door (lib/jml/engine/tasks.ts).
  */
 export async function loadCaseFor(
   actor: JmlActor,
@@ -139,7 +153,12 @@ export async function loadCaseFor(
     // its owner is resolved there (Onboarding R7), before the change applies.
     subject = (await movingInto(row.id)) ?? subject;
   }
-  if (!canFor(actor, "jml.view", subject)) throw new JmlError("Case not found", 404);
+  if (!canFor(actor, "jml.view", subject)) {
+    if (await isRoutedParticipant(actor, row.id)) {
+      throw new JmlError("You can work only your own tasks on this case.", 403);
+    }
+    throw new JmlError("Case not found", 404);
+  }
   if (!canFor(actor, permission, subject)) {
     throw new JmlError("You do not have permission to do that on this case.", 403);
   }

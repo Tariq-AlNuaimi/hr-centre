@@ -61,6 +61,8 @@ export type CaseDetail = {
   };
   externalLinks: Array<{ key: "odoo" | "staffing-form"; url: string | null }>;
   taskStatuses: string[];
+  /** Task routing: open routed tasks the HR owner is holding for lack of a route. */
+  routingWarnings: Array<"IT_DESK_EMPTY" | "FINANCE_DESK_EMPTY" | "NO_LINE_MANAGER">;
   can: {
     manage: boolean;
     workTasks: boolean;
@@ -91,6 +93,7 @@ export type TaskDto = {
   complianceCategory: string | null;
   completedAt: string | null;
   version: number;
+  assigneeRole: "HR" | "LINE_MANAGER" | "IT" | "FINANCE";
   owner: { id: string; name: string | null } | null;
   completedBy: { id: string; name: string | null } | null;
   _count: { comments: number };

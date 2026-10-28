@@ -1,14 +1,14 @@
 import type { Prisma } from "@/generated/prisma/client";
-import type { Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { PROVIDER_LIMIT, type WorkItem, type WorkProvider } from "@/lib/core/work-items";
-import { caseScopeWhere, jmlActor } from "./access";
+import { canFor, caseScopeWhere, jmlActor, subjectOf, type JmlActor } from "./access";
+import { myTaskWhere } from "./routing/worker";
 import { SETTLED_TASK_STATUSES } from "./vocab";
 
 /**
  * Joiners & leavers in Home's "My work" (docs/blueprints/ux-p0.md, US-1):
- *   - checklist tasks the viewer OWNS on a live case (assignment is the filter,
- *     the same rule as /jml/my-tasks);
+ *   - checklist tasks the viewer OWNS on a live case, plus the desk and
+ *     line-manager tasks routed to them (the same rule as /jml/my-tasks);
  *   - approval decisions waiting to be recorded, for someone who holds
  *     `jml.decideApprovals` — only on cases in that permission's scope.
  */
@@ -17,11 +17,18 @@ const LIVE = ["ACTIVE", "AT_RISK", "PENDING_SETTLEMENT"] as const;
 
 const humanize = (code: string) => code.replaceAll("_", " ").toLowerCase();
 
-async function myTasks(userId: string) {
+/**
+ * Owned tasks plus the ones routed to the viewer (task routing — desk and
+ * line-manager tasks). A routed worker who cannot open the case is sent to
+ * My tasks, where they complete it in place.
+ */
+async function myTasks(actor: JmlActor) {
   const where: Prisma.JmlTaskWhereInput = {
-    ownerUserId: userId,
-    status: { notIn: [...SETTLED_TASK_STATUSES] },
-    case: { status: { in: [...LIVE] } },
+    AND: [
+      await myTaskWhere(actor),
+      { status: { notIn: [...SETTLED_TASK_STATUSES] } },
+      { case: { status: { in: [...LIVE] } } },
+    ],
   };
   const [rows, total] = await Promise.all([
     prisma.jmlTask.findMany({
@@ -34,7 +41,20 @@ async function myTasks(userId: string) {
         code: true,
         name: true,
         dueDate: true,
-        case: { select: { id: true, caseRef: true, employee: { select: { name: true } } } },
+        case: {
+          select: {
+            id: true,
+            caseRef: true,
+            employee: {
+              select: {
+                name: true,
+                entityId: true,
+                departmentId: true,
+                department: { select: { directorateId: true } },
+              },
+            },
+          },
+        },
       },
     }),
     prisma.jmlTask.count({ where }),
@@ -45,13 +65,14 @@ async function myTasks(userId: string) {
     kind: "jmlTask",
     params: { code: t.code, task: t.name, person: t.case.employee.name, caseRef: t.case.caseRef },
     dueAt: t.dueDate ? t.dueDate.toISOString() : null,
-    href: `/jml/cases/${t.case.id}?tab=checklist`,
+    href: canFor(actor, "jml.view", subjectOf(t.case.employee))
+      ? `/jml/cases/${t.case.id}?tab=checklist`
+      : "/jml/my-tasks",
   }));
   return { items, total };
 }
 
-async function approvalsToRecord(session: Session) {
-  const actor = await jmlActor(session);
+async function approvalsToRecord(actor: JmlActor) {
   const scope = caseScopeWhere(actor, "jml.decideApprovals");
   if (scope === null) return { items: [], total: 0 };
   const where: Prisma.JmlApprovalWhereInput = {
@@ -91,10 +112,8 @@ async function approvalsToRecord(session: Session) {
 export const jmlWorkProvider: WorkProvider = {
   module: "jml",
   async collect(session) {
-    const [tasks, approvals] = await Promise.all([
-      myTasks(session.user.id),
-      approvalsToRecord(session),
-    ]);
+    const actor = await jmlActor(session);
+    const [tasks, approvals] = await Promise.all([myTasks(actor), approvalsToRecord(actor)]);
     return {
       items: [...tasks.items, ...approvals.items].slice(0, PROVIDER_LIMIT),
       total: tasks.total + approvals.total,

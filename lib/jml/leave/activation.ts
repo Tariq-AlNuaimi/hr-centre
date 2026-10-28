@@ -6,6 +6,7 @@ import { JmlError } from "../errors";
 import { resolveHrAssignment } from "../engine/assignment";
 import { generateTasks } from "../engine/generate";
 import { materialiseTasks } from "../engine/materialise";
+import { notifyRoutedTasks, routingContextFor } from "../routing/assign";
 import { selectLeaveTemplate, templateTaskDefs } from "../engine/templates";
 import { leaveActivationProblems } from "./activation-gate";
 import { refreshSnapshots } from "./draft";
@@ -164,7 +165,8 @@ export async function activateLeave(actor: JmlActor, caseId: string) {
         },
         select: { id: true },
       });
-      const taskCount = await materialiseTasks(tx, caseId, tasks, owner.rule.juniorHr.id);
+      const routing = await routingContextFor(tx, row.employeeId, owner.rule.juniorHr.id);
+      const taskCount = await materialiseTasks(tx, caseId, tasks, routing);
       const accessItemCount = await accessItems(tx, caseId, row.employeeId, due);
       const assetCount = await attachAssets(tx, caseId, row.employeeId, due);
       return {
@@ -183,5 +185,6 @@ export async function activateLeave(actor: JmlActor, caseId: string) {
     `${row.caseRef} is active: ${result.taskCount} tasks generated.`,
     "activated",
   );
+  await notifyRoutedTasks(caseId);
   return result;
 }

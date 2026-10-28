@@ -59,6 +59,8 @@ export type NavContext = {
   hive: { seeTickets: boolean; viewReports: boolean; editContent: boolean; configure: boolean };
   /** Does the viewer hold this JML permission anywhere? */
   jml: (permission: Permission) => boolean;
+  /** JML task routing: desk or line-manager tasks are routed to the viewer (derived). */
+  jmlTaskWorker: boolean;
   /** Does the viewer hold this Hiring permission anywhere? */
   hiring: (permission: Permission) => boolean;
 };
