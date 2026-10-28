@@ -2535,7 +2535,7 @@
           "LEAVE": "Leaving"
         },
         "recent": "Their recent questions",
-        "noRecent": "No earlier questions."
+        "noRecent": "No earlier questions"
       },
       "insert": {
         "button": "Insert",
@@ -2761,7 +2761,7 @@
       "saveFailed": "Couldn't save the reply. Try again.",
       "deleted": "Saved reply deleted",
       "listTitle": "Saved replies",
-      "loadFailed": "Couldn't load saved replies.",
+      "loadFailed": "Couldn't load saved replies",
       "empty": "No saved replies yet. Add the answers HR give most often.",
       "edit": "Edit",
       "delete": "Delete",

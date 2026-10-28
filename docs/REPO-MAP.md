@@ -683,7 +683,7 @@
 - lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
 - lib/hive/services/ticket-sla.ts: answerDueAt
 - lib/hive/services/work-items.ts: ticketWorkProvider
-- lib/hive/ticket-clock.ts: OPEN_STATUSES, Ageing, ageing, QueueView, viewWhere
+- lib/hive/ticket-clock.ts: Ageing, ageing, QueueView, viewWhere
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
 - lib/hive/tools/discounts.ts: ELIGIBILITY_NOTE, runDiscounts
 - lib/hive/tools/escalate.ts: runEscalate

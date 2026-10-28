@@ -50,7 +50,7 @@ export type BoardCard = {
 
 const SLA_DAYS = 7;
 /** Whose move a card waits on (Greenhouse pattern, UX P1-8) — one colour each, with a legend. */
-export const OWNER_DOT: Record<NextOwner, string> = {
+const OWNER_DOT: Record<NextOwner, string> = {
   recruiter: "bg-status-info-fg",
   manager: "bg-primary",
   panel: "bg-status-warn-fg",
