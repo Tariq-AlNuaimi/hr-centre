@@ -778,7 +778,7 @@
 - lib/jml/engine/progress.ts: ProgressTask, computeProgress, isComplete, deriveJoinStage
 - lib/jml/engine/task-status-rules.ts: reopenData, notApplicableData
 - lib/jml/engine/task-update.ts: UpdateTaskInput, updateTask
-- lib/jml/engine/tasks.ts: TASK_SELECT, GATE_SELECT, isMoveDue, refreshCase, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks
+- lib/jml/engine/tasks.ts: TASK_SELECT, GATE_SELECT, isMoveDue, refreshCase, LEFTOVER_REASON, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks
 - lib/jml/engine/templates.ts: listTemplates, getTemplate, createTemplate, updateTemplate, selectJoinOrMoveTemplate, selectLeaveTemplate, templateTaskDefs
 - lib/jml/errors.ts: JmlError, ValidationFailure, jmlErrorResponse
 - lib/jml/join/actions.ts: confirmActualStart, changeStartDate, confirmItReadiness, resubmitToIt, sendWelcomeReview
@@ -854,10 +854,10 @@
 - lib/jml/reports/months.ts: monthBuckets
 - lib/jml/reports/registry.ts: runReport, exportReport
 - lib/jml/route.ts: jml, body, query, requireAnywhere, requireGroup
-- lib/jml/routing/assign.ts: managerLogin, routingContextFor, caseRoutingWarnings, notifyRoutedTasks, reconcileLineManagerTasks
+- lib/jml/routing/assign.ts: managerLogin, routingContextFor, caseRoutingWarnings, notifyRoutedTasks, reconcileLineManagerTasks, resolveCaseTaskNotices
 - lib/jml/routing/desks.ts: getDeskSettings, saveDeskSettings, desksOf, deskMembers, staffedDesks
 - lib/jml/routing/rules.ts: TASK_DESKS, deskOf, RoutingContext, resolveTaskOwner, RoutingWarning, routingWarnings, WorkerFacts, workerMayWork, workerChangeProblem
-- lib/jml/routing/worker.ts: workerFacts, workerTaskWhere, mayWorkAsWorker, isRoutedParticipant, hasWorkerTasks, myTaskWhere
+- lib/jml/routing/worker.ts: workerFacts, workerTaskWhere, mayWorkAsWorker, isRoutedParticipant, isTaskWorker, myTaskWhere
 - lib/jml/search.ts: searchCases
 - lib/jml/sweep.ts: SweepStep, runSweep
 - lib/jml/vocab.ts: STAGE_ORDER, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, CASE_REF_PREFIX, isLive
@@ -880,8 +880,8 @@
 - lib/org/heads.ts: UnitHead, setUnitHead
 - lib/org/http.ts: validationError, ruleErrorResponse
 - lib/org/rules.ts: OrgRuleError, departmentPlacementProblem, retireRefusal
-- lib/org/teams.ts: createTeam, updateTeam, retireTeam, teamPlacementProblem
-- lib/org/units.ts: ACTIVE_ROWS, renameCompany, createDirectorate, renameDirectorate, retireDirectorate, createOrgDepartment, updateOrgDepartment, retireOrgDepartment, plural
+- lib/org/teams.ts: assertTeamNameFree, assertDepartmentExists, createTeam, updateTeam, retireTeam, teamPlacementProblem
+- lib/org/units.ts: ACTIVE_ROWS, renameCompany, assertDirectorateNameFree, createDirectorate, renameDirectorate, retireDirectorate, loadDirectorate, assertDepartmentNameFree, createOrgDepartment, updateOrgDepartment, retireOrgDepartment, plural
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/people/employee-code.ts: formatEmployeeCode, parseEmployeeCode, getEmployeeCodeSequence, ConfigureEmployeeCodeInput, configureEmployeeCodeSequence, EmployeeCodeError, allocateEmployeeCode, recordEmployeeCode
@@ -997,7 +997,7 @@
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema, contactSettingsSchema, ContactSettingsInput
 - lib/validations/jml/joiner.ts: draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, startJoinerFromEmployeeSchema, OpenJoinCaseInput
 - lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema, accessCutoffSchema
-- lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
+- lib/validations/jml/move.ts: MOVE_BACKDATE_DAYS, MOVE_AHEAD_DAYS, createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/preboarding.ts: preboardingTokenSchema, preboardingSubmitSchema, PreboardingSubmit, preboardingIssueSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
 - lib/validations/jml/routing.ts: deskSettingsSchema, DeskSettingsInput

@@ -51,15 +51,16 @@ const TARGET_SELECT = {
 } as const;
 
 /**
- * AC-F4.3 — only HR-role holders and line managers get a login before SSO.
+ * AC-F4.3 — only HR-role holders, line managers and task-routing desk members
+ * (QA2 N-10) get a login before SSO.
  * "HR-role holder" = the person's account holds any role assignment now.
  */
 async function loginEligibility(employee: {
   id: string;
   userId: string | null;
-}): Promise<{ eligible: boolean; lineManager: boolean; roleHolder: boolean }> {
+}): Promise<{ eligible: boolean; lineManager: boolean; roleHolder: boolean; deskMember: boolean }> {
   const now = new Date();
-  const [lineManager, assignment] = await Promise.all([
+  const [lineManager, assignment, desk] = await Promise.all([
     hasDirectReports(employee.id),
     employee.userId
       ? prisma.roleAssignment.findFirst({
@@ -74,9 +75,20 @@ async function loginEligibility(employee: {
           select: { id: true },
         })
       : Promise.resolve(null),
+    // QA2 N-10 — a desk member (Task routing) is assigned work by HR: that is a
+    // reason to sign in, like a role or direct reports. Before this the only
+    // way in was an admin-set password that bypassed the rule and never forced
+    // a change.
+    employee.userId
+      ? prisma.jmlDeskMember.findFirst({
+          where: { userId: employee.userId },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
   ]);
   const roleHolder = assignment !== null;
-  return { eligible: lineManager || roleHolder, lineManager, roleHolder };
+  const deskMember = desk !== null;
+  return { eligible: lineManager || roleHolder || deskMember, lineManager, roleHolder, deskMember };
 }
 
 export async function loginSummary(employeeId: string) {
@@ -124,7 +136,8 @@ export async function issueTemporaryPassword(
   const eligibility = await loginEligibility(employee);
   if (!eligibility.eligible) {
     throw new OrgRuleError(
-      "Only HR role holders and line managers get a login before single sign-on. Everyone else " +
+      "Only HR role holders, line managers and task-routing desk members get a login before " +
+        "single sign-on. Everyone else " +
         "signs in when SSO arrives.",
     );
   }

@@ -17,6 +17,8 @@ import { getSettlement } from "../../lib/jml/leave/settlement";
 import { myTasks } from "../../lib/jml/dashboard";
 import { reconcileLineManagerTasks } from "../../lib/jml/routing/assign";
 import { saveDeskSettings } from "../../lib/jml/routing/desks";
+import { isTaskWorker } from "../../lib/jml/routing/worker";
+import { loginSummary } from "../../lib/people/logins";
 import { TEST_EMPLOYEE_PREFIX } from "./fixture";
 
 const RUN = `jr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -99,7 +101,9 @@ before(async () => {
     mgrBEmp: managerB.employeeId,
     leaverEmp: leaver.employeeId,
     desk: desk.userId,
+    deskEmp: desk.employeeId,
     outsider: outsider.userId,
+    outsiderEmp: outsider.employeeId,
   });
   const current = await prismaUnfiltered.jmlDeskMember.findMany({
     select: { desk: true, userId: true },
@@ -216,11 +220,15 @@ test(
       updateTask(desk, ids.itTask!, { status: "COMPLETED" }),
     );
     assert.equal(done.task.completedBy?.id, ids.desk);
+    // QA2 N-03 — with nothing left open they are still a desk worker: My tasks
+    // shows "Nothing waiting on you", not "You do not have access".
+    assert.equal(await isTaskWorker(desk), true, "a desk member stays a task worker");
   },
 );
 
 test("someone with no route to the case gets 404 everywhere", { skip: !dbReachable }, async () => {
   const outsider = await actorOf(ids.outsider!, "outsider");
+  assert.equal(await isTaskWorker(outsider), false, "no desk, no routed task: not a worker");
   assert.equal(await refusal(getSettlement(outsider, caseId)), 404);
   assert.equal(
     await refusal(
@@ -261,5 +269,17 @@ test(
       select: { body: true },
     });
     assert.ok(notice, "the new manager is told");
+  },
+);
+
+test(
+  "QA2 N-10 a task-routing desk member is eligible for a login; someone with no route is not",
+  { skip: !dbReachable },
+  async () => {
+    const desk = await loginSummary(ids.deskEmp!);
+    assert.equal(desk.deskMember, true);
+    assert.equal(desk.eligible, true, "HR can issue the desk user a login from the person page");
+    const outsider = await loginSummary(ids.outsiderEmp!);
+    assert.equal(outsider.eligible, false);
   },
 );

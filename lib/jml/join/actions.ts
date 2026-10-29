@@ -12,6 +12,7 @@ import { SETTLED_TASK_STATUSES } from "../vocab";
 import { submitAndRecord } from "./it-intake";
 import { shiftedDue } from "./start-shift";
 import { onActualStartEntered, onStartDateChanged } from "./triggers";
+import { resolveCaseTaskNotices } from "../routing/assign";
 
 /**
  * Joiner case actions — HR Onboarding `case.ts` (start date, actual start) plus
@@ -87,7 +88,7 @@ export async function confirmActualStart(actor: JmlActor, caseId: string, date: 
   if (utcDate(date) > zonedToday(new Date(), calendar.schedule.timeZone)) {
     throw new JmlError("The actual start date cannot be in the future.", 400);
   }
-  await auditedTransaction(async (tx) => {
+  const completed = await auditedTransaction(async (tx) => {
     await tx.jmlJoinDetail.update({
       where: { caseId },
       data: { actualStartDate: date },
@@ -105,9 +106,11 @@ export async function confirmActualStart(actor: JmlActor, caseId: string, date: 
     });
     // A checklist already finished completes the case now that the joiner has
     // started (refreshCase holds a JOIN open until then).
-    if (!stranded) await refreshCase(tx, caseId, actor.userId);
+    if (stranded) return true;
+    return (await refreshCase(tx, caseId, actor.userId)).completedNow;
   });
   await onActualStartEntered(caseId);
+  if (completed) await resolveCaseTaskNotices(caseId);
   return { actualStartDate: date.toISOString().slice(0, 10) };
 }
 

@@ -65,6 +65,9 @@ export const PUT = withAdminAuth(async (request: NextRequest, { params, session 
     // Admin-set password is still a password change: revoke the target user's
     // existing sessions via the passwordChangedAt epoch (lib/auth.ts jwt).
     data.passwordChangedAt = new Date();
+    // QA2 N-10 — a password someone ELSE chose is a temporary one: the holder
+    // must replace it on first sign-in, exactly like "Create login".
+    if (id !== session.user.id) data.mustChangePassword = true;
   }
 
   const user = await prisma.user.update({

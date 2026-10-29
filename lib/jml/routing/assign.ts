@@ -1,6 +1,6 @@
 import type { JmlAssigneeRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notifyUsers } from "@/lib/core/notify/user-notify";
+import { notifyUsers, resolveUserNotices } from "@/lib/core/notify/user-notify";
 import { LIVE_CASE_STATUSES, SETTLED_TASK_STATUSES } from "../vocab";
 import { deskMembers, staffedDesks } from "./desks";
 import { deskOf, routingWarnings, type RoutingContext, type RoutingWarning } from "./rules";
@@ -181,4 +181,14 @@ export async function reconcileLineManagerTasks(employeeIds?: readonly string[])
     console.warn("[jml] line-manager tasks could not be reconciled");
     return { checked: 0, moved: 0 };
   }
+}
+
+/**
+ * QA2 N-03/N-04 — once a case is completed, closed or cancelled, nobody is still
+ * being asked to work it: every "task assigned to you" notice on it stops
+ * reading New. Never throws (`resolveUserNotices` does not).
+ */
+export async function resolveCaseTaskNotices(caseId: string): Promise<void> {
+  await resolveUserNotices(`jml-task-assigned:${caseId}:`);
+  await resolveUserNotices(`jml-task-reassigned:${caseId}:`);
 }

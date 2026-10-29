@@ -402,6 +402,13 @@ export const accessCutoffSchema = z
     at: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use a date and time.")
+      .refine((v) => {
+        // QA2 N-09 — a real calendar day and clock time, not one that rolls over.
+        const [y, mo, d] = v.slice(0, 10).split("-").map(Number);
+        const [h, mi] = v.slice(11).split(":").map(Number);
+        const day = new Date(Date.UTC(y, mo - 1, d));
+        return day.getUTCMonth() === mo - 1 && day.getUTCDate() === d && h < 24 && mi < 60;
+      }, "Not a real date and time.")
       .nullable(),
   })
   .strict();

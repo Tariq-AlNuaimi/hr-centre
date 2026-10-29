@@ -1,7 +1,6 @@
 import type { JmlAssigneeRole, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ResolvedActor } from "@/lib/core/actor";
-import { LIVE_CASE_STATUSES, SETTLED_TASK_STATUSES } from "../vocab";
 import { desksOf } from "./desks";
 import { workerMayWork, type WorkerFacts } from "./rules";
 
@@ -61,20 +60,20 @@ export async function isRoutedParticipant(actor: Actor, caseId: string): Promise
   return n > 0;
 }
 
-/** Does the actor have any open routed work anywhere (nav + My tasks gate)? */
-export async function hasWorkerTasks(actor: Actor): Promise<boolean> {
-  const where = workerTaskWhere(await workerFacts(actor));
+/**
+ * Is the actor a task worker at all (nav + My tasks gate)?
+ *
+ * QA2 N-03 — this used to ask "do they have OPEN routed work", so the moment a
+ * desk user completed their last task, My tasks told them "You do not have
+ * access" instead of "Nothing waiting on you". Being on a desk is the standing
+ * authority; a line manager qualifies once any task has ever been routed to them.
+ */
+export async function isTaskWorker(actor: Actor): Promise<boolean> {
+  const facts = await workerFacts(actor);
+  if (facts.desks.size > 0) return true;
+  const where = workerTaskWhere(facts);
   if (!where) return false;
-  const found = await prisma.jmlTask.findFirst({
-    where: {
-      AND: [
-        where,
-        { status: { notIn: [...SETTLED_TASK_STATUSES] } },
-        { case: { status: { in: [...LIVE_CASE_STATUSES] } } },
-      ],
-    },
-    select: { id: true },
-  });
+  const found = await prisma.jmlTask.findFirst({ where, select: { id: true } });
   return found !== null;
 }
 

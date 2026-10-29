@@ -5,7 +5,7 @@ import { JmlError } from "../errors";
 import { loadCaseFor, loadCaseHead, type JmlActor } from "../access";
 import { workerMayWork } from "../routing/rules";
 import { mayWorkAsWorker, workerFacts } from "../routing/worker";
-import { STAGE_ORDER, isLive } from "../vocab";
+import { SETTLED_TASK_STATUSES, STAGE_ORDER, isLive } from "../vocab";
 import { userHolds } from "./assignment";
 import { computeProgress, deriveJoinStage } from "./progress";
 import { advancedLeaveStage } from "./gates";
@@ -148,6 +148,7 @@ export async function refreshCase(
   data.stage = stage;
   if (actorUserId) data.lastUpdatedBy = { connect: { id: actorUserId } };
   await tx.jmlCase.update({ where: { id: caseId }, data, select: { id: true } });
+  if (completedNow) await closeLeftoverTasks(tx, tasks);
   // D9: a mover's change reaches the employee record when its checklist completes
   // — but never before its effective date (QA D-05). A checklist finished early
   // leaves the change pending; the hourly sweep applies it on the day
@@ -156,6 +157,34 @@ export async function refreshCase(
     if (isMoveDue(kase.moveDetail.effectiveDate, now)) await applyMove(tx, caseId);
   }
   return { completionPct, stage, completedNow } satisfies RefreshResult;
+}
+
+/**
+ * QA2 N-04 — a JOIN/MOVE case completes on its MANDATORY work, so optional
+ * tasks (an IT or line-manager follow-up) can still be open at that moment.
+ * They used to stay NOT_STARTED forever on a case that no longer accepts
+ * changes: the desk got 409 and its notice stayed New. They are now closed
+ * EXPLICITLY, with the reason on the task, in the same transaction.
+ */
+export const LEFTOVER_REASON =
+  "Closed automatically: the case was completed while this optional task was still open.";
+
+async function closeLeftoverTasks(
+  tx: Tx,
+  tasks: ReadonlyArray<{ id: string; status: Parameters<typeof SETTLED_TASK_STATUSES.has>[0] }>,
+) {
+  for (const t of tasks) {
+    if (SETTLED_TASK_STATUSES.has(t.status)) continue;
+    await tx.jmlTask.update({
+      where: { id: t.id },
+      data: {
+        status: "NOT_APPLICABLE",
+        notApplicableReason: LEFTOVER_REASON,
+        version: { increment: 1 },
+      },
+      select: { id: true },
+    });
+  }
 }
 
 /**

@@ -58,6 +58,10 @@ export function ReorgSection({
   const [newName, setNewName] = useState("");
   const [parent, setParent] = useState("");
   const [date, setDate] = useState("");
+  const [applyNow, setApplyNow] = useState(false);
+  // QA2 N-05 — a past date applies at once, so it needs HR to say so.
+  const today = new Date().toLocaleDateString("en-CA");
+  const past = date !== "" && date < today;
 
   const units = kind === "DIRECTORATE" ? directorates : kind === "DEPARTMENT" ? departments : teams;
   const parents: { id: string; name: string }[] =
@@ -67,11 +71,13 @@ export function ReorgSection({
     const body: Record<string, unknown> = { unitKind: kind, unitId, effectiveDate: date };
     if (newName.trim()) body.newName = newName.trim();
     if (parent) body.newParentId = parent === NO_DIRECTORATE ? null : parent;
+    if (past) body.applyNow = applyNow;
     const okd = await run(() => apiClient.post("/api/org/changes", body), t("scheduled"));
     if (okd) {
       setNewName("");
       setParent("");
       setDate("");
+      setApplyNow(false);
     }
   }
 
@@ -154,9 +160,19 @@ export function ReorgSection({
             />
           </div>
         </div>
+        {past ? (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={applyNow}
+              onChange={(e) => setApplyNow(e.target.checked)}
+            />
+            {t("applyNow")}
+          </label>
+        ) : null}
         <Button
           size="sm"
-          disabled={busy || !unitId || !date || (!newName.trim() && !parent)}
+          disabled={busy || !unitId || !date || (!newName.trim() && !parent) || (past && !applyNow)}
           onClick={() => void schedule()}
         >
           {t("schedule")}

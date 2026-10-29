@@ -16,7 +16,7 @@ const TEAM_SELECT = {
   department: { select: { id: true, name: true, entity: { select: { code: true } } } },
 } as const;
 
-async function assertTeamNameFree(departmentId: string, name: string, exceptId?: string) {
+export async function assertTeamNameFree(departmentId: string, name: string, exceptId?: string) {
   const clash = await prisma.team.findFirst({
     where: { departmentId, name, ...(exceptId ? { NOT: { id: exceptId } } : {}) },
     select: { id: true },
@@ -33,7 +33,7 @@ async function assertTeamNameFree(departmentId: string, name: string, exceptId?:
   }
 }
 
-async function assertDepartmentExists(departmentId: string) {
+export async function assertDepartmentExists(departmentId: string) {
   const department = await prisma.department.findUnique({
     where: { id: departmentId },
     select: { id: true },

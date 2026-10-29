@@ -47,7 +47,7 @@ const DIRECTORATE_SELECT = {
   entity: { select: COMPANY_SELECT },
 } as const;
 
-async function assertDirectorateNameFree(entityId: string, name: string, exceptId?: string) {
+export async function assertDirectorateNameFree(entityId: string, name: string, exceptId?: string) {
   // Retired rows count too: the unique index covers them, and a retired
   // directorate is restored from the recycling bin rather than recreated.
   const clash = await prisma.directorate.findFirst({
@@ -108,7 +108,7 @@ const DEPARTMENT_SELECT = {
   directorate: { select: { id: true, name: true } },
 } as const;
 
-async function loadDirectorate(directorateId: string | null) {
+export async function loadDirectorate(directorateId: string | null) {
   if (!directorateId) return null;
   const directorate = await prisma.directorate.findUnique({
     where: { id: directorateId },
@@ -118,7 +118,7 @@ async function loadDirectorate(directorateId: string | null) {
   return directorate;
 }
 
-async function assertDepartmentNameFree(entityId: string, name: string, exceptId?: string) {
+export async function assertDepartmentNameFree(entityId: string, name: string, exceptId?: string) {
   const clash = await prisma.department.findFirst({
     where: { entityId, name, ...(exceptId ? { NOT: { id: exceptId } } : {}) },
     select: { id: true },
