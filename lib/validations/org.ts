@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isoDate } from "./employee";
 
 /**
  * Boundary validation for the HR Centre org structure — blueprint
@@ -85,7 +86,10 @@ export const scheduleOrgChangeSchema = z
   .object({
     unitKind: z.enum(["DIRECTORATE", "DEPARTMENT", "TEAM"]),
     unitId: z.string().min(1).max(40),
-    effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date (YYYY-MM-DD)."),
+    // QA2 N-05 — a REAL calendar day: 2026-02-30 used to roll to 2 March.
+    effectiveDate: isoDate,
+    /** QA2 N-05 — HR's explicit confirmation to apply a past-dated change today. */
+    applyNow: z.boolean().optional(),
     newName: unitName.optional(),
     /** Present = the parent changes; null = no directorate (departments only). */
     newParentId: z.string().min(1).max(40).nullable().optional(),
