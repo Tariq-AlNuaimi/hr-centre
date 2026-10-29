@@ -197,7 +197,19 @@ const prismaMock: any = {
         .filter((m) => !where.at || (m.at as Date) >= where.at.gte)
         .at(-1) ?? null,
   },
-  hiveEmailTemplate: { findUnique: async () => template },
+  // The core template store (ADR-095).
+  emailTemplate: {
+    findUnique: async () =>
+      template
+        ? {
+            key: "escalation-answer",
+            ...template,
+            ccRecipients: [],
+            updatedAt: new Date(),
+            updatedBy: null,
+          }
+        : null,
+  },
 };
 
 before(async () => {

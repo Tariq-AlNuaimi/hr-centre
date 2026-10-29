@@ -94,13 +94,13 @@ async function eraseCaseText(tx: Tx, caseId: string) {
       select: { id: true },
     });
   }
-  const emails = await tx.jmlEmailLog.findMany({
+  const emails = await tx.emailLog.findMany({
     where: { caseId },
     select: { id: true },
     take: 500,
   });
   for (const e of emails) {
-    await tx.jmlEmailLog.update({
+    await tx.emailLog.update({
       where: { id: e.id },
       data: { recipient: ANONYMISED, subject: ANONYMISED, cc: null, failureReason: null },
       select: { id: true },
@@ -124,11 +124,13 @@ async function eraseCaseText(tx: Tx, caseId: string) {
     "JmlTaskComment",
     comments.map((c) => c.id),
   );
-  await redactAudit(
-    tx,
-    "JmlEmailLog",
-    emails.map((e) => e.id),
-  );
+  // Audit rows written before ADR-095 name the model JmlEmailLog; after, EmailLog.
+  for (const entityType of ["JmlEmailLog", "EmailLog"])
+    await redactAudit(
+      tx,
+      entityType,
+      emails.map((e) => e.id),
+    );
   await redactAudit(
     tx,
     "Notification",

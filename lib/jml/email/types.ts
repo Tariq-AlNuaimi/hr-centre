@@ -1,5 +1,5 @@
 /**
- * Joiner message types (HR Onboarding §11.2), written to `JmlEmailLog.type` and
+ * Joiner message types (HR Onboarding §11.2), written to `EmailLog.type` and
  * read back by retry — named constants, values verbatim from the source.
  */
 export const EMAIL_TYPES = {

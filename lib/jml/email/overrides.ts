@@ -1,4 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import {
+  clearTemplateOverride,
+  saveTemplateOverride as saveCoreOverride,
+  templateOverride,
+  templateOverrides,
+} from "@/lib/core/email/templates";
 import { TEMPLATES, findTemplate, type EmailTemplate } from "./templates";
 
 // -- §14's template administration (overrides) --------------------------------
@@ -6,6 +11,8 @@ import { TEMPLATES, findTemplate, type EmailTemplate } from "./templates";
 // Added 2026-08-28. Until then this screen was READ-ONLY: it rendered §11.2's
 // approved copy against a sample context and had no POST/PUT/PATCH, which the
 // clause-level audit recorded as one of §14's four unbuilt areas.
+//
+// Overrides live in the core template store (module "jml", ADR-095).
 //
 // The override layer is deliberately thin. `TEMPLATES` above is still the only
 // place the approved text lives; a row in `email_template_overrides` shadows one
@@ -22,24 +29,12 @@ export interface ResolvedTemplate extends EmailTemplate {
   updatedByName: string | null;
 }
 
-const OVERRIDE_SELECT = {
-  type: true,
-  subject: true,
-  body: true,
-  ccRecipients: true,
-  updatedAt: true,
-  updatedBy: { select: { name: true } },
-} as const;
-
 /** §11.2's ten rows, with any administrator overrides applied. */
 export async function resolveTemplates(): Promise<ResolvedTemplate[]> {
-  const overrides = await prisma.jmlEmailTemplateOverride.findMany({
-    select: OVERRIDE_SELECT,
-    // Bounded by construction: `type` is unique and only a §11.2 row may own
-    // one, so there can never be more rows than there are templates.
-    take: TEMPLATES.length,
-  });
-  const byType = new Map(overrides.map((row) => [row.type, row]));
+  const byType = await templateOverrides(
+    "jml",
+    TEMPLATES.map((t) => t.type),
+  );
   return TEMPLATES.map((template) => applyOverride(template, byType.get(template.type)));
 }
 
@@ -47,10 +42,7 @@ export async function resolveTemplates(): Promise<ResolvedTemplate[]> {
 export async function resolveTemplate(type: string): Promise<ResolvedTemplate | undefined> {
   const template = findTemplate(type);
   if (!template) return undefined;
-  const override = await prisma.jmlEmailTemplateOverride.findUnique({
-    where: { type },
-    select: OVERRIDE_SELECT,
-  });
+  const override = await templateOverride("jml", type);
   return applyOverride(template, override ?? undefined);
 }
 
@@ -59,7 +51,7 @@ type OverrideRow = {
   body: string | null;
   ccRecipients: string[];
   updatedAt: Date;
-  updatedBy: { name: string | null } | null;
+  updatedByName: string | null;
 };
 
 function applyOverride(template: EmailTemplate, override?: OverrideRow): ResolvedTemplate {
@@ -75,7 +67,7 @@ function applyOverride(template: EmailTemplate, override?: OverrideRow): Resolve
     ccRecipients: override?.ccRecipients ?? [],
     overridden,
     updatedAt: override?.updatedAt ?? null,
-    updatedByName: override?.updatedBy?.name ?? null,
+    updatedByName: override?.updatedByName ?? null,
   };
 }
 
@@ -99,10 +91,7 @@ export async function saveTemplateOverride(
   const template = findTemplate(type);
   if (!template) return undefined;
 
-  const current = await prisma.jmlEmailTemplateOverride.findUnique({
-    where: { type },
-    select: { subject: true, body: true, ccRecipients: true },
-  });
+  const current = await templateOverride("jml", type);
 
   const next = {
     subject: input.subject === undefined ? (current?.subject ?? null) : input.subject,
@@ -110,28 +99,9 @@ export async function saveTemplateOverride(
     ccRecipients: input.ccRecipients ?? current?.ccRecipients ?? [],
   };
 
-  if (!next.subject && !next.body && next.ccRecipients.length === 0) {
-    if (current) await prisma.jmlEmailTemplateOverride.delete({ where: { type } });
-    return resolveTemplate(type);
-  }
-
-  // Find-then-write rather than `upsert`. Prisma's `upsert` bypasses the audit
-  // extension entirely (ADR-010 / `no-unaudited-bulk-write`), and an edit to
-  // outbound candidate copy is exactly the configuration change §14's audit
-  // requirement is about. The `current` lookup above already told us which
-  // branch this is, so it costs no extra query.
-  if (current) {
-    await prisma.jmlEmailTemplateOverride.update({
-      where: { type },
-      data: { ...next, updatedById: actorId },
-      select: { id: true },
-    });
-  } else {
-    await prisma.jmlEmailTemplateOverride.create({
-      data: { type, ...next, updatedById: actorId },
-      select: { id: true },
-    });
-  }
+  // Every override cleared deletes the row (the store does it); find-then-write,
+  // never upsert, so the edit is on the audit trail.
+  await saveCoreOverride("jml", type, next, actorId);
   return resolveTemplate(type);
 }
 
@@ -146,10 +116,6 @@ export async function saveTemplateOverride(
  */
 export async function resetTemplateOverride(type: string): Promise<ResolvedTemplate | undefined> {
   if (!findTemplate(type)) return undefined;
-  const existing = await prisma.jmlEmailTemplateOverride.findUnique({
-    where: { type },
-    select: { id: true },
-  });
-  if (existing) await prisma.jmlEmailTemplateOverride.delete({ where: { type } });
+  await clearTemplateOverride("jml", type);
   return resolveTemplate(type);
 }

@@ -1,10 +1,10 @@
 import { prisma, auditedTransaction } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/core/email/send";
 import { canOnPair, hasHivePermission } from "./permissions";
 import { issueReplyToken, replyLinkFor } from "@/lib/hive/reply-token";
 import { env } from "@/lib/env";
 // The answer email's default has one owner (the template service).
-import { DEFAULT_TEMPLATE } from "./email-template";
+import { loadTemplate } from "./email-template";
 import { formatTicketId } from "@/lib/hive/ticket-id";
 import { notifyTicket } from "./ticket-notify";
 import { getTicketSettings } from "./ticket-settings";
@@ -195,10 +195,7 @@ export async function approveAndSend(id: string, userId: string): Promise<Approv
   }
 
   const [stored, { ticketPrefix }] = await Promise.all([
-    prisma.hiveEmailTemplate.findUnique({
-      where: { key: "escalation-answer" },
-      select: { subject: true, body: true },
-    }),
+    loadTemplate("escalation-answer"),
     getTicketSettings(),
   ]);
   // ADR-070: minted BEFORE the send, because the link has to be inside the
@@ -206,7 +203,7 @@ export async function approveAndSend(id: string, userId: string): Promise<Approv
   // Host would poison the link); with none configured the line is dropped.
   const replyLink = env.AUTH_URL ? replyLinkFor(env.AUTH_URL, await issueReplyToken(row.id)) : null;
 
-  const { subject, text } = renderTemplate(stored ?? DEFAULT_TEMPLATE, {
+  const { subject, text } = renderTemplate(stored, {
     employeeName: row.employeeName,
     question: row.question,
     answer,
@@ -217,7 +214,16 @@ export async function approveAndSend(id: string, userId: string): Promise<Approv
 
   let failure: string | null = null;
   try {
-    const result = await sendEmail({ to: row.employeeEmail, subject, text });
+    const result = await sendLoggedEmail(
+      { to: row.employeeEmail, subject, text },
+      {
+        module: "tickets",
+        type: "escalation-answer",
+        subjectType: "tickets.escalation",
+        subjectId: id,
+        sentById: userId,
+      },
+    );
     // `sent: false` is the unconfigured case — a FAILURE here: the employee is
     // waiting on an email that was never written to a socket.
     if (!result.sent) failure = "Email is not configured (SMTP_HOST is unset).";
