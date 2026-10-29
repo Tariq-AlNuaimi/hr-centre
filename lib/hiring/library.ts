@@ -77,6 +77,53 @@ export async function getLibraryItem(kind: LibraryKind, id: string, showPay = tr
   return row ? serialize(kind, row, showPay) : null;
 }
 
+/**
+ * QA2 N-07 — one grade code per company. Two active `G1`s made every reader
+ * that resolves a code (employee grade relink, JD templates, requisitions)
+ * pick one arbitrarily. A group-wide grade (no company) clashes with every
+ * company's, because a code resolves across both.
+ */
+async function assertGradeCodeFree(code: string, entityId: string | null, exceptId?: string) {
+  const clash = await prisma.grade.findFirst({
+    where: {
+      code: { equals: code.trim(), mode: "insensitive" },
+      ...(exceptId ? { NOT: { id: exceptId } } : {}),
+      ...(entityId ? { OR: [{ entityId }, { entityId: null }] } : {}),
+    },
+    select: { id: true },
+  });
+  if (clash) {
+    throw new HiringRuleError(`A grade with the code "${code.trim()}" already exists.`, 409);
+  }
+}
+
+/**
+ * QA2 N-07 — a grade still in use is not deleted from under its users: JD
+ * templates and requisitions name it by code, and employees link to it.
+ */
+async function assertGradeUnused(id: string, code: string) {
+  const [employees, templates, requisitions] = await Promise.all([
+    prisma.employee.count({ where: { gradeId: id } }),
+    prisma.hiringJdTemplate.count({ where: { grade: code } }),
+    prisma.hiringRequisition.count({
+      where: { grade: code, status: { notIn: ["CLOSED", "ARCHIVED", "FILLED"] } },
+    }),
+  ]);
+  const uses = [
+    employees ? `${employees} ${employees === 1 ? "employee" : "employees"}` : null,
+    templates ? `${templates} job description ${templates === 1 ? "template" : "templates"}` : null,
+    requisitions
+      ? `${requisitions} open ${requisitions === 1 ? "requisition" : "requisitions"}`
+      : null,
+  ].filter(Boolean);
+  if (uses.length > 0) {
+    throw new HiringRuleError(
+      `Grade ${code} is still used by ${uses.join(", ")}. Move them to another grade first.`,
+      409,
+    );
+  }
+}
+
 export async function createLibraryItem(
   actor: HiringActor,
   kind: LibraryKind,
@@ -89,6 +136,9 @@ export async function createLibraryItem(
       where: { name: { equals: String(data.name), mode: "insensitive" } },
     });
     if (existing) return existing;
+  }
+  if (kind === "grades") {
+    await assertGradeCodeFree(String(data.code), (data.entityId as string | null) ?? null);
   }
   const row = await delegate(kind).create({ data });
   if (kind === "grades") await relinkEmployeeGrades([row.code]);
@@ -105,6 +155,13 @@ export async function updateLibraryItem(
   if (!row) return null;
   assertCanWriteLibrary(actor, row.entityId as string | null);
   if ("entityId" in data) assertCanWriteLibrary(actor, data.entityId as string | null);
+  if (kind === "grades" && ("code" in data || "entityId" in data)) {
+    await assertGradeCodeFree(
+      String(data.code ?? row.code),
+      (("entityId" in data ? data.entityId : row.entityId) as string | null) ?? null,
+      id,
+    );
+  }
   const updated = await delegate(kind).update({ where: { id }, data });
   if (kind === "grades") await relinkEmployeeGrades([row.code as string, updated.code]);
   return serialize(kind, updated);
@@ -114,6 +171,7 @@ export async function deleteLibraryItem(actor: HiringActor, kind: LibraryKind, i
   const row = await getLibraryItem(kind, id);
   if (!row) return false;
   assertCanWriteLibrary(actor, row.entityId as string | null);
+  if (kind === "grades") await assertGradeUnused(id, row.code as string);
   await delegate(kind).delete({ where: { id } });
   if (kind === "grades") await relinkEmployeeGrades([row.code as string]);
   return true;
