@@ -46,13 +46,13 @@ export async function listGates(actor: JmlActor, caseId: string) {
   const kase = await loadCaseFor(actor, caseId, "jml.view", "LEAVE");
   const row = await loadLeaveRow(caseId);
   const profile = profileOf(row.leaveDetail);
-  const records = await prisma.leaveGateRecord.findMany({
+  const records = await prisma.jmlExitGateRecord.findMany({
     where: { caseId },
     select: RECORD_SELECT,
     take: 20,
   });
   const byId = new Map(records.map((r) => [r.gateId, r]));
-  const incidents = await prisma.leaveComplianceIncident.findMany({
+  const incidents = await prisma.jmlExitComplianceIncident.findMany({
     where: { caseId },
     orderBy: { deadlineAt: "desc" },
     select: {
@@ -132,19 +132,23 @@ export async function recordGate(
         reference: input.reference,
       };
   await auditedTransaction(async (tx) => {
-    const existing = await tx.leaveGateRecord.findUnique({
+    const existing = await tx.jmlExitGateRecord.findUnique({
       where: { caseId_gateId: { caseId, gateId } },
       select: { id: true },
     });
     const saved = existing
-      ? await tx.leaveGateRecord.update({ where: { id: existing.id }, data, select: { id: true } })
-      : await tx.leaveGateRecord.create({
+      ? await tx.jmlExitGateRecord.update({
+          where: { id: existing.id },
+          data,
+          select: { id: true },
+        })
+      : await tx.jmlExitGateRecord.create({
           data: { caseId, gateId, ...data },
           select: { id: true },
         });
     if (input.override) {
       await recordAudit(tx, {
-        entityType: "LeaveGateRecord",
+        entityType: "JmlExitGateRecord",
         entityId: saved.id,
         action: "UPDATE",
         before: null,
@@ -165,7 +169,7 @@ export async function overridesForMonth(actor: JmlActor, month: string) {
   if (scope === null) throw new JmlError("You do not have permission to do that.", 403);
   const from = new Date(`${month}-01T00:00:00Z`);
   const to = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1));
-  const rows = await prisma.leaveGateRecord.findMany({
+  const rows = await prisma.jmlExitGateRecord.findMany({
     where: { overriddenAt: { gte: from, lt: to }, case: scope },
     orderBy: { overriddenAt: "desc" },
     take: 500,

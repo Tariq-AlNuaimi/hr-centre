@@ -216,7 +216,7 @@ export async function jmlDashboard(actor: JmlActor, scope: "mine" | "all" | unde
       select: { ...TASK_ROW, owner: { select: { name: true } } },
       take: PANEL,
     }),
-    prisma.leaveExitInterview.groupBy({
+    prisma.jmlExitInterview.groupBy({
       by: ["primaryL1"],
       where: { case: { ...where, leaveDetail: { lastDayOfService: { gte: from, lt: to } } } },
       _count: { _all: true },

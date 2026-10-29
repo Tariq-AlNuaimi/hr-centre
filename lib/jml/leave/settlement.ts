@@ -89,7 +89,7 @@ export async function loadContext(caseId: string) {
 }
 
 async function linesOf(caseId: string, open: boolean) {
-  const rows = await prisma.leaveSettlementLine.findMany({
+  const rows = await prisma.jmlExitSettlementLine.findMany({
     where: { caseId },
     orderBy: { createdAt: "asc" },
     take: 100,
@@ -159,7 +159,7 @@ function basicOf(e: { odooId: string; basicSalaryEnc: string | null }): number |
 }
 
 async function lineTotals(caseId: string) {
-  const lines = await prisma.leaveSettlementLine.findMany({
+  const lines = await prisma.jmlExitSettlementLine.findMany({
     where: { caseId },
     select: { id: true, lineType: true, lineAmountEnc: true },
     take: 100,
@@ -264,12 +264,12 @@ export async function calculateSettlement(
   };
   await auditedTransaction((tx) =>
     ctx.settlement
-      ? tx.leaveSettlement.update({
+      ? tx.jmlExitSettlement.update({
           where: { caseId, approvedAt: null },
           data,
           select: { caseId: true },
         })
-      : tx.leaveSettlement.create({ data: { caseId, ...data }, select: { caseId: true } }),
+      : tx.jmlExitSettlement.create({ data: { caseId, ...data }, select: { caseId: true } }),
   );
   const visa = visaCostRecoveryApplies(
     {

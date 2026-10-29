@@ -1,4 +1,4 @@
-import type { LeaveExitType } from "@/generated/prisma/client";
+import type { JmlExitType } from "@/generated/prisma/client";
 
 /**
  * Leaver rules that need no database — HR Offboarding
@@ -7,7 +7,7 @@ import type { LeaveExitType } from "@/generated/prisma/client";
  */
 
 /** §8.3 default notice per exit type; a different length needs a recorded reason. */
-export const DEFAULT_NOTICE_DAYS: Record<LeaveExitType, number> = {
+export const DEFAULT_NOTICE_DAYS: Record<JmlExitType, number> = {
   RESIGNATION: 60,
   TERMINATION: 30,
   CONTRACT_EXPIRY: 30,
@@ -21,7 +21,7 @@ export const DOCUMENTED_EXIT_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 export type DateFacts = {
-  exitType: LeaveExitType;
+  exitType: JmlExitType;
   exitSubtype: string | null;
   nationality: "OMANI" | "EXPATRIATE";
   noticeStartDate: Date;

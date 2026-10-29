@@ -17,13 +17,13 @@ type Outcome = { caseId: string; done: boolean; note: string };
 
 async function revokeLeaverLogin(caseId: string): Promise<Outcome> {
   return auditedTransaction(async (tx) => {
-    const d = await tx.leaveCaseDetail.findUniqueOrThrow({
+    const d = await tx.jmlExitDetail.findUniqueOrThrow({
       where: { caseId },
       select: { loginRevokedAt: true, case: { select: { employeeId: true } } },
     });
     if (d.loginRevokedAt) return { caseId, done: false, note: "already revoked" };
     const revoked = await revokeLoginOnOffboard(tx, d.case.employeeId);
-    await tx.leaveCaseDetail.update({
+    await tx.jmlExitDetail.update({
       where: { caseId },
       data: { loginRevokedAt: new Date() },
       select: { caseId: true },
@@ -35,7 +35,7 @@ async function revokeLeaverLogin(caseId: string): Promise<Outcome> {
 export async function applyLeaverDeparture(caseId: string): Promise<Outcome> {
   return auditedTransaction(
     async (tx) => {
-      const d = await tx.leaveCaseDetail.findUniqueOrThrow({
+      const d = await tx.jmlExitDetail.findUniqueOrThrow({
         where: { caseId },
         select: {
           departureAppliedAt: true,
@@ -59,7 +59,7 @@ export async function applyLeaverDeparture(caseId: string): Promise<Outcome> {
         note: `Exit ${d.case.caseRef}`,
       });
       if (!out.ok && out.reason !== "ALREADY_LEAVER") {
-        await tx.leaveCaseDetail.update({
+        await tx.jmlExitDetail.update({
           where: { caseId },
           data: { departureNote: `Departure refused: ${out.reason}` },
           select: { caseId: true },
@@ -74,7 +74,7 @@ export async function applyLeaverDeparture(caseId: string): Promise<Outcome> {
           select: { id: true },
         });
       }
-      await tx.leaveCaseDetail.update({
+      await tx.jmlExitDetail.update({
         where: { caseId },
         data: {
           departureAppliedAt: new Date(),
@@ -99,7 +99,7 @@ export async function departureMilestones(
 ) {
   const live = { status: { in: ["ACTIVE", "AT_RISK", "PENDING_SETTLEMENT"] as never[] } };
   // P2-5 — candidates by either cut-off source; the instant decides in code.
-  const candidates = await prisma.leaveCaseDetail.findMany({
+  const candidates = await prisma.jmlExitDetail.findMany({
     where: {
       migrated: false,
       loginRevokedAt: null,
@@ -116,7 +116,7 @@ export async function departureMilestones(
     const at = effectiveCutoff(d, timeZone);
     return at !== null && at <= now;
   });
-  const toDepart = await prisma.leaveCaseDetail.findMany({
+  const toDepart = await prisma.jmlExitDetail.findMany({
     where: {
       migrated: false,
       departureAppliedAt: null,

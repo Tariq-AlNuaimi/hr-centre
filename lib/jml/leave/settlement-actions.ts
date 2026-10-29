@@ -15,7 +15,7 @@ import { canApproveSettlement, canCloseSettlement, paymentDeadline } from "./set
  */
 
 async function assertEditable(caseId: string) {
-  const s = await prisma.leaveSettlement.findUnique({
+  const s = await prisma.jmlExitSettlement.findUnique({
     where: { caseId },
     select: { approvedAt: true, calculatedAt: true },
   });
@@ -58,7 +58,7 @@ export async function addSettlementLine(
   if (!authoriser) throw new JmlError("The authorising approver is not an active user.", 422);
   const id = (await import("node:crypto")).randomUUID();
   await auditedTransaction(async (tx) => {
-    await tx.leaveSettlementLine.create({
+    await tx.jmlExitSettlementLine.create({
       data: {
         id,
         caseId,
@@ -73,7 +73,7 @@ export async function addSettlementLine(
       },
       select: { id: true },
     });
-    await tx.leaveSettlement.update({
+    await tx.jmlExitSettlement.update({
       where: { caseId },
       data: { recalculationRequired: true },
       select: { caseId: true },
@@ -85,14 +85,14 @@ export async function addSettlementLine(
 export async function removeSettlementLine(actor: JmlActor, caseId: string, lineId: string) {
   await loadCaseFor(actor, caseId, "jml.manageSettlement", "LEAVE");
   await assertEditable(caseId);
-  const line = await prisma.leaveSettlementLine.findUnique({
+  const line = await prisma.jmlExitSettlementLine.findUnique({
     where: { id: lineId },
     select: { caseId: true },
   });
   if (line?.caseId !== caseId) throw new JmlError("Line not found", 404);
   await auditedTransaction(async (tx) => {
-    await tx.leaveSettlementLine.delete({ where: { id: lineId }, select: { id: true } });
-    await tx.leaveSettlement.update({
+    await tx.jmlExitSettlementLine.delete({ where: { id: lineId }, select: { id: true } });
+    await tx.jmlExitSettlement.update({
       where: { caseId },
       data: { recalculationRequired: true },
       select: { caseId: true },
@@ -121,7 +121,7 @@ export async function approveSettlement(
     },
     take: 200,
   });
-  const unreferenced = await prisma.leaveSettlementLine.count({
+  const unreferenced = await prisma.jmlExitSettlementLine.count({
     where: { caseId, lineType: "DEDUCTION", documentaryReference: "" },
   });
   const verdict = canApproveSettlement({
@@ -136,7 +136,7 @@ export async function approveSettlement(
   });
   if (!verdict.allowed) throw new JmlError(verdict.reasons.join(" "), 409);
   await auditedTransaction((tx) =>
-    tx.leaveSettlement.update({
+    tx.jmlExitSettlement.update({
       where: { caseId, approvedAt: null },
       data: {
         approvedAt: new Date(),
@@ -167,7 +167,7 @@ export async function confirmPayment(
     throw new JmlError("The settlement must be approved before payment is confirmed.", 409);
   if (ctx.settlement.paymentConfirmedAt) throw new JmlError("Payment is already confirmed.", 409);
   await auditedTransaction((tx) =>
-    tx.leaveSettlement.update({
+    tx.jmlExitSettlement.update({
       where: { caseId, paymentConfirmedAt: null },
       data: {
         paymentDate: input.paymentDate,
@@ -186,7 +186,7 @@ export async function confirmPayment(
 
 /** For closure: the settlement side of AC-10.7. */
 export async function settlementClosureProblems(caseId: string): Promise<string[]> {
-  const s = await prisma.leaveSettlement.findUnique({
+  const s = await prisma.jmlExitSettlement.findUnique({
     where: { caseId },
     select: { approvedAt: true, paymentConfirmedAt: true, paymentReference: true },
   });

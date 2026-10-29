@@ -27,7 +27,7 @@ export async function cancelLeave(
   if (kase.status !== "DRAFT" && !isLive(kase.status)) {
     throw new JmlError(`This exit case is already ${kase.status.toLowerCase()}.`, 409);
   }
-  const detail = await prisma.leaveCaseDetail.findUnique({
+  const detail = await prisma.jmlExitDetail.findUnique({
     where: { caseId },
     select: { departureAppliedAt: true, loginRevokedAt: true },
   });
@@ -71,7 +71,7 @@ export async function cancelLeave(
       } else if (detail?.loginRevokedAt) {
         await restoreLogin(tx, kase.employeeId);
       }
-      await tx.leaveCaseDetail.update({
+      await tx.jmlExitDetail.update({
         where: { caseId },
         data: { departureAppliedAt: null, loginRevokedAt: null },
         select: { caseId: true },

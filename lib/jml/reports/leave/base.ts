@@ -111,7 +111,7 @@ function leaveWhere(
   const f = ctx.filters;
   const { from, to } = period(f, ctx.now);
   const scope = caseScopeWhere(ctx.actor, "jml.viewReports") ?? { id: { in: [] } };
-  const detail: Prisma.LeaveCaseDetailWhereInput = {
+  const detail: Prisma.JmlExitDetailWhereInput = {
     lastDayOfService: { gte: from, lte: to },
     ...(f.entityId ? { entityIdAtExit: f.entityId } : {}),
     ...(f.directorateId ? { directorateIdAtExit: f.directorateId } : {}),

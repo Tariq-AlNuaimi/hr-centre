@@ -25,7 +25,7 @@ export async function closurePreview(actor: JmlActor, caseId: string) {
 }
 
 async function closureProblems(caseId: string): Promise<string[]> {
-  const d = await prisma.leaveCaseDetail.findUniqueOrThrow({
+  const d = await prisma.jmlExitDetail.findUniqueOrThrow({
     where: { caseId },
     select: {
       nationality: true,
@@ -68,13 +68,13 @@ export async function closeLeave(
   if (problems.length)
     throw new JmlError(`This exit cannot close yet — ${problems.join(" ")}`, 409);
   const departure = await applyLeaverDeparture(caseId);
-  const applied = await prisma.leaveCaseDetail.findUniqueOrThrow({
+  const applied = await prisma.jmlExitDetail.findUniqueOrThrow({
     where: { caseId },
     select: { departureAppliedAt: true },
   });
   if (!applied.departureAppliedAt)
     throw new JmlError(`The departure could not be applied (${departure.note}).`, 409);
-  const overridden = await prisma.leaveGateRecord.findMany({
+  const overridden = await prisma.jmlExitGateRecord.findMany({
     where: { caseId, overriddenById: { not: null } },
     select: { gateId: true },
   });
