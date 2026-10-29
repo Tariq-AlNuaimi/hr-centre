@@ -184,7 +184,7 @@ export async function getCaseDetail(actor: JmlActor, caseId: string) {
       ...row.employee,
       odooId: isProvisionalOdooId(row.employee.odooId) ? null : row.employee.odooId,
     },
-    externalLinks: externalSystems(),
+    externalLinks: await externalSystems(),
     // Task routing (US-5): open routed tasks the HR owner is holding for lack of a route.
     routingWarnings: await caseRoutingWarnings(caseId, row.employee.id),
     // What a person may set by hand: CANCELLED is the case's to apply, not a task's.

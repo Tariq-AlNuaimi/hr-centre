@@ -165,3 +165,23 @@ export const testEmailSchema = z.object({
   recipient: z.email(),
   caseId: z.string().trim().min(1).max(64).optional(),
 });
+
+/**
+ * Desk addresses and case links (core settings store, module "jml", ADR-092).
+ * `null` clears the HR value, so the deployment's environment variable (if
+ * any) applies again.
+ */
+const optionalEmail = z.email("Enter a valid email address.").max(200).nullable().optional();
+const optionalUrl = z
+  .url({ protocol: /^https?$/, error: "Enter a full web address starting with https://." })
+  .max(500)
+  .nullable()
+  .optional();
+export const contactSettingsSchema = z.object({
+  itEmail: optionalEmail,
+  proEmail: optionalEmail,
+  payrollEmail: optionalEmail,
+  odooUrl: optionalUrl,
+  staffingFormUrl: optionalUrl,
+});
+export type ContactSettingsInput = z.infer<typeof contactSettingsSchema>;

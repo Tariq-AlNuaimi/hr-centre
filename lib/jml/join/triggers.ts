@@ -69,7 +69,7 @@ export async function onActivated(caseId: string): Promise<void> {
 
 /** Once per case: the PRO desk hears about open visa work (idempotent). */
 async function notifyProIfVisaRequired(caseId: string): Promise<boolean> {
-  const pro = desks.pro();
+  const pro = await desks.pro();
   if (!pro || !(await hasOpenVisaWork(caseId))) return false;
   const already = await prisma.jmlEmailLog.findFirst({
     where: { caseId, type: EMAIL_TYPES.PRO_VISA, status: { not: "CANCELLED" } },
@@ -108,7 +108,7 @@ export async function onActualStartEntered(caseId: string): Promise<void> {
       });
     }
   }
-  const payroll = desks.payroll();
+  const payroll = await desks.payroll();
   if (payroll && kase.joinDetail?.payrollApplicable) {
     await queueEmail({
       type: EMAIL_TYPES.PAYROLL_NOTIFY,
@@ -136,9 +136,9 @@ export async function onStartDateChanged(caseId: string, previousStart: Date | n
     await queueEmail({ type: EMAIL_TYPES.START_DATE_CHANGED, recipient, subject, caseId });
     queued.push(who);
   };
-  const it = desks.it();
+  const it = await desks.it();
   if (it) await send("it", it);
-  const pro = desks.pro();
+  const pro = await desks.pro();
   if (pro && (await hasOpenVisaWork(caseId))) await send("pro", pro);
   const manager = kase.employee.manager;
   const managerEmail = manager && !isPlaceholderEmail(manager.email) ? manager.email : null;

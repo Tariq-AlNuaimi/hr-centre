@@ -16,9 +16,16 @@ type S = typeof import("../../lib/hive/services/ticket-settings.ts");
 let v: V;
 let svc: S;
 
-let row: Record<string, unknown> | null = null;
+// The settings live on the core store (module "tickets", ADR-092): one row per key.
+let rows = new Map<string, { id: string; value: unknown }>();
 let calls: string[] = [];
 let createThrows: string | null = null;
+
+type Where = { id?: string; module_key?: { module: string; key: string } };
+const keyOf = (w: Where) =>
+  w.module_key
+    ? `${w.module_key.module}:${w.module_key.key}`
+    : [...rows.entries()].find(([, r]) => r.id === w.id)?.[0];
 
 before(async () => {
   v = (await import(import.meta.resolve("../../lib/validations/hive/ticket-settings.ts"))) as V;
@@ -26,22 +33,33 @@ before(async () => {
   mockApi.module!(import.meta.resolve("../../lib/prisma.ts"), {
     namedExports: {
       prisma: {
-        hiveTicketSettings: {
-          findUnique: async () => row,
-          create: async ({ data }: { data: Record<string, unknown> }) => {
+        moduleSetting: {
+          findUnique: async ({ where }: { where: Where }) => rows.get(keyOf(where) ?? "") ?? null,
+          findMany: async ({ where }: { where: { module: string; key: { in: string[] } } }) =>
+            where.key.in
+              .map((k) => ({ key: k, row: rows.get(`${where.module}:${k}`) }))
+              .filter((x) => x.row)
+              .map((x) => ({ key: x.key, value: x.row!.value })),
+          create: async ({ data }: { data: { module: string; key: string; value: unknown } }) => {
             calls.push("create");
-            if (createThrows) throw Object.assign(new Error("dup"), { code: createThrows });
-            row = { ...data };
-            return row;
+            if (createThrows) {
+              const code = createThrows;
+              createThrows = null;
+              rows.set(`${data.module}:${data.key}`, { id: "raced", value: null });
+              throw Object.assign(new Error("dup"), { code });
+            }
+            rows.set(`${data.module}:${data.key}`, { id: `r${rows.size}`, value: data.value });
+            return {};
           },
-          update: async ({ data }: { data: Record<string, unknown> }) => {
+          update: async ({ where, data }: { where: Where; data: { value: unknown } }) => {
             calls.push("update");
-            row = { ...(row ?? {}), ...data };
-            return row;
+            const k = keyOf(where)!;
+            rows.set(k, { id: rows.get(k)?.id ?? "x", value: data.value });
+            return {};
           },
           upsert: async () => {
             calls.push("upsert");
-            return row;
+            return {};
           },
         },
       },
@@ -51,7 +69,7 @@ before(async () => {
 });
 
 function reset() {
-  row = null;
+  rows = new Map();
   calls = [];
   createThrows = null;
 }
@@ -84,7 +102,7 @@ describe("the labels", () => {
   });
 });
 
-describe("the stored row", { skip: !canMock }, () => {
+describe("the stored settings", { skip: !canMock }, () => {
   test("no row means the defaults — a fresh database needs no seed", async () => {
     reset();
     assert.deepEqual(await svc.getTicketSettings(), {
@@ -94,9 +112,10 @@ describe("the stored row", { skip: !canMock }, () => {
     });
   });
 
-  test("a hand-edited row with a junk label set is ignored on read, not rendered", async () => {
+  test("a hand-edited junk label set is ignored on read, not rendered", async () => {
     reset();
-    row = { ticketPrefix: "HR", statusLabels: { NOPE: "x" } };
+    rows.set("tickets:ticketPrefix", { id: "a", value: "HR" });
+    rows.set("tickets:statusLabels", { id: "b", value: { NOPE: "x" } });
     assert.deepEqual(await svc.getTicketSettings(), {
       ticketPrefix: "HR",
       statusLabels: {},
@@ -104,18 +123,41 @@ describe("the stored row", { skip: !canMock }, () => {
     });
   });
 
+  test("a saved value is read back", async () => {
+    reset();
+    await svc.updateTicketSettings(
+      { ticketPrefix: "HIVE", statusLabels: { SENT: "Answered" }, responseHours: 8 },
+      "u1",
+    );
+    assert.deepEqual(await svc.getTicketSettings(), {
+      ticketPrefix: "HIVE",
+      statusLabels: { SENT: "Answered" },
+      responseHours: 8,
+    });
+  });
+
+  test("an absent answer-by target leaves the stored one unchanged", async () => {
+    reset();
+    await svc.updateTicketSettings(
+      { ticketPrefix: "HR", statusLabels: {}, responseHours: 8 },
+      "u1",
+    );
+    await svc.updateTicketSettings({ ticketPrefix: "HR", statusLabels: {} }, "u1");
+    assert.equal((await svc.getTicketSettings()).responseHours, 8);
+  });
+
   test("saving goes through the audited create/update, never upsert", async () => {
     reset();
     await svc.updateTicketSettings({ ticketPrefix: "HR", statusLabels: {} }, "u1");
-    row = { id: "singleton" };
     await svc.updateTicketSettings({ ticketPrefix: "HIVE", statusLabels: {} }, "u1");
-    assert.deepEqual(calls, ["create", "update"]);
+    assert.deepEqual(calls, ["create", "create", "update", "update"]);
   });
 
   test("two first saves racing: the loser's unique-key error becomes an update", async () => {
     reset();
     createThrows = "P2002";
     await svc.updateTicketSettings({ ticketPrefix: "HR", statusLabels: {} }, "u1");
-    assert.deepEqual(calls, ["create", "update"]);
+    assert.deepEqual(calls.slice(0, 2), ["create", "update"]);
+    assert.equal((await svc.getTicketSettings()).ticketPrefix, "HR");
   });
 });

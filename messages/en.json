@@ -2992,6 +2992,10 @@
         "task-routing": {
           "title": "Task routing",
           "note": "The people on the IT and Finance desks who receive those checklist tasks."
+        },
+        "contacts": {
+          "title": "Desk emails and links",
+          "note": "Where IT, PRO and payroll notices go, and the Odoo and staffing form links on a case."
         }
       },
       "list": {
@@ -3478,6 +3482,27 @@
         "saved": "Task routing saved",
         "failed": "Could not save task routing.",
         "count": "{count, plural, one {# person} other {# people}}"
+      },
+      "contacts": {
+        "title": "Desk emails and links",
+        "subtitle": "Where joiner notices are sent and which outside systems a case links to.",
+        "section": "Desks and links",
+        "sectionNote": "Leave a field empty to use the deployment's default. An empty field with no default turns that notice or link off.",
+        "field": {
+          "itEmail": "IT desk email",
+          "proEmail": "PRO desk email",
+          "payrollEmail": "Payroll email",
+          "odooUrl": "Odoo employee link",
+          "staffingFormUrl": "Staffing form link"
+        },
+        "source": {
+          "setting": "Set here, overriding any deployment default.",
+          "env": "Using the deployment default (shown greyed out).",
+          "unset": "Not set, so this is off."
+        },
+        "save": "Save",
+        "saved": "Desk emails and links saved",
+        "saveFailed": "The desk emails and links could not be saved."
       }
     },
     "vocab": {

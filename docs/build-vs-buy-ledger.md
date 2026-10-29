@@ -1044,3 +1044,12 @@ Considered: **Re-export shims under `lib/pms`** (rejected — two paths to one m
 **A monorepo package split (`packages/core`, Turborepo/Nx)** (rejected — workspace tooling
 for a folder move inside one Next.js app).
 Decision: build — a pure move of existing code; no new behaviour.
+
+### 2026-10-29 — Core settings store (P2 platform, ADR-092)
+
+Scope: lib/core/settings/store.ts
+Considered: **A feature-flag / remote-config service (LaunchDarkly, Unleash, Vercel Edge
+Config)** (rejected — these are HR business settings with an audit requirement, not
+flags; an external store would split the audit trail). **`@vercel/edge-config`**
+(rejected — writes go through the Vercel API, not the audited Prisma client).
+Decision: build — one audited key/value table, consolidating three in-house stores.

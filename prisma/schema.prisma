@@ -121,6 +121,7 @@ model User {
   jmlDocumentsGenerated    JmlGeneratedDocument[]     @relation("JmlDocumentGeneratedBy")
   leaveGatesSatisfied      LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
   leaveGatesOverridden     LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
+  moduleSettingsUpdated    ModuleSetting[]            @relation("ModuleSettingUpdatedBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -227,6 +228,24 @@ model MagicLink {
 
   @@index([purpose, subjectId, expiresAt])
   @@map("core_magic_links")
+}
+
+/// Core configuration store (ADR-092): one row per module setting. Modules name
+/// their keys and validate values with their own schemas; reference data (lists
+/// HR maintain) stays in module tables. Writes are audited (find-then-write).
+model ModuleSetting {
+  id          String   @id @default(cuid())
+  module      String   @db.VarChar(20)
+  key         String   @db.VarChar(80)
+  value       Json
+  updatedById String?  @map("updated_by_id")
+  updatedBy   User?    @relation("ModuleSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([module, key])
+  @@index([updatedById])
+  @@map("core_module_settings")
 }
 
 // ---------------------------------------------------------------------------

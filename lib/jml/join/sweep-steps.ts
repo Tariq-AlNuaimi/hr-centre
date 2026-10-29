@@ -42,7 +42,7 @@ function startOfLocalDay(now: Date, calendar: WorkingCalendar): Date {
 
 /** IT setup still waiting within two working days of the start: one email per case per day. */
 export async function itReadinessReminders({ now, calendar }: Ctx) {
-  const it = desks.it();
+  const it = await desks.it();
   if (!it) return { reminded: 0, skipped: "no-it-address" };
   const today = zonedToday(now, calendar.schedule.timeZone);
   const horizon = new Date(today.getTime() + IT_HORIZON_DAYS * 86_400_000);

@@ -90,6 +90,7 @@
 - app/[locale]/(dashboard)/jml/settings/asset-types/page.tsx
 - app/[locale]/(dashboard)/jml/settings/calendar/page.tsx
 - app/[locale]/(dashboard)/jml/settings/classifications/page.tsx
+- app/[locale]/(dashboard)/jml/settings/contacts/page.tsx
 - app/[locale]/(dashboard)/jml/settings/contract-types/page.tsx
 - app/[locale]/(dashboard)/jml/settings/documents/page.tsx
 - app/[locale]/(dashboard)/jml/settings/email-templates/page.tsx
@@ -299,6 +300,7 @@
 - app/api/jml/config/access-checklist/route.ts  [GET,PUT]
 - app/api/jml/config/approval-authority/route.ts  [GET,PUT]
 - app/api/jml/config/asset-types/route.ts  [GET,PUT]
+- app/api/jml/config/contacts/route.ts  [GET,PUT]
 - app/api/jml/config/contract-types/[id]/route.ts  [PATCH]
 - app/api/jml/config/contract-types/route.ts  [GET,POST]
 - app/api/jml/config/documents/[templateId]/activate/route.ts  [POST]
@@ -434,12 +436,13 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - MagicLink: id, purpose, subjectId, tokenHash, expiresAt, revokedAt, lastUsedAt, createdById, createdAt
+- ModuleSetting: id, module, key, value, updatedById, updatedBy, createdAt, updatedAt
 - AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, headEmployeeId, head, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
@@ -572,6 +575,7 @@
 - lib/core/notify/store.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, PendingNotification, persistNotifications
 - lib/core/notify/user-notify.ts: PREVIEW_CHARS, UserNotice, notifyUsers, resolveUserNotices, shortPreview
 - lib/core/permissions.ts: PmsRole, PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
+- lib/core/settings/store.ts: SettingModule, readModuleSetting, readModuleSettings, writeModuleSetting, clearModuleSetting
 - lib/core/tokens/magic-link.ts: mintRawToken, digestToken, isTokenShaped, isLinkLive, magicLinkUrl, issueMagicLink, resolveMagicLink, revokeMagicLinks
 - lib/core/work-items/index.ts: WorkModule, WorkItem, WorkProvider, PROVIDER_LIMIT, WorkList, collectWorkItems, byDue, DueGroup, dueGroup
 - lib/crypto/field-encryption.ts: Keyring, SALARY_KEYRING, ID_DOCUMENT_KEYRING, FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
@@ -710,7 +714,7 @@
 - lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
 - lib/jml/dashboard-rules.ts: WorkBucket, workBucket, BUCKET_ORDER, defaultMine
 - lib/jml/dashboard.ts: myTasks, jmlDashboard
-- lib/jml/desks.ts: desks, externalSystems, itIntakeConfig, itIntakeFallbackUrl, isRetryable
+- lib/jml/desks.ts: CONTACT_SETTINGS, ContactKey, contactSettings, saveContactSettings, desks, externalSystems, itIntakeConfig, itIntakeFallbackUrl, isRetryable
 - lib/jml/docs/engine.ts: MergeData, TemplateIssue, validateTemplateBuffer, renderDocument, docxHeaders, summaryDismissalHold, generationProblem
 - lib/jml/docs/generate.ts: listCaseDocuments, generateDocument
 - lib/jml/docs/templates.ts: listTemplates, uploadTemplate, activateTemplate, retireTemplate, templateFile
@@ -937,7 +941,7 @@
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, DEFAULT_RESPONSE_HOURS, responseHoursSchema, ticketSettingsSchema, TicketSettingsInput
 - lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema, dashboardQuerySchema, myTasksQuerySchema
-- lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
+- lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema, contactSettingsSchema, ContactSettingsInput
 - lib/validations/jml/joiner.ts: draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, startJoinerFromEmployeeSchema, OpenJoinCaseInput
 - lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
@@ -1149,6 +1153,7 @@
 - components/jml/settings/ApprovalAuthoritySettings.tsx
 - components/jml/settings/CalendarSettings.tsx
 - components/jml/settings/CodedListSettings.tsx
+- components/jml/settings/ContactSettings.tsx
 - components/jml/settings/DocumentsSettings.tsx
 - components/jml/settings/EmailTemplatesSettings.tsx
 - components/jml/settings/EmployeeCodeSettings.tsx
