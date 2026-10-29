@@ -4825,6 +4825,72 @@
       "access": "Access granted",
       "noAccess": "No access recorded",
       "accessLine": "{name} — granted {date}"
+    },
+    "preboarding": {
+      "public": {
+        "title": "Before your first day",
+        "heading": "Welcome, {name}",
+        "intro": "A few things to help {company} get ready for you. It takes about five minutes.",
+        "introWithDate": "A few things to help {company} get ready for you before {date}. It takes about five minutes.",
+        "us": "us",
+        "hrContact": "Your HR contact is {name}.",
+        "aboutYou": "About you",
+        "introLabel": "A short introduction",
+        "introHelp": "A sentence or two your new colleagues will read when we welcome you.",
+        "hobbiesLabel": "Hobbies and interests",
+        "photoTitle": "Passport-size picture",
+        "photoLabel": "Upload a picture (JPEG or PNG, under 2 MB)",
+        "photoHelp": "Used for your access card and the welcome announcement.",
+        "photoUploading": "Uploading…",
+        "photoDone": "Picture received. You can upload a new one to replace it.",
+        "photoUnavailable": "Uploading is not available yet. Please bring a passport-size picture on your first day.",
+        "photoType": "Choose a JPEG or PNG picture.",
+        "photoSize": "The picture must be smaller than 2 MB.",
+        "photoFailed": "The picture could not be uploaded. Try again.",
+        "documentsTitle": "Documents",
+        "documentsHelp": "Tell us how you will share each document. Please do not type ID numbers here; HR collects them separately.",
+        "document": {
+          "CIVIL_ID": "Civil ID",
+          "PASSPORT": "Passport",
+          "QUALIFICATION": "Qualification certificate",
+          "ROP_CLEARANCE": "ROP clearance"
+        },
+        "answer": {
+          "SENT": "Sent to HR",
+          "WILL_BRING": "Will bring on day one",
+          "NOT_APPLICABLE": "Does not apply to me"
+        },
+        "submit": "Send to HR",
+        "update": "Update my answers",
+        "saving": "Sending…",
+        "saved": "Thank you. HR has your answers; you can come back and change them until your first day.",
+        "saveFailed": "Your answers could not be sent. Try again.",
+        "privacy": "Only HR sees what you send here. This link is personal to you; please do not forward it.",
+        "invalidTitle": "This link is no longer valid",
+        "invalidBody": "It may have expired or been replaced. Please contact the HR person who sent it to you for a new one."
+      },
+      "hr": {
+        "title": "Preboarding",
+        "subtitle": "The joiner introduces themselves and tells you about their documents before day one.",
+        "loading": "Loading preboarding…",
+        "loadFailed": "Preboarding could not be loaded.",
+        "submitted": "Submitted {when}",
+        "waiting": "Waiting for the joiner",
+        "linkLive": "Link valid until {until}. {count, plural, =0 {No reminders yet.} one {# reminder sent.} other {# reminders sent.}}",
+        "createLink": "Create link",
+        "newLink": "Create a new link",
+        "emailLink": "Email link to joiner",
+        "revoke": "Revoke links",
+        "copyHelp": "Copy this link and send it to the joiner. It is shown once.",
+        "issued": "Preboarding link created",
+        "emailed": "Preboarding link emailed to the joiner",
+        "revoked": "Preboarding links revoked",
+        "failed": "That did not work. Try again.",
+        "blank": "Not answered",
+        "viewPhoto": "View picture",
+        "noPhoto": "Not uploaded",
+        "noStorage": "Uploads are off (file storage is not configured)"
+      }
     }
   },
   "hiring": {

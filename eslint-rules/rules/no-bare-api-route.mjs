@@ -61,6 +61,12 @@ const AUTH_WRAPPERS = new Set(["withAuth", "withAdminAuth", "withInternalAuth", 
 //                            Hiring: an agency submits a candidate. The TOKEN is
 //                            the authorisation (256-bit, hashed, expiring,
 //                            capped); per-IP and per-token limits. EXACT file.
+//   - app/api/preboarding/[token]/route.ts, .../photo/route.ts
+//                            JML preboarding (P2-4, ADR-093, operator-approved):
+//                            a joiner's form and picture. The TOKEN is the
+//                            authorisation for one open joiner case (ADR-090
+//                            magic link: hashed, expiring, revocable); per-IP
+//                            and per-token limits. EXACT files.
 const PUBLIC_ROUTE_PATTERNS = [
   /[\\/]app[\\/]api[\\/]auth[\\/]/,
   /[\\/]app[\\/]api[\\/]health[\\/]/,
@@ -68,6 +74,8 @@ const PUBLIC_ROUTE_PATTERNS = [
   /[\\/]app[\\/]api[\\/]careers[\\/]route\.ts$/,
   /[\\/]app[\\/]api[\\/]careers[\\/]apply[\\/]route\.ts$/,
   /[\\/]app[\\/]api[\\/]agency[\\/]\[token\][\\/]submit[\\/]route\.ts$/,
+  /[\\/]app[\\/]api[\\/]preboarding[\\/]\[token\][\\/]route\.ts$/,
+  /[\\/]app[\\/]api[\\/]preboarding[\\/]\[token\][\\/]photo[\\/]route\.ts$/,
 ];
 
 // Wrappers a real auth wrapper may legitimately be nested INSIDE. Recursing into

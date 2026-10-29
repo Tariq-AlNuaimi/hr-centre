@@ -38,6 +38,9 @@ const EXPECTED_PUBLIC_ROUTES = [
   "api/careers/route.ts",
   "api/careers/apply/route.ts",
   "api/agency/[token]/submit/route.ts",
+  // JML preboarding (ADR-093): the joiner's form and picture, token-authorised.
+  "api/preboarding/[token]/route.ts",
+  "api/preboarding/[token]/photo/route.ts",
 ];
 
 const AUTH_WRAPPERS = [

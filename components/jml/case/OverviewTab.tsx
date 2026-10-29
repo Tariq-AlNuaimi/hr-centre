@@ -6,6 +6,7 @@ import { DescriptionList } from "@/components/shared/DescriptionList";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { MoveSummary } from "../movers/MoveSummary";
 import { ExitOverview } from "../leavers/ExitOverview";
+import { PreboardingCard } from "./PreboardingCard";
 import type { CaseDetail } from "./types";
 
 /** Overview — the case header in full, the joiner's IT status, external systems. */
@@ -47,7 +48,13 @@ export function OverviewTab({ detail }: { detail: CaseDetail }) {
   return (
     <div className="space-y-6">
       <DescriptionList items={items} columns={2} />
-      {j ? <JoinSummary j={j} /> : null}
+      {j ? (
+        <>
+          <JoinSummary j={j} />
+          {/* P2-4 — only a joiner has join details, so this is the JOIN branch. */}
+          <PreboardingCard caseId={detail.id} />
+        </>
+      ) : null}
       {detail.moveDetail ? <MoveSummary move={detail.moveDetail} /> : null}
       {detail.caseType === "LEAVE" ? <ExitOverview caseId={detail.id} /> : null}
       <SectionCard title={t("external")} subtitle={t("externalNote")}>

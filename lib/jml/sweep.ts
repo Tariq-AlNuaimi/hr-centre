@@ -4,6 +4,7 @@ import type { WorkingCalendar } from "@/lib/working-time/calendar";
 import { drainQueue } from "./email/queue";
 import { notifyJml } from "./engine/notify";
 import { runRetention } from "./join/retention";
+import { preboardingReminders } from "./preboarding/reminders";
 import { itReadinessReminders, overdueDigests } from "./join/sweep-steps";
 import { applyDueMoves } from "./move/apply";
 import { reconcileLineManagerTasks } from "./routing/assign";
@@ -54,6 +55,14 @@ const SWEEP_STEPS: SweepStep[] = [
   { name: "emailDrain", run: ({ now }) => drainQueue(now) },
   { name: "failedEmailAlerts", run: alertFailedEmails },
   { name: "itReadinessReminders", run: itReadinessReminders },
+  {
+    // P2-4 — preboarding reminders, once a day at 09:00 in the schedule's zone.
+    name: "preboardingReminders",
+    run: (ctx) =>
+      isLocalHour(ctx.now, 9, ctx.calendar.schedule.timeZone)
+        ? preboardingReminders(ctx)
+        : Promise.resolve({ skipped: "not-09:00" }),
+  },
   { name: "overdueDigests", run: overdueDigests },
   { name: "moveEffective", run: applyDueMoves },
   // Task routing D6: after any writer moved a reporting line (import, roll-up,
