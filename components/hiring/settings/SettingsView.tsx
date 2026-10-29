@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useHiringMe } from "../ui/api";
 import { Notice } from "../ui/states";
-import { Tabs } from "../ui/tabs";
+import { Tabs } from "@/components/shared/UrlTabs";
 import { ApprovalsCard } from "./ApprovalsCard";
 import { BudgetCard } from "./BudgetCard";
 import { TawteenCard } from "./TawteenCard";

@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { QueryState } from "../ui/states";
 
 type Template = {

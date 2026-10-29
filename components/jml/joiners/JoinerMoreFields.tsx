@@ -5,7 +5,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { EmployeePicker } from "@/components/pms/EmployeePicker";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import type { Lookups } from "../use-jml";
 import { EMPLOYMENT_TYPES, Text, Tri, type JoinerValues, type SetFn } from "./JoinerFields";
 

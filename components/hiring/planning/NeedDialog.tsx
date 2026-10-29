@@ -10,7 +10,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { formatDateTime } from "@/lib/format";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { StatusBadge } from "../ui/badges";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 import type { NeedRow, RoundView } from "./types";
 

@@ -16,7 +16,7 @@ import { useHiringQuery } from "../ui/api";
 import { StatusBadge } from "../ui/badges";
 import { useCrumb } from "../ui/crumb";
 import { QueryState } from "../ui/states";
-import { Tabs } from "../ui/tabs";
+import { Tabs } from "@/components/shared/UrlTabs";
 import { AuditTrail } from "./AuditTrail";
 import { CareersToggle } from "./CareersToggle";
 import { StatusCard } from "./StatusCard";

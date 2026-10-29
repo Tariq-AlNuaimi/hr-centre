@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { CURRENCY_CODES } from "@/lib/hiring/money";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { useOrgOptions } from "../ui/org";
 import { PersonPicker, type Person } from "../ui/person-picker";
 import { Notice, QueryState } from "../ui/states";

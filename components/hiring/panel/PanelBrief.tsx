@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { hiringFetch, useHiringQuery } from "../ui/api";
 import { useCrumb } from "../ui/crumb";
-import { Textarea } from "../ui/fields";
+import { Textarea } from "@/components/shared/FormControls";
 import { Notice, QueryState } from "../ui/states";
 import { initials, useRoundLabel } from "../interviews/bits";
 import { whenLabel } from "../interviews/time";

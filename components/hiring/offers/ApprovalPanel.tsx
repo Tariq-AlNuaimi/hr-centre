@@ -16,7 +16,7 @@ import {
 import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDateTime } from "@/lib/format";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice, QueryState } from "../ui/states";
 import type { ApprovalViewData, ChainStepView } from "./types";
 

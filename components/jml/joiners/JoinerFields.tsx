@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import type { Lookups } from "../use-jml";
 
 /**

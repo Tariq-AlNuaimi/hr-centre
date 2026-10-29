@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ApiError, apiClient } from "@/lib/api-client";
 import { useNotify } from "@/hooks/use-notify";
 import { cn } from "@/lib/utils";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
 

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { apiClient } from "@/lib/api-client";
 import { ActionDialog } from "../ActionDialog";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { useJmlAction, useJmlLookups } from "../use-jml";
 
 const DEDUCTION_TYPES = [

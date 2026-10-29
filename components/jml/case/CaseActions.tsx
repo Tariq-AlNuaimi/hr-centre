@@ -8,7 +8,7 @@ import { NativeSelect } from "@/components/org/NativeSelect";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
 import { ActionDialog } from "../ActionDialog";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { useJmlAction, useJmlLookups } from "../use-jml";
 import { LIVE, type CaseDetail } from "./types";
 import { WithdrawExit } from "../leavers/WithdrawExit";

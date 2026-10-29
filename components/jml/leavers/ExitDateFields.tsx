@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { DEFAULT_NOTICE, EXIT_SUBTYPES, EXIT_TYPES, type ExitValues } from "./exit-values";
 
 /**

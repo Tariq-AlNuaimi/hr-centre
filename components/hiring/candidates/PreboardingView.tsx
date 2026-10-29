@@ -12,7 +12,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDate } from "@/lib/format";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { useCrumb } from "../ui/crumb";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { FlowRail } from "../ui/flow-rail";
 import { Notice, QueryState } from "../ui/states";
 

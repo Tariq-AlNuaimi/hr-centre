@@ -9,7 +9,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import type { AssessmentConfig } from "@/lib/hiring/assessment-rules";
 import { useHiringMutation } from "../ui/api";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 
 export type Policy = AssessmentConfig & {
   thresholdLocked: boolean;

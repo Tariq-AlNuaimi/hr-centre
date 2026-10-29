@@ -1132,12 +1132,10 @@
 - components/hiring/sourcing/SourcingView.tsx
 - components/hiring/ui/badges.tsx
 - components/hiring/ui/competency-picker.tsx
-- components/hiring/ui/fields.tsx
 - components/hiring/ui/flow-rail.tsx
 - components/hiring/ui/person-picker.tsx
 - components/hiring/ui/stage.tsx
 - components/hiring/ui/states.tsx
-- components/hiring/ui/tabs.tsx
 - components/hiring/ui/vacant-steps.tsx
 - components/hive/HiveLogo.tsx
 - components/hive/HiveRoleBadge.tsx
@@ -1160,7 +1158,6 @@
 - components/jml/ActionDialog.tsx
 - components/jml/CaseBits.tsx
 - components/jml/EmployeeJmlTab.tsx
-- components/jml/Field.tsx
 - components/jml/States.tsx
 - components/jml/case/AccessCutoff.tsx
 - components/jml/case/AccessSection.tsx
@@ -1345,6 +1342,7 @@
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
 - components/shared/FilterBar.tsx
+- components/shared/FormControls.tsx
 - components/shared/FormField.tsx
 - components/shared/LinkCards.tsx
 - components/shared/PageHeader.tsx
@@ -1352,6 +1350,7 @@
 - components/shared/SectionCard.tsx
 - components/shared/Skeletons.tsx
 - components/shared/StatCard.tsx
+- components/shared/UrlTabs.tsx
 - components/ui/avatar.tsx
 - components/ui/badge.tsx
 - components/ui/button.tsx

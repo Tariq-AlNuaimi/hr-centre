@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { apiClient } from "@/lib/api-client";
 import { ACCESS_DOMAINS } from "../case/AccessSection";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
 

@@ -17,7 +17,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDate } from "@/lib/format";
 import { diffOfferTerms, restartsApproval, type OfferTerms } from "@/lib/hiring/offer-package";
 import { useHiringMutation } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 import { AllowanceEditor, type Allowance } from "./OfferForm";
 import { muscatDay } from "./bits";

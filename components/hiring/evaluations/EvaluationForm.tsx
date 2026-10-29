@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/shared/SectionCard";
 import type { HireVote } from "@/lib/hiring/scorecard-math";
-import { Check } from "../ui/fields";
+import { Check } from "@/components/shared/FormControls";
 import {
   CompetencyScores,
   EvidenceFields,

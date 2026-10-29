@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmployeePicker } from "@/components/pms/EmployeePicker";
 import { apiClient } from "@/lib/api-client";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { CaseStatusBadge } from "../CaseBits";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";

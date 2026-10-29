@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Check, Field } from "../ui/fields";
+import { Check, Field } from "@/components/shared/FormControls";
 import { Notice, QueryState } from "../ui/states";
 import type { AiProviderView } from "./types";
 

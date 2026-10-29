@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Check, Field, Textarea } from "../ui/fields";
+import { Check, Field, Textarea } from "@/components/shared/FormControls";
 import { QueryState } from "../ui/states";
 import { omr } from "./bits";
 import type { NoteView } from "./types";

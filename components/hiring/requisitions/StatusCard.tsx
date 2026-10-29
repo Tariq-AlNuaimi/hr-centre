@@ -16,7 +16,7 @@ import { formatDateTime } from "@/lib/format";
 import { STATUS_TRANSITIONS } from "@/lib/hiring/requisition-rules";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { StatusBadge } from "../ui/badges";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import type { RequisitionDetail, StatusHistoryRow } from "./types";
 
 /**

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
 import { ActionDialog } from "../ActionDialog";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { useJmlAction } from "../use-jml";
 
 type Result = { cancelledTasks: number; reversalTasks: number; departureReversed: boolean };

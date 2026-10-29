@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { defaultDueAt } from "@/lib/hiring/assessment-rules";
 import { useHiringMutation } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import type { AssessmentRow } from "./AssessmentView";
 import type { Policy } from "./AssessmentPolicy";
 

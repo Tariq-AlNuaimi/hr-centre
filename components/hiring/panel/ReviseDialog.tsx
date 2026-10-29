@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import type { HireVote } from "@/lib/hiring/scorecard-math";
 import { useHiringMutation } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { VotePicker } from "./ScorecardFields";
 import type { MyCard } from "./types";
 

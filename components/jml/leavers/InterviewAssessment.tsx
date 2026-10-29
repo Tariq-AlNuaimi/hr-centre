@@ -6,7 +6,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { apiClient } from "@/lib/api-client";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { useJmlAction } from "../use-jml";
 import type { Interview } from "./InterviewTab";
 

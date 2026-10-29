@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { useHiringMutation } from "../ui/api";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 import { useOrgOptions } from "../ui/org";
 import { PersonPicker, type Person } from "../ui/person-picker";
 import type { RoundView } from "./types";

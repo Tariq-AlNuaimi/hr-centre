@@ -12,7 +12,7 @@ import { NativeSelect } from "@/components/org/NativeSelect";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
 import { downloadFile } from "../download";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
 

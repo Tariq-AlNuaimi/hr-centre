@@ -17,7 +17,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { formatDate } from "@/lib/format";
 import { CHANNELS_WITH_DETAIL, omaniPreferredForced } from "@/lib/hiring/posting-rules";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Check, Field } from "../ui/fields";
+import { Check, Field } from "@/components/shared/FormControls";
 import { Notice, QueryState } from "../ui/states";
 import type { RequisitionDetail } from "./types";
 

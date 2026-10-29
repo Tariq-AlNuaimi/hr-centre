@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { GATE_CODE } from "@/lib/hiring/stage-gates";
 import { HiringApiError, hiringFetch } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 
 /**

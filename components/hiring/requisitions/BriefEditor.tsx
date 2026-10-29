@@ -17,7 +17,7 @@ import { NativeSelect } from "@/components/org/NativeSelect";
 import { CANONICAL_ROUND_ORDER, type RoundPlanEntry } from "@/lib/hiring/interview-rules";
 import { useHiringMutation } from "../ui/api";
 import { CompetencyPicker } from "../ui/competency-picker";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 
 type Draft = { round: string; competencies: string[]; durationMinutes: number };
 

@@ -24,7 +24,7 @@ import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { ScoreChip, StageBadge } from "../ui/stage";
 import { useCrumb } from "../ui/crumb";
 import { QueryState } from "../ui/states";
-import { Tabs } from "../ui/tabs";
+import { Tabs } from "@/components/shared/UrlTabs";
 import { CandidateForm, EMPTY_CANDIDATE, toBody } from "./CandidateForm";
 import { CvCard } from "./CvCard";
 import { DataRequestCard } from "./DataRequestCard";

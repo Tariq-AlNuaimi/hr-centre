@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { DOCUMENT_KINDS } from "@/lib/validations/hiring/candidate";
 import { useHiringMutation } from "../ui/api";
-import { Check, Field, Textarea } from "../ui/fields";
+import { Check, Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 
 /** Upload one piece of package evidence (PDF or image ≤ 10 MB) — multipart, so not via hiringFetch. */
