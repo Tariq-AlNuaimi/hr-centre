@@ -1,7 +1,7 @@
 import { roleNamesFor } from "@/lib/rbac/resolve";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 
 /**
  * The caller's own PMS identity and capabilities — spec §4.4.

@@ -1,5 +1,5 @@
 import { PROVIDER_LIMIT, type WorkItem, type WorkProvider } from "@/lib/core/work-items";
-import { shortPreview } from "@/lib/notifications/user-notify";
+import { shortPreview } from "@/lib/core/notify/user-notify";
 import { formatTicketId } from "@/lib/hive/ticket-id";
 import { ticketTasksFor } from "./my-tasks";
 import { getTicketSettings } from "./ticket-settings";

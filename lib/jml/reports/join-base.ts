@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { decryptSalary } from "@/lib/pms/employee-select";
+import { decryptSalary } from "@/lib/core/employee-select";
 import type { ReportFilters } from "@/lib/validations/jml/report";
 import { canFor, caseScopeWhere, subjectOf, type JmlActor } from "../access";
 

@@ -11,7 +11,7 @@ import type { JmlAssigneeRole, JmlTaskDesk } from "@/generated/prisma/client";
  *    (Employee.managerId → that employee's User); none → HR owner + warning.
  *
  * Authority for a non-HR worker is DERIVED, never assigned (the Performance
- * rule, lib/pms/permissions.ts): desk membership for IT / FINANCE tasks, the
+ * rule, lib/core/permissions.ts): desk membership for IT / FINANCE tasks, the
  * manager edge for LINE_MANAGER tasks. It covers those tasks only — never the
  * rest of the case, and never settlement or other Restricted data.
  */

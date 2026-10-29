@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { formRatio, overallRatio } from "@/lib/pms/three-sixty";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { canViewEmployee } from "@/lib/core/permissions";
 
 /**
  * §9.8 — "Calculate 360 score per employee (§9.5). Consolidate written comments

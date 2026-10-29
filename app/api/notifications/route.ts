@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import type { Prisma } from "@/generated/prisma/client";
-import { NOTIFICATION_PAGE_SIZE, feedOwnerWhere } from "@/lib/pms/notifications";
+import { NOTIFICATION_PAGE_SIZE, feedOwnerWhere } from "@/lib/core/notify/store";
 
 /**
  * The feed behind the header bell — §5.5's escalation ladder, read by a human.

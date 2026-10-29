@@ -1,5 +1,5 @@
 import type { SignOffParty } from "@/generated/prisma/client";
-import { canActOnEmployee, isHr, type PmsActor } from "./permissions";
+import { canActOnEmployee, isHr, type PmsActor } from "@/lib/core/permissions";
 import { canActOnStage, type StageWindow } from "./cycle";
 import type { RatingRefusal } from "./rating";
 

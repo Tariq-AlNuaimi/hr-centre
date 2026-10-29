@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, forbidden } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
-import { canSeePlatformAdminRoster } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { canSeePlatformAdminRoster } from "@/lib/core/permissions";
 
 /**
  * Who the platform administrators are — ADR-070, amended 2026-08-27.
@@ -52,7 +52,7 @@ const MAX_LISTED = 25;
 export const GET = withRateLimit(
   withAuth(async (_request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    // The rule lives in lib/pms/permissions.ts with every other authority
+    // The rule lives in lib/core/permissions.ts with every other authority
     // question, so it is unit-testable and cannot drift from a second copy.
     if (!canSeePlatformAdminRoster(actor, session.user.role)) return forbidden();
 

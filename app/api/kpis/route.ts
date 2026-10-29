@@ -2,12 +2,12 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { GOAL_SETTING_STAGE, kpiSetAccessRefusal } from "@/lib/pms/kpi";
 import { periodAuthorityBlockedReason } from "@/lib/pms/transfer";
 import { KPI_SELECT, serializeKpi, weightageSummary } from "@/lib/pms/kpi-select";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee, isHr, type PmsActor } from "@/lib/pms/permissions";
+import { canViewEmployee, isHr, type PmsActor } from "@/lib/core/permissions";
 import { createKpiSchema } from "@/lib/validations/kpi";
 
 /**

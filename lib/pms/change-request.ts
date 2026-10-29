@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { ChangeRequestStatus } from "@/generated/prisma/client";
 import type { CycleStageKind, RoleTrack } from "@/generated/prisma/client";
-import { canActOnEmployee, isHr, type PmsActor } from "./permissions";
+import { canActOnEmployee, isHr, type PmsActor } from "@/lib/core/permissions";
 import { canActOnStage, isGoalSettingExempt, stageState, type StageWindow } from "./cycle";
 import { REQUIRED_TOTAL, weightageTotal, type WeightedKpi } from "./kpi";
 

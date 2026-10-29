@@ -3,8 +3,8 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
-import { resolveActor } from "@/lib/pms/actor";
-import { feedOwnerWhere } from "@/lib/pms/notifications";
+import { resolveActor } from "@/lib/core/actor";
+import { feedOwnerWhere } from "@/lib/core/notify/store";
 import { markReadSchema } from "@/lib/validations/notification";
 
 /**

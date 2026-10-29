@@ -3,7 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, forbidden, ok, readJsonBody } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { createOrgDepartment } from "@/lib/org/units";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";
 import { createOrgDepartmentSchema } from "@/lib/validations/org";

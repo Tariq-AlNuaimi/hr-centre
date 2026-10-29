@@ -1,4 +1,4 @@
-import { buildReportSheet } from "@/lib/pms/export/xlsx";
+import { buildReportSheet } from "@/lib/core/export/xlsx";
 import type { ExportRow } from "./candidate-bulk";
 
 /**

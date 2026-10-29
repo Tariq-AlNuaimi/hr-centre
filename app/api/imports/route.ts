@@ -3,7 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, forbidden, ok } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { ImportFileError, MAX_UPLOAD_BYTES } from "@/lib/pms/import/loaders/xlsx";
 import { previewImport } from "@/lib/pms/import/run";
 

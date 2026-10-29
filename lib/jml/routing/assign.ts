@@ -1,6 +1,6 @@
 import type { JmlAssigneeRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { notifyUsers } from "@/lib/notifications/user-notify";
+import { notifyUsers } from "@/lib/core/notify/user-notify";
 import { LIVE_CASE_STATUSES, SETTLED_TASK_STATUSES } from "../vocab";
 import { deskMembers, staffedDesks } from "./desks";
 import { deskOf, routingWarnings, type RoutingContext, type RoutingWarning } from "./rules";

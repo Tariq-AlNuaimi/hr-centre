@@ -1,6 +1,6 @@
 import type { NotificationKind } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { persistNotifications } from "@/lib/pms/notifications";
+import { persistNotifications } from "@/lib/core/notify/store";
 
 /**
  * In-app notices addressed to a LOGIN (docs/blueprints/ux-p0.md, US-6) — the

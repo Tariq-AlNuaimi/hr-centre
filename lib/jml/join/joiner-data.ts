@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { decryptSalary } from "@/lib/pms/employee-select";
+import { decryptSalary } from "@/lib/core/employee-select";
 import { isPlaceholderEmail, isProvisionalOdooId } from "@/lib/people/provisional-id";
 import { teamPlacementProblem } from "@/lib/org/teams";
 import type { ScopeSubject } from "@/lib/rbac/grants";

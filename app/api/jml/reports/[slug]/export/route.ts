@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
-import { xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 import { exportReport } from "@/lib/jml/reports/registry";
 import { jml, query, requireAnywhere } from "@/lib/jml/route";
 import { reportFilterSchema } from "@/lib/validations/jml/report";

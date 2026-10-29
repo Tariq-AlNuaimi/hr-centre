@@ -1,5 +1,5 @@
 import type { CycleStageKind, RoleTrack, SignOffParty } from "@/generated/prisma/client";
-import { canActOnEmployee, type PmsActor } from "./permissions";
+import { canActOnEmployee, type PmsActor } from "@/lib/core/permissions";
 import { canActOnStage, isGoalSettingExempt, type StageWindow } from "./cycle";
 import { DEFAULT_CYCLE_POLICY, type CyclePolicy } from "./cycle-policy";
 

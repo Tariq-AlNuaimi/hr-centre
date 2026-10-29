@@ -4,7 +4,7 @@ import type { CycleStatus, RoleTrack } from "@/generated/prisma/client";
 // import from cycle.ts pulls the Postgres driver into the browser bundle and
 // the build dies on a missing `dns`.
 import { canActOnStage, isGoalSettingExempt, type StageWindow } from "./stage";
-import { isHr, type PmsActor } from "./permissions";
+import { isHr, type PmsActor } from "@/lib/core/permissions";
 
 /**
  * §7.1's evidence rules — the pure half.

@@ -13,7 +13,7 @@ import {
   type WeightedKpi,
 } from "../../lib/pms/kpi";
 import { isGoalSettingExempt, type StageWindow } from "../../lib/pms/cycle";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 import { createKpiSchema, updateKpiSchema } from "../../lib/validations/kpi";
 
 /**

@@ -1,6 +1,6 @@
 import writeXlsxFile from "write-excel-file/node";
 import { RECORD_FIELDS, type RecordField } from "@/lib/people/record";
-import { COLUMN_TITLES, IMPORT_COLUMNS, type ImportColumn } from "../import/types";
+import { COLUMN_TITLES, IMPORT_COLUMNS, type ImportColumn } from "@/lib/pms/import/types";
 
 /**
  * Excel emission — the write half of ADR-066's two-file engine seam.

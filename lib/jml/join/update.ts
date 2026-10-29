@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction } from "@/lib/prisma";
-import { encryptSalary } from "@/lib/pms/employee-select";
+import { encryptSalary } from "@/lib/core/employee-select";
 import { existingLoginEmails, provisionLoginFor } from "@/lib/pms/import/run";
 import { isPlaceholderEmail } from "@/lib/people/provisional-id";
 import { recordWriteData } from "@/lib/people/write";

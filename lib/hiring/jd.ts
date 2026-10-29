@@ -5,7 +5,7 @@ import { can, canSignJdForHr, type HiringActor } from "./access";
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { HiringRuleError } from "./http";
 import { notifyJdSubmitted } from "./notify";
-import { resolveUserNotices } from "@/lib/notifications/user-notify";
+import { resolveUserNotices } from "@/lib/core/notify/user-notify";
 import {
   canRequestJdChanges,
   canSignJd,

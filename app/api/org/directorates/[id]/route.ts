@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, ok, readJsonBody } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { renameDirectorate, retireDirectorate } from "@/lib/org/units";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";
 import { updateDirectorateSchema } from "@/lib/validations/org";

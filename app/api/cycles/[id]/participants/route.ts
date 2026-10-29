@@ -5,7 +5,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { forbidden } from "@/lib/api-response";
 import { GOAL_SETTING_STAGE, kpiSetAccessRefusal, weightageView } from "@/lib/pms/kpi";
 import {

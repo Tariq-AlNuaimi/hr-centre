@@ -11,7 +11,7 @@ import type { KpiVersionRow } from "@/components/pms/KpiVersionHistory";
 import type { ComposerKpi } from "@/components/pms/change-request-draft";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   MID_YEAR_STAGE,
   changeRequestAccessRefusal,
@@ -20,7 +20,7 @@ import {
 } from "@/lib/pms/change-request";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee, isHr } from "@/lib/pms/permissions";
+import { canViewEmployee, isHr } from "@/lib/core/permissions";
 
 /**
  * The mid-year screen for one participant — spec §6.

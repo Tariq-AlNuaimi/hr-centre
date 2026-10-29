@@ -1,4 +1,4 @@
-import { buildReportWorkbook, toReportSheet } from "@/lib/pms/export/xlsx";
+import { buildReportWorkbook, toReportSheet } from "@/lib/core/export/xlsx";
 import type { LeaveReportFilters } from "@/lib/validations/jml/report";
 import { canFor, holdsAnywhere, subjectOf, type JmlActor } from "../../access";
 import { JmlError } from "../../errors";

@@ -1,7 +1,7 @@
 import { useTranslations } from "next-intl";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
-import type { EmployeeRecordView } from "@/lib/pms/employee-select";
+import type { EmployeeRecordView } from "@/lib/core/employee-select";
 
 /**
  * The HR Centre record sections — blueprint §2 (F-b), one per record tab

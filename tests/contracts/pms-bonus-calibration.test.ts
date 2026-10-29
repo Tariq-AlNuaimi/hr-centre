@@ -20,7 +20,7 @@ import {
   isCurveEligible,
   tally,
 } from "../../lib/pms/calibration";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 
 /** §10 calibration and §11 bonus. */
 

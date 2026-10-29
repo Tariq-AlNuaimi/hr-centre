@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor, type ResolvedActor } from "@/lib/pms/actor";
+import { resolveActor, type ResolvedActor } from "@/lib/core/actor";
 import { isGoalSettingExempt, type StageWindow } from "@/lib/pms/cycle";
 import { GOAL_SETTING_STAGE, kpiEditBlockedReason } from "@/lib/pms/kpi";
 import { periodAuthorityBlockedReason } from "@/lib/pms/transfer";
@@ -13,7 +13,7 @@ import {
   weightageSummary,
 } from "@/lib/pms/kpi-select";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee, isHr } from "@/lib/pms/permissions";
+import { canViewEmployee, isHr } from "@/lib/core/permissions";
 import { updateKpiSchema } from "@/lib/validations/kpi";
 
 /**

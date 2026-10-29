@@ -5,7 +5,7 @@ import { holdsAnywhere } from "@/lib/hiring/access";
 import { bulkStageMove, exportRows } from "@/lib/hiring/candidate-bulk";
 import { candidateSheet } from "@/lib/hiring/candidate-export";
 import { hiringRoute, parseBody } from "@/lib/hiring/route";
-import { xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 import { bulkActionSchema } from "@/lib/validations/hiring/candidate";
 
 /** Bulk stage move (governed moves skipped) or export of a selection (≤500). */

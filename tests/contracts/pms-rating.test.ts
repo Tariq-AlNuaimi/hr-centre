@@ -13,7 +13,7 @@ import {
   yearEndState,
 } from "../../lib/pms/year-end";
 import type { StageWindow } from "../../lib/pms/cycle";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 
 /**
  * §7.1 — the year-end assessment.

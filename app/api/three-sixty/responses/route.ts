@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { evaluatorStatus, isAnswerScore } from "@/lib/pms/three-sixty";
 import { answerBlockedReason } from "@/lib/pms/three-sixty-answer";
 import { submitResponsesSchema } from "@/lib/validations/three-sixty";

@@ -15,7 +15,7 @@ import { bandVerdict } from "./offer-package";
 import { nextOfferStep, offerDecisionRefusal } from "./offer-rules";
 import { offerPay, type LoadedOffer } from "./offers";
 import { notifyApprovalStep, notifyOfferDecided } from "./notify";
-import { resolveUserNotices } from "@/lib/notifications/user-notify";
+import { resolveUserNotices } from "@/lib/core/notify/user-notify";
 import { orgNames, peopleById } from "./people";
 
 /**

@@ -6,7 +6,7 @@ import { assertChainStaffed, getRoutedChain, type RoutedStep } from "./approval-
 import { describeFill, fillLabel, nextFillStatus } from "./fill-rules";
 import { HiringRuleError } from "./http";
 import { notifyApprovalStep } from "./notify";
-import { resolveUserNotices } from "@/lib/notifications/user-notify";
+import { resolveUserNotices } from "@/lib/core/notify/user-notify";
 import { toNum, toOMRorNull } from "./money";
 import { seatOccupancyWhere } from "./requisitions";
 import {

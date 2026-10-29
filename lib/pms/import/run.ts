@@ -8,7 +8,7 @@ import {
 } from "./reconcile";
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
-import { decryptSalary } from "../employee-select";
+import { decryptSalary } from "@/lib/core/employee-select";
 import { isPlaceholderEmail } from "@/lib/people/provisional-id";
 import { employeeCreateData, employeeUpdateData, type EmployeeCoreInput } from "@/lib/people/write";
 import { readIdNumber } from "@/lib/people/id-documents";

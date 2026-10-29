@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isHr, type PmsActor } from "./permissions";
+import { isHr, type PmsActor } from "@/lib/core/permissions";
 
 /**
  * The performance cycle — spec §2 (cadence) and §5.4 (hard locks).

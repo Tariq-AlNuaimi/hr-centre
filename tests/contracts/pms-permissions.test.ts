@@ -20,8 +20,8 @@ import {
   isReadOnly,
   canSeePlatformAdminRoster,
   type PmsActor,
-} from "../../lib/pms/permissions";
-import { employeeSelect, serializeEmployee } from "../../lib/pms/employee-select";
+} from "../../lib/core/permissions";
+import { employeeSelect, serializeEmployee } from "../../lib/core/employee-select";
 import { encryptField } from "../../lib/crypto/field-encryption";
 
 /**
@@ -310,7 +310,7 @@ test("capabilitiesFor is consistent with the individual predicates", () => {
 });
 
 test("§4.1 `hr` is who may RUN the cycle, and it is not `orgWide` or `!readOnly`", async () => {
-  const { capabilitiesFor } = await import("../../lib/pms/permissions");
+  const { capabilitiesFor } = await import("../../lib/core/permissions");
 
   const actor = (roles: string[], isLineManager = false) => ({
     userId: "u1",

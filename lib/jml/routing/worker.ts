@@ -1,6 +1,6 @@
 import type { JmlAssigneeRole, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { ResolvedActor } from "@/lib/pms/actor";
+import type { ResolvedActor } from "@/lib/core/actor";
 import { LIVE_CASE_STATUSES, SETTLED_TASK_STATUSES } from "../vocab";
 import { desksOf } from "./desks";
 import { workerMayWork, type WorkerFacts } from "./rules";

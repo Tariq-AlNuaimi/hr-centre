@@ -3,11 +3,11 @@ import type { Band } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { bonusRows, bonusTotals } from "@/lib/pms/bonus-report";
 import { BANDS, tally } from "@/lib/pms/calibration";
 import { stageState } from "@/lib/pms/cycle";
-import { canViewCompensation } from "@/lib/pms/permissions";
+import { canViewCompensation } from "@/lib/core/permissions";
 import { stageProgress } from "@/lib/pms/status";
 import { participantStatuses } from "@/lib/pms/status-query";
 

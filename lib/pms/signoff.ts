@@ -1,6 +1,6 @@
 import type { CycleStatus, SignOffParty } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { canActOnEmployee, type PmsActor } from "./permissions";
+import { canActOnEmployee, type PmsActor } from "@/lib/core/permissions";
 import { GOAL_SETTING_STAGE, weightageMessageByPeriod, type PeriodWeightedKpi } from "./kpi";
 import { isGoalSettingExempt, stageState, type StageWindow } from "./cycle";
 import { currentKpiSetHash } from "./kpi-select";

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { canRunCycle } from "@/lib/pms/cycle";
 import { stageReopensUnacknowledged } from "@/lib/pms/change-request";
 import { recordAudit } from "@/lib/prisma/audit-extension";

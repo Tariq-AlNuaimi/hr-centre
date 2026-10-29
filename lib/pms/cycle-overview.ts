@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { participantStatuses } from "@/lib/pms/status-query";
 import { completion, tallyBy, type StepState } from "@/lib/pms/status";
 import { stageState } from "@/lib/pms/stage";
-import { persistNotifications, type PendingNotification } from "@/lib/pms/notifications";
+import { persistNotifications, type PendingNotification } from "@/lib/core/notify/store";
 import type { CycleStageKind } from "@/generated/prisma/client";
 
 /**

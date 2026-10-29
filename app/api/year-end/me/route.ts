@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { isGoalSettingExempt, stageState } from "@/lib/pms/cycle";
 import { canViewEvidence } from "@/lib/pms/evidence";
 import { isStorageConfigured } from "@/lib/storage";

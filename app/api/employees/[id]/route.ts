@@ -2,15 +2,15 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   employeeDetailSelect,
   employeeSelect,
   serializeEmployee,
   serializeEmployeeDetail,
-} from "@/lib/pms/employee-select";
+} from "@/lib/core/employee-select";
 import { employeeUpdateData } from "@/lib/people/write";
-import { actorCan, canViewEmployee } from "@/lib/pms/permissions";
+import { actorCan, canViewEmployee } from "@/lib/core/permissions";
 import { placementOf, subjectForPlacement } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";

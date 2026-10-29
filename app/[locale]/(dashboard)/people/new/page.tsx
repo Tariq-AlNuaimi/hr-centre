@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { AddEmployeeForm } from "@/components/people/AddEmployeeForm";
 

@@ -23,7 +23,7 @@ import {
 import { Prisma } from "../../generated/prisma/client";
 import { kpiSetHash, type KpiHashRow } from "../../lib/pms/kpi-select";
 import type { StageWindow } from "../../lib/pms/cycle";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 
 // December goal-setting, the stage §5.5 warns about: a grace window here runs
 // straight at the cycle boundary.
