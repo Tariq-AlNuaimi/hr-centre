@@ -1,5 +1,6 @@
 "use client";
 
+import { placeLabel } from "@/lib/hiring/careers-jd";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -127,6 +128,13 @@ function Overview({ r }: { r: RequisitionDetail }) {
             { key: "hm", label: t("hiringManager"), value: dash(r.hiringManager?.name) },
             { key: "owner", label: t("owner"), value: r.owner?.name ?? t("ownerUnassigned") },
             { key: "grade", label: t("grade"), value: dash(r.grade) },
+            {
+              key: "location",
+              label: t("location"),
+              value: `${placeLabel({ city: r.locationCity, country: r.locationCountry })} · ${t(
+                `arrangement.${r.workArrangement}`,
+              )}`,
+            },
             { key: "openings", label: t("openings"), value: r.fillLabel },
             {
               key: "close",

@@ -80,6 +80,28 @@ export function jdBlocks(md: string): JdBlock[] {
   return blocks.filter((b) => (b.kind === "list" ? b.items.length > 0 : b.text.length > 0));
 }
 
+/** A requisition's location (overnight item 3). */
+export type JobLocation = {
+  city: string;
+  /** ISO 3166-1 alpha-2. */
+  country: string;
+  arrangement: "ON_SITE" | "HYBRID" | "REMOTE";
+};
+
+/** "Oman" for "OM" — English names from the runtime, the code itself if unknown. */
+export function countryName(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** "Muscat, Oman" — the place part of a location (the arrangement is shown beside it). */
+export function placeLabel(l: Pick<JobLocation, "city" | "country">): string {
+  return `${l.city}, ${countryName(l.country)}`;
+}
+
 export type JobPostingInput = {
   title: string;
   description: string;
@@ -87,13 +109,16 @@ export type JobPostingInput = {
   postedAt: string | null;
   validThrough: string | null;
   url: string;
+  location: JobLocation;
 };
 
 /**
- * schema.org `JobPosting` (Google for Jobs). Requisitions carry no location
- * yet, so every role is placed in Muscat, OM (blueprint open question).
+ * schema.org `JobPosting` (Google for Jobs) with the requisition's location.
+ * A remote role adds `jobLocationType: TELECOMMUTE` and the country applicants
+ * must be in; it keeps `jobLocation` (the hiring office), which Google accepts.
  */
 export function jobPostingJsonLd(r: JobPostingInput): Record<string, unknown> {
+  const remote = r.location.arrangement === "REMOTE";
   return {
     "@context": "https://schema.org",
     "@type": "JobPosting",
@@ -104,8 +129,21 @@ export function jobPostingJsonLd(r: JobPostingInput): Record<string, unknown> {
     hiringOrganization: { "@type": "Organization", name: r.company || "Rihal" },
     jobLocation: {
       "@type": "Place",
-      address: { "@type": "PostalAddress", addressLocality: "Muscat", addressCountry: "OM" },
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: r.location.city,
+        addressCountry: r.location.country,
+      },
     },
+    ...(remote
+      ? {
+          jobLocationType: "TELECOMMUTE",
+          applicantLocationRequirements: {
+            "@type": "Country",
+            name: countryName(r.location.country),
+          },
+        }
+      : {}),
     url: r.url,
   };
 }

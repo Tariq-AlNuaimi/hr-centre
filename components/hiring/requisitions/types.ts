@@ -24,6 +24,9 @@ export type RequisitionDetail = {
   businessNeed: string | null;
   alternativesConsidered: string | null;
   hmSeesSalary: boolean;
+  locationCity: string;
+  locationCountry: string;
+  workArrangement: "ON_SITE" | "HYBRID" | "REMOTE";
   hiringManager: Person | null;
   owner: Person | null;
   seatsFilled: number;

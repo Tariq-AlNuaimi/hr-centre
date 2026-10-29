@@ -2826,6 +2826,14 @@ model HiringSetting {
 }
 
 /// The requisition (Interview Hub `Position`). Scope key: entityId (+ departmentId).
+/// Where a role is worked (overnight item 3). REMOTE maps to JobPosting
+/// `jobLocationType: TELECOMMUTE`.
+enum HiringWorkArrangement {
+  ON_SITE
+  HYBRID
+  REMOTE
+}
+
 model HiringRequisition {
   id                     String                  @id @default(cuid())
   title                  String
@@ -2852,6 +2860,12 @@ model HiringRequisition {
   jdAuthorId             String?
   jdApprovedAt           DateTime?
   jdTemplateTitle        String?
+  /// Job location (overnight item 3): shown on the careers board and role page
+  /// and in the JobPosting structured data. Existing rows: Muscat, OM, on-site.
+  locationCity           String                  @default("Muscat") @map("location_city")
+  /// ISO 3166-1 alpha-2, upper case.
+  locationCountry        String                  @default("OM") @map("location_country")
+  workArrangement        HiringWorkArrangement   @default(ON_SITE) @map("work_arrangement")
 
   candidates    HiringCandidate[]
   interviews    HiringInterview[]

@@ -4901,7 +4901,15 @@
       "targetClose": "Target close date",
       "hmSeesSalary": "The hiring manager may see pay on this requisition",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "locationCity": "City",
+      "locationCountry": "Country",
+      "workArrangement": "Work arrangement",
+      "arrangement": {
+        "ON_SITE": "On-site",
+        "HYBRID": "Hybrid",
+        "REMOTE": "Remote"
+      }
     },
     "requisition": {
       "edit": "Edit",
@@ -4956,7 +4964,13 @@
       "flowScreening": "CV screening",
       "flowAssessment": "Assessment",
       "flowInterviews": "Interviews",
-      "flowComparison": "Compare finalists"
+      "flowComparison": "Compare finalists",
+      "location": "Location",
+      "arrangement": {
+        "ON_SITE": "On-site",
+        "HYBRID": "Hybrid",
+        "REMOTE": "Remote"
+      }
     },
     "approval": {
       "title": "Headcount approval — {title}",
@@ -7012,7 +7026,14 @@
     "copyLink": "Copy link",
     "copied": "Link copied",
     "shareLinkedIn": "Share on LinkedIn",
-    "roleMetaTitle": "{title} at {company}"
+    "roleMetaTitle": "{title} at {company}",
+    "locations": "Locations",
+    "allLocations": "All locations",
+    "arrangement": {
+      "ON_SITE": "On-site",
+      "HYBRID": "Hybrid",
+      "REMOTE": "Remote"
+    }
   },
   "agency": {
     "metaTitle": "Agency submission",

@@ -56,6 +56,7 @@ export default async function CareersRolePage({ params }: { params: Params }) {
     postedAt: role.postedAt,
     validThrough: role.validThrough,
     url,
+    location: role.location,
   });
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
@@ -76,6 +77,9 @@ export default async function CareersRolePage({ params }: { params: Params }) {
           <h1 className="text-h2 font-bold text-careers-navy">{role.title}</h1>
           <p className="mt-1 text-sm text-careers-muted">
             {[role.company, role.department].filter(Boolean).join(" · ")}
+          </p>
+          <p className="mt-1 text-sm text-careers-muted">
+            {role.place} · {t(`arrangement.${role.location.arrangement}`)}
           </p>
           {role.postedAt ? (
             <p className="mt-1 text-xs text-careers-muted">

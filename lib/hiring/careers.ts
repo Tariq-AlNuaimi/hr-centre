@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { PRIVACY_NOTICE_VERSION, type ApplyInput } from "@/lib/validations/hiring/public";
 import { HiringRuleError } from "./http";
-import { roleSlug } from "./careers-jd";
+import { placeLabel, roleSlug, type JobLocation } from "./careers-jd";
 import { CAREERS_TAG } from "./jd";
 import { orgNames } from "./people";
 import { asNumber, readSetting } from "./settings";
@@ -24,6 +24,9 @@ export type CareersRole = {
   description: string;
   postedAt: string | null;
   slug: string;
+  location: JobLocation;
+  /** "Muscat, Oman" — what the board's location filter groups by. */
+  place: string;
 };
 
 /** One role's page: the board's fields plus the JD as written and its close date. */
@@ -63,6 +66,19 @@ export function markdownToPlainText(md: string): string {
     .trim();
 }
 
+function locationOf(r: {
+  locationCity: string;
+  locationCountry: string;
+  workArrangement: JobLocation["arrangement"];
+}): { location: JobLocation; place: string } {
+  const location = {
+    city: r.locationCity,
+    country: r.locationCountry,
+    arrangement: r.workArrangement,
+  };
+  return { location, place: placeLabel(location) };
+}
+
 /** The board, cached 60 s and revalidated on the careers tag (posting / JD changes). */
 export const listOpenRoles = unstable_cache(
   async (): Promise<CareersRole[]> => {
@@ -81,6 +97,9 @@ export const listOpenRoles = unstable_cache(
         entityId: true,
         departmentId: true,
         description: true,
+        locationCity: true,
+        locationCountry: true,
+        workArrangement: true,
         postings: {
           where: { channel: "CAREERS_PAGE", state: "LIVE" },
           select: { postedAt: true },
@@ -100,9 +119,11 @@ export const listOpenRoles = unstable_cache(
       description: markdownToPlainText(r.description),
       postedAt: r.postings[0]?.postedAt?.toISOString() ?? null,
       slug: roleSlug(r.title, r.id),
+      ...locationOf(r),
     }));
   },
-  ["hiring-careers-board"],
+  // v2: rows now carry the location — a cached v1 row (no location) must never be served.
+  ["hiring-careers-board-v2"],
   { revalidate: 60, tags: [CAREERS_TAG] },
 );
 
@@ -128,6 +149,9 @@ export const openRole = unstable_cache(
         departmentId: true,
         description: true,
         targetCloseDate: true,
+        locationCity: true,
+        locationCountry: true,
+        workArrangement: true,
         postings: {
           where: { channel: "CAREERS_PAGE", state: "LIVE" },
           select: { postedAt: true },
@@ -147,9 +171,10 @@ export const openRole = unstable_cache(
       postedAt: r.postings[0]?.postedAt?.toISOString() ?? null,
       validThrough: r.targetCloseDate?.toISOString() ?? null,
       slug: roleSlug(r.title, r.id),
+      ...locationOf(r),
     };
   },
-  ["hiring-careers-role"],
+  ["hiring-careers-role-v2"],
   { revalidate: 60, tags: [CAREERS_TAG] },
 );
 

@@ -499,7 +499,7 @@
 - HiveTicketSettings: id, ticketPrefix, responseHours, statusLabels
 - HiveOrgUnitInfo: id, kind, unitId, leaderName, leaderTitle, order, createdAt, updatedAt
 - HiringSetting: id, key, value, updatedAt
-- HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, candidates, interviews, roundPlans, offers, questions, statusHistory, approvals, postings, jdSignoffs, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
+- HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, locationCity, locationCountry, workArrangement, candidates, interviews, roundPlans, offers, questions, statusHistory, approvals, postings, jdSignoffs, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
 - HiringPosting: id, requisitionId, requisition, channel, state, detail, omaniPreferred, postedAt, postedById, withdrawnAt, withdrawnById, createdAt, updatedAt
 - HiringRequisitionStatusHistory: id, requisitionId, requisition, fromStatus, toStatus, changedById, reason, changedAt, approvals
 - HiringRequisitionApproval: id, requisitionId, requisition, submissionId, submission, sequence, requiredRole, approverId, comment, createdAt
@@ -599,7 +599,7 @@
 - lib/hiring/candidate-views.ts: candidateDetail, boardCards
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
 - lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
-- lib/hiring/careers-jd.ts: roleSlug, idFromSlug, JdBlock, jdBlocks, JobPostingInput, jobPostingJsonLd, scriptSafeJson
+- lib/hiring/careers-jd.ts: roleSlug, idFromSlug, JdBlock, jdBlocks, JobLocation, countryName, placeLabel, JobPostingInput, jobPostingJsonLd, scriptSafeJson
 - lib/hiring/careers.ts: CareersRole, CareersRoleDetail, markdownToPlainText, listOpenRoles, openRole, alreadyApplied, applyToRole
 - lib/hiring/close-out.ts: listCloseOut, markNoticesSent
 - lib/hiring/comp-crypto.ts: CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId, sealSecretSetting, openSecretSetting
@@ -922,7 +922,7 @@
 - lib/validations/hiring/offer.ts: createOfferSchema, updateOfferSchema, offerListQuerySchema, offerDecisionSchema, reviseOfferSchema, negotiationNoteSchema, acceptanceSchema, offerLetterTemplateSchema, closeOutQuerySchema, closeOutMarkSchema, chainPreviewQuerySchema
 - lib/validations/hiring/planning.ts: createPlanningRoundSchema, updatePlanningRoundSchema, createNeedSchema, updateNeedSchema, createNeedNoteSchema
 - lib/validations/hiring/public.ts: PRIVACY_NOTICE_VERSION, applySchema, ApplyInput, agencySubmitSchema, AgencySubmitInput, inviteTokenSchema, agencyInviteCreateSchema, agencyInviteListQuerySchema, careersSettingsSchema
-- lib/validations/hiring/requisition.ts: createHiringRequestSchema, CreateHiringRequestInput, createRequisitionSchema, updateRequisitionSchema, UpdateRequisitionInput, statusChangeSchema, requisitionListQuerySchema, jdActionSchema, postingSchema, withdrawPostingSchema
+- lib/validations/hiring/requisition.ts: createHiringRequestSchema, CreateHiringRequestInput, WORK_ARRANGEMENTS, createRequisitionSchema, updateRequisitionSchema, UpdateRequisitionInput, statusChangeSchema, requisitionListQuerySchema, jdActionSchema, postingSchema, withdrawPostingSchema
 - lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
 - lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema, assigneeSchema, savedReplySchema, savedRepliesQuerySchema
 - lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture, raiseForEmployeeSchema, RaiseForEmployeeInput, ticketEmployeeQuerySchema
