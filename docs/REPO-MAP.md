@@ -457,7 +457,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences, documentsUploaded
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences, documentsUploaded
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -518,10 +518,9 @@
 - PositionClassification: id, code, label, active, sortOrder, employees, createdAt, updatedAt
 - LeaveReasonCategory: id, level1, label, active, sortOrder, codes, createdAt, updatedAt
 - LeaveReasonCode: id, categoryId, category, code, label, active, sortOrder, primaryOf, secondaryOf, createdAt, updatedAt
-- Escalation: id, ticketNumber, hrPairId, employeeName, employeeEmail, employeeId, question, source, identityVerified, status, draftAnswer, draftedById, submittedById, submittedAt, approvedById, approvedAt, sentAt, threadKey, sendError, createdAt, updatedAt, hrPair, employee, draftedBy, submittedBy, approvedBy, assigneeId, assignee, raisedById, raisedBy, dueAt, firstResponseAt, messages, replyTokens, events
+- Escalation: id, ticketNumber, hrPairId, employeeName, employeeEmail, employeeId, question, source, identityVerified, status, draftAnswer, draftedById, submittedById, submittedAt, approvedById, approvedAt, sentAt, threadKey, sendError, createdAt, updatedAt, hrPair, employee, draftedBy, submittedBy, approvedBy, assigneeId, assignee, raisedById, raisedBy, dueAt, firstResponseAt, messages, events
 - EscalationEvent: id, escalationId, kind, actorId, note, at, escalation, actor
 - EscalationMessage: id, escalationId, direction, body, at, escalation
-- EscalationReplyToken: id, tokenHash, escalationId, expiresAt, revokedAt, lastUsedAt, createdAt, escalation
 - HrTagPair: id, name, order, isDefault, deletedAt, deletedBy, createdAt, updatedAt, members, coverage, escalations, savedReplies
 - HrTagMember: id, pairId, name, email, phone, photoKey, order, userId, deletedAt, deletedBy, createdAt, updatedAt, pair, user
 - HrTagCoverage: id, pairId, label, aliases, entityId, companyWide, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, pair
@@ -530,11 +529,8 @@
 - RotationCoverage: id, groupId, label, aliases, entityId, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, group
 - DiscountPartner: id, name, offerSummary, eligibility, validUntil, redemption, onlineOnly, url, order, deletedAt, deletedBy, createdAt, updatedAt
 - NetworkProvider: id, name, providerType, location, address, phone, deletedAt, deletedBy, createdAt, updatedAt
-- HiveEmailTemplate: id, key, subject, body, updatedById, deletedAt, deletedBy, createdAt, updatedAt, updatedBy
 - HiveSavedReply: id, title, body, hrPairId, hrPair, createdById, createdBy, createdAt, updatedAt
-- HiveTicketSettings: id, ticketPrefix, responseHours, statusLabels
 - HiveOrgUnitInfo: id, kind, unitId, leaderName, leaderTitle, order, createdAt, updatedAt
-- HiringSetting: id, key, value, updatedAt
 - HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, locationCity, locationCountry, workArrangement, candidates, interviews, roundPlans, offers, questions, statusHistory, approvals, postings, jdSignoffs, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
 - HiringPosting: id, requisitionId, requisition, channel, state, detail, omaniPreferred, postedAt, postedById, withdrawnAt, withdrawnById, createdAt, updatedAt
 - HiringRequisitionStatusHistory: id, requisitionId, requisition, fromStatus, toStatus, changedById, reason, changedAt, approvals
@@ -548,18 +544,14 @@
 - HiringScorecard: id, interviewId, interview, candidateId, candidate, panelistId, scores, strengths, concerns, vote, notes, submitted, submittedAt, deletedAt, deletedBy, createdAt, updatedAt
 - HiringQuestion: id, requisitionId, requisition, roleFamily, questionText, category, competency, qualityScore, deletedAt, deletedBy, createdAt, updatedAt
 - HiringOffer: id, candidateId, candidate, requisitionId, requisition, salaryEnc
-- HiringOfferApproval: id, offerId, offer, approverId, sequence, requiredRole, action, comment, decidedAt, createdAt
 - HiringOfferVersion: id, offerId, offer, versionNumber, termsSnapshotEnc, summary, changedFields, compChanged, restartedApproval, candidateNote, createdById, createdByName, supersededAt, createdAt
 - HiringNegotiationNote: id, offerId, offer, candidateId, candidate, kind, body, authorId, authorName, authorRole, discussedSalaryEnc, discussedStartDate, candidateConfirmed, createdAt
 - HiringHandover: id, jmlCaseId, candidateId, candidate, kind, fromUserId, fromRole, toUserId, toRole, note, recordedById, completedAt, createdAt
 - HiringAgencyInvite: id, tokenHash, agencyName, requisitionId, requisition, entityId, expiresAt, revokedAt, maxSubmissions, lastUsedAt, createdById, candidates, createdAt, updatedAt
 - HiringCandidateDocument: id, candidateId, candidate, kind, label, periodMonth, fileName, contentType, sizeBytes, blobPathname, statedAmountEnc, currency, uploadedById, fromCandidate, reviewedById, reviewedAt, reviewNote, createdAt, updatedAt
-- HiringCompetency: id, name, definition, category, roleFamily, entityId
-- HiringGrade: id, code, name, minSalary, maxSalary, order, entityId, deletedAt, deletedBy, createdAt, updatedAt
 - HiringJdTemplate: id, title, roleFamily, description, competencies, grade, entityId, deletedAt, deletedBy, createdAt, updatedAt
 - HiringAiInsight: id, entityType, entityId, kind, model, output, summary, createdById, createdAt
 - HiringAiUsage: id, feature, model, tokensIn, tokensOut, latencyMs, userId, createdAt
-- HiringImportBatch: id, kind, status, total, processed, failed, log, createdById, createdAt, updatedAt
 - HiringBulkJob: id, actionKind, status, input, output, createdById, completedAt, deletedAt, deletedBy, createdAt, updatedAt
 - HiringAssessment: id, candidateId, candidate, invitedAt, provider, status, score, percentile, completedAt, dueAt, interviewFocus, validUntil, remindersSent, lastRemindedAt, createdAt, updatedAt
 - HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
@@ -575,7 +567,6 @@
 - JmlContractType: id, name, code, sortOrder, active, createdAt, updatedAt, joiners
 - JmlEmploymentTypeConfig: id, employmentType, active, defaultTemplateId, payrollApplicableDefault, notes, sortOrder, createdAt, updatedAt
 - EmailLog: id, module, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, subjectType, subjectId, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
-- JmlEmailTemplateOverride: id, type, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - JmlJoinDetail: caseId, case, contractTypeId, contractType, plannedStartDate, actualStartDate, contractStartDate, contractEndDate, probationMonths, payrollApplicable, clientAssignedRole, introSentence, hobbies, msAccountRequired, laptopRequired, accessCardRequired, itReadinessConfirmed, itReadinessAt, itReadinessById, itReadinessBy, itIntakeSubmittedAt, itIntakeReference, itIntakeError, sourceRef, createdAt, updatedAt
 - JmlPreboarding: caseId, case, linkIssuedAt, linkExpiresAt, submittedAt, photoPathname, photoContentType, photoUploadedAt
 - JmlMoveDetail: caseId, case, changeType, effectiveDate

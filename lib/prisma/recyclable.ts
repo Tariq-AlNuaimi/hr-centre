@@ -49,8 +49,6 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   HiringScorecard: { displayField: "vote" },
   HiringQuestion: { displayField: "roleFamily" },
   HiringOffer: { displayField: "status" },
-  HiringCompetency: { displayField: "name" },
-  HiringGrade: { displayField: "name" },
   HiringJdTemplate: { displayField: "title" },
   HiringBulkJob: { displayField: "actionKind" },
   // Core catalogues (ADR-097).
