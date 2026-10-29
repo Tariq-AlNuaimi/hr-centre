@@ -8,6 +8,7 @@
 - app/[locale]/(careers)/agency/[token]/page.tsx
 - app/[locale]/(careers)/careers/[slug]/page.tsx
 - app/[locale]/(careers)/careers/page.tsx
+- app/[locale]/(careers)/careers/status/[token]/page.tsx
 - app/[locale]/(dashboard)/admin/access/[id]/page.tsx
 - app/[locale]/(dashboard)/admin/access/new/page.tsx
 - app/[locale]/(dashboard)/admin/access/page.tsx
@@ -645,6 +646,8 @@
 - lib/hiring/candidate-files.ts: MAX_FILE_BYTES, cvPathname, sniffType, requireStorage, readChecked, uploadCv, cvUrl, listDocuments, uploadDocument, loadDocument, documentUrl, reviewDocument, removeDocument, packageView, packageAction
 - lib/hiring/candidate-rules.ts: PAYSLIP_MONTHS_REQUESTED, PackageDocument, currentPackageFrom, bandMidpoint, PricingBasis, pricingBasisFor, reviewedPayslips, referrerToPersist, InterviewCountBounds, resolveInterviewCountBounds, isOmani
 - lib/hiring/candidate-stage.ts: stageHistoryFor, releaseHoldsForRequisition, ApplyStageChange, applyStageChange, moveStage, setStallCause
+- lib/hiring/candidate-status-rules.ts: CANDIDATE_STEPS, CandidateStep, CandidateOutcome, candidateFacingStage
+- lib/hiring/candidate-status.ts: CANDIDATE_STATUS_PURPOSE, issueCandidateStatusLink, emailApplicationReceived, candidateStatusView
 - lib/hiring/candidate-views.ts: candidateDetail, boardCards
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
 - lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows

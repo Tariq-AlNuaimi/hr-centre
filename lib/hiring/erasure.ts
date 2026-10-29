@@ -2,6 +2,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { deleteStoredFile, isStorageConfigured } from "@/lib/storage";
 import { HiringRuleError } from "./http";
+import { revokeMagicLinks } from "@/lib/core/tokens/magic-link";
+import { CANDIDATE_STATUS_PURPOSE } from "./candidate-status";
 
 /**
  * PDPL erasure of a candidate (Interview Hub `lib/pdpl.ts`). D6 fixed: the
@@ -228,6 +230,8 @@ export async function eraseCandidate(candidateId: string, by: string): Promise<b
     });
     await redactAudit(tx, "HiringCandidate", [c.id]);
   });
+  // P2-11 — an erased candidate's status link stops working.
+  await revokeMagicLinks(CANDIDATE_STATUS_PURPOSE, c.id);
   if (files.length && isStorageConfigured()) {
     for (const f of files)
       await deleteStoredFile(f).catch(() =>

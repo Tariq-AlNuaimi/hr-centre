@@ -1139,3 +1139,13 @@ Considered: **A job-architecture product (Workday job profiles, Mercer/WTW grade
 **App-level linking in every employee writer** (rejected — a database trigger keeps every
 writer in step).
 Decision: build — two catalogue tables, a link column with a trigger, and a settings move.
+
+### 2026-10-29 — P2 candidate status page
+
+Scope: lib/hiring/candidate-status.ts, lib/hiring/candidate-status-rules.ts
+Considered:
+
+- **An ATS candidate portal (Greenhouse MyGreenhouse, Workable).** Rejected: Hiring lives here;
+  the page is a stage mapping over the existing candidate record on the core magic link (ADR-090).
+
+Decision: build.

@@ -6,6 +6,7 @@ import { placeLabel, roleSlug, type JobLocation } from "./careers-jd";
 import { CAREERS_TAG } from "./jd";
 import { orgNames } from "./people";
 import { asNumber, readSetting } from "./settings";
+import { emailApplicationReceived, issueCandidateStatusLink } from "./candidate-status";
 
 /**
  * The public careers board and its apply path (Interview Hub `/careers`,
@@ -233,8 +234,8 @@ export async function applyToRole(input: ApplyInput) {
   if (await alreadyApplied(email, req.id)) {
     throw new HiringRuleError("You have already applied for this role.", 409, "ALREADY_APPLIED");
   }
-  await auditedTransaction(async (tx) => {
-    await tx.hiringCandidate.create({
+  const candidate = await auditedTransaction(async (tx) => {
+    return tx.hiringCandidate.create({
       data: {
         requisitionId: req.id,
         name: input.name,
@@ -251,5 +252,15 @@ export async function applyToRole(input: ApplyInput) {
       select: { id: true },
     });
   });
-  return { applied: true };
+  // P2-11 — the candidate's status link, shown on the confirmation and emailed
+  // when SMTP is configured. A failed email never fails the application.
+  const statusPath = await issueCandidateStatusLink(candidate.id);
+  await emailApplicationReceived({
+    candidateId: candidate.id,
+    name: input.name,
+    email,
+    roleTitle: req.title,
+    statusPath,
+  }).catch(() => console.warn("[hiring] the application confirmation could not be sent"));
+  return { applied: true, statusPath };
 }

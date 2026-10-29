@@ -38,6 +38,8 @@ export function ApplyPanel({ role, onClose }: { role: CareersRole; onClose: () =
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // P2-11 — the candidate's status page, linked from the confirmation.
+  const [statusPath, setStatusPath] = useState<string | null>(null);
   const first = useRef<HTMLInputElement>(null);
   useEffect(() => {
     first.current?.focus();
@@ -65,9 +67,14 @@ export function ApplyPanel({ role, onClose }: { role: CareersRole; onClose: () =
           consent: f.consent,
         }),
       });
-      const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (res.ok) setDone(true);
-      else setError(json?.error ?? t("genericError"));
+      const json = (await res.json().catch(() => null)) as {
+        error?: string;
+        data?: { statusPath?: string };
+      } | null;
+      if (res.ok) {
+        setStatusPath(json?.data?.statusPath ?? null);
+        setDone(true);
+      } else setError(json?.error ?? t("genericError"));
     } catch {
       setError(t("networkError"));
     } finally {
@@ -126,6 +133,14 @@ export function ApplyPanel({ role, onClose }: { role: CareersRole; onClose: () =
             <div>
               <p className="font-semibold">{t("submittedTitle")}</p>
               <p>{t("submittedBody")}</p>
+              {statusPath ? (
+                <p className="mt-2">
+                  <a href={statusPath} className="font-semibold underline">
+                    {t("trackStatus")}
+                  </a>{" "}
+                  {t("trackStatusHelp")}
+                </p>
+              ) : null}
             </div>
           </div>
         ) : (
