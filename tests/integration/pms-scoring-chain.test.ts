@@ -200,6 +200,29 @@ test("§8 the score run reports who could NOT be scored, and why", async () => {
   assert.match(unsigned.reason, /§10\.7/);
 });
 
+test("QA2 N-01 a half-written run from an earlier crash is repaired by the next run, and never read as latest", async () => {
+  as(ids.superAdminUser);
+  // Debris exactly as the pre-transaction crash left it: started, never finished.
+  const debris = await prisma.scoreRun.create({
+    data: { cycleId: ids.cycle, startedByEmployeeId: ids.superAdmin },
+    select: { id: true },
+  });
+  const listed = await json(
+    await scores.GET(req(`/api/scores?cycleId=${ids.cycle}`, "GET"), ctx()),
+  );
+  assert.notEqual(listed.body.latestRunId, debris.id, "an unfinished run is never the latest");
+
+  const { status } = await json(
+    await scores.POST(req("/api/scores", "POST", { cycleId: ids.cycle }), ctx()),
+  );
+  assert.equal(status, 201);
+  assert.equal(
+    await prisma.scoreRun.count({ where: { cycleId: ids.cycle, finishedAt: null } }),
+    0,
+    "no unfinished run survives a successful run",
+  );
+});
+
 test("§10.7 calibration is refused while anyone is unscored", async () => {
   as(ids.superAdminUser);
   const { status, body } = await json(

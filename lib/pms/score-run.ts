@@ -2,7 +2,12 @@ import { Prisma } from "@/generated/prisma/client";
 import type { Band, RoleTrack, SignOffParty } from "@/generated/prisma/client";
 import { bandFor, finalScore, individualScore, type ScoredKpi } from "./scoring";
 import { DEFAULT_CYCLE_POLICY, type CyclePolicy } from "./cycle-policy";
-import { proratedComponent, type PeriodWindow, type WeightedPeriodScore } from "./transfer";
+import {
+  periodDays,
+  proratedComponent,
+  type PeriodWindow,
+  type WeightedPeriodScore,
+} from "./transfer";
 
 /**
  * §8's wiring — turning captured inputs into one stored score per employee.
@@ -110,6 +115,87 @@ export type ScoreOutcome =
   | { scored: false; employeeId: string; reason: string };
 
 /**
+ * QA2 N-01 — the ranges `employee_scores_ranges_check` enforces, checked BEFORE
+ * the write, per employee.
+ *
+ * The database is the last line, not the first: when it was the only check, one
+ * out-of-range participant (a §12.3 split year clamped to a few days of service)
+ * threw inside the run, the route answered 500 with an empty body, and HR could
+ * not tell who or why. Here it becomes one skipped row with a reason, and the
+ * other 300 are scored.
+ */
+/**
+ * QA2 N-01 — the "latest run" every reader means: a FINISHED one. The score run
+ * is now one transaction, so an unfinished run can only be debris from before
+ * that; reading it as the latest made calibration count rows the panel did not.
+ */
+export const completedRunWhere = (cycleId: string) => ({
+  cycleId,
+  finishedAt: { not: null },
+});
+
+type ScoreComponents = {
+  corporate: Prisma.Decimal;
+  departmental: Prisma.Decimal | null;
+  individual: Prisma.Decimal;
+  threeSixty: Prisma.Decimal | null;
+  raw: Prisma.Decimal;
+};
+
+const fmt = (v: Prisma.Decimal) => v.toDecimalPlaces(2).toString();
+
+export function scoreRangeProblem(c: ScoreComponents): string | null {
+  const scale = (label: string, v: Prisma.Decimal | null, min: number) =>
+    v !== null && (v.lessThan(min) || v.greaterThan(5))
+      ? `The ${label} is ${fmt(v)}, outside the ${min === 0 ? "0–5" : "1–5"} scale.`
+      : null;
+  return (
+    scale("Corporate score", c.corporate, 1) ??
+    scale("Departmental score", c.departmental, 1) ??
+    scale("Individual score", c.individual, 1) ??
+    scale("360 score", c.threeSixty, 0) ??
+    scale("final score", c.raw, 1)
+  );
+}
+
+/**
+ * The last step both paths share: apply §8.6, band it, and refuse anything the
+ * database would refuse — as a per-person reason rather than an exception.
+ */
+function finish(
+  employeeId: string,
+  roleTrack: RoleTrack,
+  parts: Omit<ScoreComponents, "raw">,
+  policy: Pick<CyclePolicy, "roundScoreBeforeBanding">,
+  context = "",
+): ScoreOutcome {
+  let raw: Prisma.Decimal;
+  try {
+    raw = finalScore(roleTrack, {
+      corporate: parts.corporate,
+      departmental: parts.departmental,
+      individual: parts.individual,
+      threeSixty: parts.threeSixty ?? parts.corporate,
+    });
+  } catch (error) {
+    return {
+      scored: false,
+      employeeId,
+      reason: error instanceof Error ? error.message : "These inputs cannot be scored.",
+    };
+  }
+  const problem = scoreRangeProblem({ ...parts, raw });
+  if (problem) {
+    return {
+      scored: false,
+      employeeId,
+      reason: `${problem}${context} Correct the input, then run the calculation again.`,
+    };
+  }
+  return { scored: true, employeeId, ...parts, raw, band: bandFor(raw, policy) };
+}
+
+/**
  * Score one employee, or say why not.
  *
  * §8.3's C-Level path comes first and is genuinely different: "no formula. Final
@@ -133,25 +219,15 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     // §8.3 — no formula, and no assessment either, so the entity score is the
     // only input they have and the only one worth reporting.
     if (corporate === null) return noCorporate;
-    const raw = finalScore("C_LEVEL", {
-      corporate,
-      departmental: null,
-      individual: corporate,
-      threeSixty: corporate,
-    });
-    return {
-      scored: true,
+    // §8.3 — the entity score IS the final score. Recorded in the individual
+    // column too so §13.5's export shows a complete row rather than a blank
+    // that reads like missing data.
+    return finish(
       employeeId,
-      corporate,
-      departmental: null,
-      // §8.3 — the entity score IS the final score. Recorded in the individual
-      // column too so §13.5's export shows a complete row rather than a blank
-      // that reads like missing data.
-      individual: corporate,
-      threeSixty: null,
-      raw,
-      band: bandFor(raw, policy),
-    };
+      "C_LEVEL",
+      { corporate, departmental: null, individual: corporate, threeSixty: null },
+      policy,
+    );
   }
 
   // SIGNATURES FIRST — before the Corporate score, and the order is deliberate.
@@ -217,23 +293,12 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     };
   }
 
-  const raw = finalScore(roleTrack, {
-    corporate,
-    departmental: needsDepartmental ? departmental : null,
-    individual,
-    threeSixty,
-  });
-
-  return {
-    scored: true,
+  return finish(
     employeeId,
-    corporate,
-    departmental: needsDepartmental ? departmental : null,
-    individual,
-    threeSixty,
-    raw,
-    band: bandFor(raw, policy),
-  };
+    roleTrack,
+    { corporate, departmental: needsDepartmental ? departmental : null, individual, threeSixty },
+    policy,
+  );
 }
 
 /**
@@ -311,6 +376,20 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
 
   const needsDepartmental = roleTrack !== "INDIVIDUAL";
 
+  // QA2 N-01 — periods are clamped to actual service before they are weighted,
+  // so a pre-joiner (or anyone whose dates fall outside the cycle) can arrive
+  // here with no service days at all. Every component would be 0 — not a score.
+  const serviceDays = periods.reduce((sum, p) => sum + periodDays(p), 0);
+  if (serviceDays === 0) {
+    return {
+      scored: false,
+      employeeId,
+      reason:
+        "This employee has no days of service inside this cycle's split periods (§12.3) — " +
+        "check their joining and leaving dates, or remove them from the cycle.",
+    };
+  }
+
   // Each period's own Individual score, from that period's KPI set. §5.3 applies
   // per period, so `individualScore` refuses a period that is not at 100%.
   const individualByPeriod: WeightedPeriodScore[] = [];
@@ -375,21 +454,14 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
     };
   }
 
-  const raw = finalScore(roleTrack, {
-    corporate,
-    departmental: needsDepartmental ? departmental : null,
-    individual,
-    threeSixty,
-  });
-
-  return {
-    scored: true,
+  // §12.3 weights by days ÷ 365, so a short year scales the components down.
+  // Below about 3 months of service that leaves them under the 1–5 scale, which
+  // no band, calibration or bonus reads; the person is named for HR instead.
+  return finish(
     employeeId,
-    corporate,
-    departmental: needsDepartmental ? departmental : null,
-    individual,
-    threeSixty,
-    raw,
-    band: bandFor(raw, policy),
-  };
+    roleTrack,
+    { corporate, departmental: needsDepartmental ? departmental : null, individual, threeSixty },
+    policy,
+    ` The split periods cover ${serviceDays} days of service (weighted by days ÷ 365, §12.3).`,
+  );
 }

@@ -10,6 +10,7 @@ import { stageState } from "@/lib/pms/cycle";
 import { canViewCompensation } from "@/lib/core/permissions";
 import { stageProgress } from "@/lib/pms/status";
 import { participantStatuses } from "@/lib/pms/status-query";
+import { completedRunWhere } from "@/lib/pms/score-run";
 
 /**
  * §13.6 — the executive dashboard (COO / Ops Director).
@@ -114,7 +115,7 @@ export const GET = withRateLimit(
  */
 async function bandDistribution(cycleId: string) {
   const runs = await prisma.scoreRun.findMany({
-    where: { cycleId },
+    where: completedRunWhere(cycleId),
     take: 1,
     orderBy: { startedAt: "desc" },
     select: { id: true },

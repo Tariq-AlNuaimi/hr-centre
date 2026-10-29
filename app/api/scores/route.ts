@@ -3,12 +3,13 @@ import { Prisma } from "@/generated/prisma/client";
 import type { RoleTrack } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/core/actor";
 import { isHr } from "@/lib/core/permissions";
 import { clampToService } from "@/lib/pms/transfer";
 import { countableParticipantWhere } from "@/lib/pms/cycle";
 import {
+  completedRunWhere,
   scoreEmployee,
   scoreSplitEmployee,
   type PeriodInputs,
@@ -37,6 +38,9 @@ import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
  * calibrated band that simply has not moved, rather than a null nobody knows
  * how to read.
  */
+
+/** The run is one transaction (N-01); same budget as the other long writes. */
+export const maxDuration = 60;
 
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
@@ -162,13 +166,12 @@ export const POST = withRateLimit(
       ? await threeSixtyLevels(threeSixty.id)
       : new Map<string, ThreeSixtyFigure>();
 
-    const run = await prisma.scoreRun.create({
-      data: { cycleId, startedByEmployeeId: startedBy },
-      select: { id: true },
-    });
-
+    // Scoring is pure and runs FIRST, outside any transaction: every outcome is
+    // known before a single row is written, so the write below is short and a
+    // participant that cannot be scored is a skipped row with a reason (N-01),
+    // never an exception halfway through the run.
     const skipped: { employeeId: string; reason: string }[] = [];
-    let scoredCount = 0;
+    const toWrite: { outcome: ScoredOutcome; raterCount: number | null }[] = [];
 
     for (const p of participants) {
       const e = p.employee;
@@ -204,21 +207,65 @@ export const POST = withRateLimit(
       // The count belongs to the 360 figure, not to the score: `scoreEmployee`
       // never sees it, because an input it does not use has no business being
       // in its signature (F8 — visible only, no arithmetic, no gate).
-      await writeScore(run.id, outcome, ratioByEmployee.get(e.id)?.raterCount ?? null);
-      scoredCount += 1;
+      toWrite.push({ outcome, raterCount: ratioByEmployee.get(e.id)?.raterCount ?? null });
     }
 
-    const finished = await prisma.scoreRun.update({
-      where: { id: run.id },
-      data: { finishedAt: new Date(), scoredCount, skippedCount: skipped.length },
-      select: {
-        id: true,
-        startedAt: true,
-        finishedAt: true,
-        scoredCount: true,
-        skippedCount: true,
-      },
-    });
+    // QA2 N-01 — ONE transaction for the run and every score in it. Before
+    // this, a write that failed half-way left a run with `finishedAt = null` and
+    // some of its rows, which the calibration screen then counted as "22 of 37
+    // scored" while the panel read "0 of 37" — and blocked calibration on a run
+    // that could never finish. Now a run either exists complete or not at all.
+    let finished;
+    try {
+      finished = await auditedTransaction(
+        async (tx) => {
+          // Repair, idempotently: since this transaction exists, a committed
+          // run is always finished, so an unfinished one is debris from the
+          // crash above. Removed unless HR already calibrated on it (then it is
+          // kept for the audit trail; every reader ignores unfinished runs).
+          const debris = await tx.scoreRun.findMany({
+            where: {
+              cycleId,
+              finishedAt: null,
+              scores: { none: { adjustments: { some: {} } } },
+            },
+            take: 50,
+            select: { id: true },
+          });
+          for (const d of debris) await tx.scoreRun.delete({ where: { id: d.id } });
+
+          const run = await tx.scoreRun.create({
+            data: { cycleId, startedByEmployeeId: startedBy },
+            select: { id: true },
+          });
+          for (const w of toWrite) await writeScore(tx, run.id, w.outcome, w.raterCount);
+          return tx.scoreRun.update({
+            where: { id: run.id },
+            data: {
+              finishedAt: new Date(),
+              scoredCount: toWrite.length,
+              skippedCount: skipped.length,
+            },
+            select: {
+              id: true,
+              startedAt: true,
+              finishedAt: true,
+              scoredCount: true,
+              skippedCount: true,
+            },
+          });
+        },
+        // Same budget as the other long writes (stage extension, import apply).
+        { maxWait: 10_000, timeout: 45_000 },
+      );
+    } catch (error) {
+      // Nothing was written. Say so in words HR can act on, not an empty 500.
+      console.error("[pms-score-run] write failed", error instanceof Error ? error.name : "unknown");
+      return err(
+        "The score run could not be saved, so nothing was changed. Try again; if it keeps failing, contact the platform administrator.",
+        500,
+      );
+    }
 
     // The skipped list is the point of the response: §10.7 will not let
     // calibration start until everyone is scored, so this is the worklist.
@@ -374,12 +421,16 @@ function periodInputs(
  * cannot differ in what they persist — a split employee's row must be readable
  * by every reader that reads an unsplit one.
  */
+type ScoredOutcome = Extract<ReturnType<typeof scoreEmployee>, { scored: true }>;
+type ScoreTx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
+
 async function writeScore(
+  tx: ScoreTx,
   scoreRunId: string,
-  outcome: Extract<ReturnType<typeof scoreEmployee>, { scored: true }>,
+  outcome: ScoredOutcome,
   threeSixtyRaterCount: number | null,
 ): Promise<void> {
-  await prisma.employeeScore.create({
+  await tx.employeeScore.create({
     data: {
       scoreRunId,
       employeeId: outcome.employeeId,
@@ -411,7 +462,7 @@ export const GET = withRateLimit(
     if (!cycleId) return err("cycleId is required");
 
     const runs = await prisma.scoreRun.findMany({
-      where: { cycleId },
+      where: completedRunWhere(cycleId),
       take: 20,
       orderBy: { startedAt: "desc" },
       select: {

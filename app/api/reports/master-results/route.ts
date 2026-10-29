@@ -11,6 +11,7 @@ import {
   xlsxDownloadHeaders,
   type SheetColumn,
 } from "@/lib/core/export/xlsx";
+import { completedRunWhere } from "@/lib/pms/score-run";
 
 /**
  * §13.5 — "Master results export — full dataset: all employees, all components,
@@ -152,7 +153,7 @@ export const GET = withRateLimit(
     if (!cycle) return notFound("Cycle");
 
     const runs = await prisma.scoreRun.findMany({
-      where: { cycleId },
+      where: completedRunWhere(cycleId),
       take: 1,
       orderBy: { startedAt: "desc" },
       select: { id: true, startedAt: true },

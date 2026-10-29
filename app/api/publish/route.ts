@@ -8,6 +8,7 @@ import { isHrSuperAdmin } from "@/lib/core/permissions";
 import { calibrationReadinessBlockedReason } from "@/lib/pms/calibration";
 import { countableParticipantWhere } from "@/lib/pms/cycle";
 import { publishSchema } from "@/lib/validations/calibration";
+import { completedRunWhere } from "@/lib/pms/score-run";
 
 /**
  * §13.2 — the publish gate.
@@ -76,7 +77,7 @@ export const POST = withRateLimit(
       const [participantCount, runs, target] = await Promise.all([
         prisma.cycleParticipant.count({ where: countableParticipantWhere(cycleId) }),
         prisma.scoreRun.findMany({
-          where: { cycleId },
+          where: completedRunWhere(cycleId),
           take: 1,
           orderBy: { startedAt: "desc" },
           select: { id: true, scoredCount: true },
@@ -194,7 +195,7 @@ export const GET = withRateLimit(
     const [participantCount, runs, target] = await Promise.all([
       prisma.cycleParticipant.count({ where: countableParticipantWhere(cycleId) }),
       prisma.scoreRun.findMany({
-        where: { cycleId },
+        where: completedRunWhere(cycleId),
         take: 1,
         orderBy: { startedAt: "desc" },
         select: { id: true, scoredCount: true, skippedCount: true, finishedAt: true },

@@ -975,7 +975,18 @@ async function seedEdgeCases(
 
   // §12.3 — a transfer splits the year, each period owned by its own manager.
   const mover = await prisma.employee.findFirst({
-    where: { status: "ACTIVE", departmentId: { not: null }, roleTrack: "INDIVIDUAL" },
+    // QA2 N-01 — only someone who served the WHOLE year and is enrolled in
+    // this cycle. Picking by highest odooId alone grabbed a fresh joiner (a
+    // `PENDING-…` placeholder id sorts last), whose periods clamped to a few
+    // days of service and pushed every component below the 1–5 scale.
+    where: {
+      status: "ACTIVE",
+      departmentId: { not: null },
+      roleTrack: "INDIVIDUAL",
+      odooId: { not: { startsWith: "PENDING-" } },
+      OR: [{ dateOfJoining: null }, { dateOfJoining: { lte: utc(DEMO_YEAR, 1, 1) } }],
+      cycleParticipants: { some: { cycleId } },
+    },
     select: { id: true, name: true, departmentId: true, entityId: true, managerId: true },
     orderBy: { odooId: "desc" },
   });
