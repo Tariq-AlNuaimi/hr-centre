@@ -11,6 +11,7 @@
 
 import { RateLimiterRedis, RateLimiterMemory, type RateLimiterRes } from "rate-limiter-flexible";
 import { getValkey } from "./valkey";
+import { NextResponse } from "next/server";
 import { throttleKey } from "./client-ip";
 
 export interface RateLimitOptions {
@@ -171,4 +172,138 @@ async function consume(key: string, opts: RateLimitOptions): Promise<RateLimitRe
     // the in-memory limiter rather than letting the request through unthrottled.
     return rateLimitInMemory(key, opts);
   }
+}
+
+// --- per-account buckets + the sign-in/password policy (ADR-100) -----------
+
+/**
+ * Consume one unit of a per-SUBJECT bucket only (no IP bucket). For limits whose
+ * account quota differs from the IP quota -- `rateLimit({ subject })` consumes
+ * both buckets at one shared limit, which cannot express "120/min per IP but
+ * 10/min per account". The subject is normalised (trim + lowercase) exactly as
+ * `rateLimit` does, so both entry points land in the same bucket for one id.
+ */
+export async function rateLimitSubject(
+  subject: string,
+  opts: Omit<RateLimitOptions, "subject">,
+): Promise<RateLimitResult> {
+  return consume(`${opts.id}:subject:${subject.trim().toLowerCase()}`, opts);
+}
+
+/**
+ * Merge two bucket decisions: allowed only when both allow; on a refusal report
+ * the LATER reset so a client that honours Retry-After is not refused again.
+ */
+function combine(a: RateLimitResult, b: RateLimitResult): RateLimitResult {
+  if (a.ok && b.ok)
+    return { ok: true, remaining: Math.min(a.remaining, b.remaining), retryAfter: 0 };
+  return {
+    ok: false,
+    remaining: 0,
+    retryAfter: Math.max(a.retryAfter, b.retryAfter, 1),
+  };
+}
+
+const MINUTE = 60_000;
+
+/**
+ * The sign-in and password throttles, in one place so the routes, the contract
+ * tests and SECURITY.md cite the same numbers (ADR-100). IP buckets are wide
+ * enough for an office behind one NAT address; the per-account buckets are the
+ * control that survives a rotating client IP. `lib/account-lockout.ts` (5 bad
+ * passwords / 15 min) still runs underneath the login and password-change limits.
+ *
+ * Every bucket here is in-memory PER INSTANCE unless VALKEY_URL/REDIS_URL is set
+ * (ADR-035), so across several Vercel instances the effective ceiling is
+ * approximate (up to N x configured).
+ */
+export const AUTH_LIMITS = {
+  /** Any POST to /api/auth/* (credentials sign-in, sign-out, ...), per IP. */
+  loginIp: { id: "auth", limit: 120, windowMs: MINUTE },
+  /** Credentials sign-in, per normalised email. */
+  loginAccount: { id: "auth-login", limit: 10, windowMs: MINUTE },
+  /** Password change (settings + forced first-login), per IP backstop. */
+  passwordChangeIp: { id: "password-change", limit: 60, windowMs: MINUTE },
+  /** Password change, per signed-in user -- shared by both change routes. */
+  passwordChangeUser: { id: "password-change-user", limit: 5, windowMs: MINUTE },
+  /** Forgot password (request a reset link), per IP. */
+  resetRequestIp: { id: "auth-reset", limit: 30, windowMs: MINUTE },
+  /** Forgot password, per normalised email. */
+  resetRequestAccount: { id: "auth-reset", limit: 3, windowMs: 15 * MINUTE },
+  /** Reset password (complete with the emailed token), per IP. */
+  resetCompleteIp: { id: "auth-reset-complete", limit: 30, windowMs: MINUTE },
+  /** Reset password, per account the token belongs to. */
+  resetCompleteAccount: { id: "auth-reset-complete", limit: 3, windowMs: 15 * MINUTE },
+} as const satisfies Record<string, Omit<RateLimitOptions, "subject">>;
+
+/** Bodies larger than this are not parsed for an email (sign-in forms are tiny). */
+const MAX_LOGIN_BODY = 8 * 1024;
+
+/**
+ * The email a credentials sign-in POST names, or null. Auth.js's client posts
+ * `application/x-www-form-urlencoded` to `/api/auth/callback/credentials`; JSON
+ * is accepted too. Reads a CLONE so the handler still gets the body.
+ */
+export async function loginEmailFrom(req: Request): Promise<string | null> {
+  if (!new URL(req.url).pathname.endsWith("/callback/credentials")) return null;
+  const length = Number(req.headers.get("content-length") ?? "0");
+  if (length > MAX_LOGIN_BODY) return null;
+  let text: string;
+  try {
+    text = await req.clone().text();
+  } catch {
+    return null;
+  }
+  if (text.length > MAX_LOGIN_BODY) return null;
+  let email: unknown = null;
+  if ((req.headers.get("content-type") ?? "").includes("application/json")) {
+    try {
+      email = (JSON.parse(text) as { email?: unknown } | null)?.email ?? null;
+    } catch {
+      return null;
+    }
+  } else {
+    email = new URLSearchParams(text).get("email");
+  }
+  if (typeof email !== "string") return null;
+  const normalised = email.trim().toLowerCase();
+  return normalised.length > 0 && normalised.length <= 320 ? normalised : null;
+}
+
+/** Login throttle: per IP on every POST, plus per account on a credentials sign-in. */
+export async function throttleLogin(req: Request): Promise<RateLimitResult> {
+  const ip = await rateLimit(req, AUTH_LIMITS.loginIp);
+  const email = await loginEmailFrom(req);
+  if (!email) return ip;
+  // Consumed even when the IP bucket refused, so a run spread across rotated IP
+  // keys still drains the account's own quota (same reasoning as rateLimit()).
+  return combine(ip, await rateLimitSubject(email, AUTH_LIMITS.loginAccount));
+}
+
+/** Password-change per-user throttle (the per-IP backstop is `withRateLimit`). */
+export function throttlePasswordChange(userId: string): Promise<RateLimitResult> {
+  return rateLimitSubject(userId, AUTH_LIMITS.passwordChangeUser);
+}
+
+/** Forgot-password throttle: per IP, plus per address when one parsed. */
+export async function throttleResetRequest(
+  req: Request,
+  email: string | null,
+): Promise<RateLimitResult> {
+  const ip = await rateLimit(req, AUTH_LIMITS.resetRequestIp);
+  if (!email) return ip;
+  return combine(ip, await rateLimitSubject(email, AUTH_LIMITS.resetRequestAccount));
+}
+
+/** Reset-complete per-account throttle (the token's owner), after the IP bucket. */
+export function throttleResetComplete(email: string): Promise<RateLimitResult> {
+  return rateLimitSubject(email, AUTH_LIMITS.resetCompleteAccount);
+}
+
+/** The 429 every throttle returns, with Retry-After. */
+export function tooManyRequests(result: RateLimitResult): NextResponse {
+  return NextResponse.json(
+    { error: "Too many requests" },
+    { status: 429, headers: { "retry-after": String(result.retryAfter) } },
+  );
 }

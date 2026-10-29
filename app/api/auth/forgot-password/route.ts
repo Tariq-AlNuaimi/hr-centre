@@ -3,7 +3,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { ok, err } from "@/lib/api-response";
-import { rateLimit } from "@/lib/rate-limit";
+import { throttleResetRequest } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import { env } from "@/lib/env";
 
@@ -35,12 +35,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Parsing before throttling costs one JSON.parse of a bounded body; a 429 here
   // is driven purely by request volume, never by whether the account exists, so
   // the anti-enumeration property is unchanged.
-  const limit = await rateLimit(req, {
-    id: "auth-reset",
-    limit: 5,
-    windowMs: 60_000,
-    subject: parsed.success ? parsed.data.email.toLowerCase() : undefined,
-  });
+  // 30/min per IP + 3 per 15 min per address (AUTH_LIMITS, ADR-100).
+  const limit = await throttleResetRequest(
+    req,
+    parsed.success ? parsed.data.email.toLowerCase() : null,
+  );
   if (!limit.ok) {
     return err("Too many requests", 429);
   }

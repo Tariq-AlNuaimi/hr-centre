@@ -4,6 +4,7 @@ import { err, ok, readJsonBody } from "@/lib/api-response";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";
 import { changeOwnPassword } from "@/lib/people/logins";
 import { changePasswordSchema } from "@/lib/validations/login";
+import { AUTH_LIMITS, throttlePasswordChange, tooManyRequests } from "@/lib/rate-limit";
 
 /**
  * The signed-in user replaces their (temporary) password — AC-F4.2. Reachable
@@ -13,6 +14,9 @@ import { changePasswordSchema } from "@/lib/validations/login";
  */
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
+    // 5/min per signed-in user, shared with PUT /api/users/[id]/password (ADR-100).
+    const userLimit = await throttlePasswordChange(session.user.id);
+    if (!userLimit.ok) return tooManyRequests(userLimit);
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
     const parsed = changePasswordSchema.safeParse(body);
@@ -29,5 +33,5 @@ export const POST = withRateLimit(
       return ruleErrorResponse(e);
     }
   }),
-  { id: "logins-change-password", limit: 5, windowMs: 60_000 },
+  AUTH_LIMITS.passwordChangeIp,
 );

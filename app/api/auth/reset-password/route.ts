@@ -4,7 +4,7 @@ import { hashPassword } from "@/lib/password";
 import { z } from "zod";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
 import { ok, err } from "@/lib/api-response";
-import { rateLimit } from "@/lib/rate-limit";
+import { AUTH_LIMITS, rateLimit, throttleResetComplete } from "@/lib/rate-limit";
 
 // PUBLIC route (middleware allows /api/auth/*). Completes a password reset:
 // validates the one-time token from VerificationToken, sets the new password
@@ -17,8 +17,10 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest): Promise<Response> {
-  // Distinct bucket from forgot-password so exhausting one doesn't lock the other.
-  const limit = await rateLimit(req, { id: "auth-reset-complete", limit: 5, windowMs: 60_000 });
+  // Distinct buckets from forgot-password so exhausting one doesn't lock the
+  // other: 30/min per IP here, 3 per 15 min per account once the token resolves
+  // to one (AUTH_LIMITS, ADR-100).
+  const limit = await rateLimit(req, AUTH_LIMITS.resetCompleteIp);
   if (!limit.ok) return err("Too many requests", 429);
 
   const body = await req.json().catch(() => null);
@@ -37,6 +39,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!record || record.expires < new Date()) {
     return err("This reset link is invalid or has expired.", 400);
   }
+
+  // Per-account cap. Only a VALID token names an account, so this cannot be
+  // used to burn a stranger's bucket without already holding their reset link.
+  const accountLimit = await throttleResetComplete(record.identifier);
+  if (!accountLimit.ok) return err("Too many requests", 429);
 
   // `deletedAt: null` mirrors the filter forgot-password applies when ISSUING the
   // token. Without it an off-boarded (soft-deleted) account's passwordHash could
