@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { candidateStatusView } from "@/lib/hiring/candidate-status";
 import { CANDIDATE_STEPS } from "@/lib/hiring/candidate-status-rules";
@@ -40,14 +41,9 @@ export default async function CandidateStatusPage({
   const parsed = inviteTokenSchema.safeParse(token);
   const view =
     parsed.success && !(await throttled()) ? await candidateStatusView(parsed.data) : null;
-  if (!view) {
-    return (
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <h1 className="text-h3 font-bold text-careers-navy">{t("invalidTitle")}</h1>
-        <p className="mt-2 text-careers-muted">{t("invalidBody")}</p>
-      </main>
-    );
-  }
+  // QA2 N-17 — a real 404 (not a 200 with an error body); ./not-found.tsx
+  // renders the same friendly "not valid" page for every failure.
+  if (!view) notFound();
   const current = CANDIDATE_STEPS.indexOf(view.step);
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-8 px-6 py-12">
