@@ -1,8 +1,6 @@
 import type { PrismaClient } from "../generated/prisma/client";
 import { TICKET_STARTER_ROLES } from "../lib/hive/roles";
 // The answer email's default wording has ONE owner (lib/validations/hive/email-template.ts).
-import { DEFAULT_TEMPLATE } from "../lib/validations/hive/email-template";
-import { DEFAULT_TICKET_PREFIX } from "../lib/hive/ticket-id";
 
 /**
  * HR tickets (HIVE port) — the real configuration a fresh database starts from.
@@ -381,7 +379,8 @@ export async function seedHive(prisma: Db): Promise<void> {
   await seedMemberLinks(prisma);
   await seedRotation(prisma, entities);
   await seedDiscounts(prisma);
-  await seedTemplateAndSettings(prisma);
+  // The answer template and ticket settings need no seed: with nothing stored, the
+  // defaults in code apply (core stores, ADR-092 / ADR-095).
   await seedOrgInfo(prisma, entities);
 }
 
@@ -571,21 +570,6 @@ async function seedDiscounts(prisma: Db): Promise<void> {
           ? "Online only — register with your work email and the discount is applied at checkout."
           : "Present your company ID card at the time of service.",
       },
-    });
-  }
-}
-
-async function seedTemplateAndSettings(prisma: Db): Promise<void> {
-  const tmpl = await prisma.hiveEmailTemplate.findUnique({ where: { key: "escalation-answer" } });
-  if (!tmpl) {
-    await prisma.hiveEmailTemplate.create({
-      data: { key: "escalation-answer", ...DEFAULT_TEMPLATE },
-    });
-  }
-  const settings = await prisma.hiveTicketSettings.findUnique({ where: { id: "singleton" } });
-  if (!settings) {
-    await prisma.hiveTicketSettings.create({
-      data: { id: "singleton", ticketPrefix: DEFAULT_TICKET_PREFIX, statusLabels: {} },
     });
   }
 }

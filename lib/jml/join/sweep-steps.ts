@@ -124,7 +124,7 @@ export async function overdueDigests({ now, calendar }: Ctx) {
   let sent = 0;
   for (const [userId, entry] of byOwner) {
     const plural = entry.count === 1 ? "" : "s";
-    const already = await prisma.jmlEmailLog.findFirst({
+    const already = await prisma.emailLog.findFirst({
       where: {
         type: EMAIL_TYPES.OVERDUE_DIGEST,
         recipient: entry.email,

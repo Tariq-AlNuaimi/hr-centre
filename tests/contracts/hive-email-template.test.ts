@@ -83,30 +83,28 @@ before(async () => {
         throw new Error("not used by these tests");
       },
       prisma: {
-        hiveEmailTemplate: {
+        // The core template store (module "tickets", ADR-095), keyed by
+        // (module, key); a hard delete — the core store is not soft-deleted.
+        emailTemplate: {
           findUnique: async ({
             where,
-            select,
           }: {
-            where: { key: string };
-            select: Record<string, unknown>;
+            where: { id?: string; module_key?: { module: string; key: string } };
           }) => {
-            const row = rows.get(where.key);
-            // The filtered client injects `deletedAt: null`, so a soft-deleted
-            // row is invisible to every read — while still occupying its key.
-            if (!row || row.deletedAt) return null;
-            // Projected through `select`, so a read that stops asking for
-            // `updatedBy` cannot keep passing on a mock that hands back
-            // everything regardless.
-            const out: Record<string, unknown> = {};
-            for (const key of Object.keys(select)) {
-              out[key] = (row as unknown as Record<string, unknown>)[key];
-            }
-            return out;
+            const key = where.module_key?.key ?? where.id ?? "";
+            const row = rows.get(key);
+            if (!row) return null;
+            return {
+              id: key,
+              key: row.key,
+              subject: row.subject,
+              body: row.body,
+              ccRecipients: [],
+              updatedAt: row.updatedAt,
+              updatedBy: row.updatedBy,
+            };
           },
           create: async ({ data }: { data: Record<string, unknown> }) => {
-            // `key` is `@unique`, including against soft-deleted rows: the
-            // constraint is in Postgres and knows nothing about `deletedAt`.
             const clash = rows.get(String(data.key));
             if (clash) {
               throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
@@ -125,24 +123,18 @@ before(async () => {
             where,
             data,
           }: {
-            where: { key: string };
+            where: { id: string };
             data: Record<string, unknown>;
           }) => {
-            updates.push({ key: where.key, ...data });
-            const row = rows.get(where.key)!;
+            updates.push({ key: where.id, ...data });
+            const row = rows.get(where.id)!;
             row.subject = String(data.subject);
             row.body = String(data.body);
             return data;
           },
-          // A SOFT delete, which is what the real client does — `EmailTemplate`
-          // is in the soft-delete set, so `delete` sets `deletedAt` and leaves
-          // the row holding its `@unique` key. A mock that removed the row
-          // hid a real bug: reads would miss it (the screen looked reset) while
-          // the next save would `create` a second row on the same key and fail.
-          delete: async ({ where }: { where: { key: string } }) => {
-            deletes.push(where.key);
-            const row = rows.get(where.key);
-            if (row) row.deletedAt = new Date();
+          delete: async ({ where }: { where: { id: string } }) => {
+            deletes.push(where.id);
+            rows.delete(where.id);
             return {};
           },
           upsert: async () => {
@@ -202,19 +194,12 @@ describe("§5.6 — the default is a starting point, not a fallback", { skip: !c
     );
   });
 
-  test("the SEED writes the same default, rather than a copy of it", () => {
+  test("the SEED holds no copy of the default wording", () => {
     // It used to transcribe the wording, and the two drifted immediately: 5.3b
     // added the reply line to the constant and the seed literal kept its own
-    // phrasing, so a fresh install got one sentence and "back to the default"
-    // restored a different one. Asserted against the SOURCE because running the
-    // seed needs a database, and the property is about where the words come
-    // from, not what they are.
+    // phrasing. Since ADR-095 nothing is seeded at all — with no stored
+    // override the default in code applies — so there is no second copy to drift.
     const seed = readFileSync(new URL("../../prisma/seed-hive.ts", import.meta.url), "utf8");
-    assert.match(
-      seed,
-      /key: "escalation-answer", \.\.\.DEFAULT_TEMPLATE/,
-      "REGRESSION: the seed transcribes §5.6's wording instead of importing it",
-    );
     assert.doesNotMatch(
       seed,
       /thanks for reaching out/,
@@ -340,16 +325,14 @@ describe("resetting goes back to §5.6's wording", { skip: !canMock }, () => {
     assert.equal(after.subject, templates.DEFAULT_TEMPLATE.subject);
   });
 
-  test("reset does NOT delete the row — a tombstone would brick the next save", async () => {
-    // `EmailTemplate` is soft-deleted, so a `delete` here sets `deletedAt` and
-    // leaves the row holding its `@unique` key. Reads would then miss it (the
-    // screen looks reset, correctly) while the next save would `create` a
-    // second row on the same key and fail on the constraint — editing
-    // permanently broken, for anyone who reset and then changed their mind.
+  test("editing after a reset still works — a reset never strands the key", async () => {
+    // The legacy store was soft-deleted, so a delete there left a tombstone on
+    // the unique key and bricked the next save. The core store (ADR-095) is not
+    // soft-deleted: reset removes the override, and the next save creates it.
     reset();
     await templates.saveTemplate("escalation-answer", { subject: "A", body: "{{answer}}" }, "alaa");
     await templates.resetTemplate("escalation-answer", "alaa");
-    assert.deepEqual(deletes, [], "REGRESSION: reset soft-deletes the row it must reuse");
+    assert.equal((await templates.loadTemplate("escalation-answer")).customised, false);
 
     const saved = await templates.saveTemplate(
       "escalation-answer",

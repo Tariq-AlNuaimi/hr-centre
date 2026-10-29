@@ -8,7 +8,7 @@ import { resolveTemplate, resolveTemplates, type ResolvedTemplate } from "./over
 
 /**
  * The joiner email queue — HR Onboarding `mail-queue.ts` (§11, BR-015,
- * AC-NOT-001, AC-7.4), ported. Everything is QUEUED (a `JmlEmailLog` row with no
+ * AC-NOT-001, AC-7.4), ported. Everything is QUEUED (an `EmailLog` row with no
  * body, ever — §11.3), scheduled for the next working-window opening of the ONE
  * calendar (now holiday-aware), re-checked at drain time, and rendered at send.
  * SMTP off ⇒ rows stay queued (not failures). A failed send is FAILED with its
@@ -29,7 +29,7 @@ export async function queueEmail(input: QueueEmailInput) {
   const calendar = await loadWorkingCalendar();
   const scheduledFor = nextWindowOpening(input.notBefore ?? new Date(), calendar);
   const { subject, cc } = await resolveHeaders(input);
-  return prisma.jmlEmailLog.create({
+  return prisma.emailLog.create({
     data: {
       type: input.type,
       recipient: input.recipient,
@@ -65,8 +65,10 @@ const BATCH = 25;
 
 /** What the drain may send now: queued, due, and not on a cancelled case. */
 function sendableNow(now: Date) {
-  return prisma.jmlEmailLog.findMany({
+  return prisma.emailLog.findMany({
     where: {
+      // The core log is shared (ADR-095); only JML's queue is drained here.
+      module: "jml",
       status: "QUEUED",
       scheduledFor: { lte: now },
       OR: [{ caseId: null }, { case: { status: { not: "CANCELLED" } } }],
@@ -111,14 +113,14 @@ export async function drainQueue(now = new Date()): Promise<DrainResult> {
         html: body.html,
       });
       if (!result.sent) continue;
-      await prisma.jmlEmailLog.update({
+      await prisma.emailLog.update({
         where: { id: row.id },
         data: { status: "SENT", sentAt: new Date(), failureReason: null },
         select: { id: true },
       });
       sent += 1;
     } catch (error) {
-      await prisma.jmlEmailLog.update({
+      await prisma.emailLog.update({
         where: { id: row.id },
         data: {
           status: "FAILED",
@@ -134,7 +136,7 @@ export async function drainQueue(now = new Date()): Promise<DrainResult> {
 
 /** AC-7.4 — a retry is a NEW row linked to the original, never a mutation of it. */
 export async function retryEmail(emailId: string, actorUserId: string) {
-  const original = await prisma.jmlEmailLog.findUnique({
+  const original = await prisma.emailLog.findUnique({
     where: { id: emailId },
     select: {
       id: true,
@@ -149,7 +151,7 @@ export async function retryEmail(emailId: string, actorUserId: string) {
   if (!original) throw new JmlError("Email not found", 404);
   if (original.status === "SENT") throw new JmlError("That message was already sent.");
   const calendar = await loadWorkingCalendar();
-  return prisma.jmlEmailLog.create({
+  return prisma.emailLog.create({
     data: {
       type: original.type,
       recipient: original.recipient,
@@ -210,17 +212,17 @@ function htmlFromText(text: string): string {
 
 /** Cancel every queued message of a case (BR-017) — per row, audited. */
 export async function cancelQueuedEmails(
-  tx: Pick<typeof prisma, "jmlEmailLog">,
+  tx: Pick<typeof prisma, "emailLog">,
   caseId: string,
   reason: string,
 ): Promise<number> {
-  const queued = await tx.jmlEmailLog.findMany({
+  const queued = await tx.emailLog.findMany({
     where: { caseId, status: "QUEUED" },
     select: { id: true },
     take: 500,
   });
   for (const row of queued) {
-    await tx.jmlEmailLog.update({
+    await tx.emailLog.update({
       where: { id: row.id },
       data: { status: "CANCELLED", failureReason: reason },
       select: { id: true },

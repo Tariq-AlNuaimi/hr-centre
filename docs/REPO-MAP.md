@@ -388,6 +388,7 @@
 - app/api/mcp/route.ts  [GET,POST]
 - app/api/mid-year/me/route.ts  [GET]
 - app/api/notifications/dismiss/route.ts  [POST]
+- app/api/notifications/preferences/route.ts  [GET,PUT]
 - app/api/notifications/read/route.ts  [POST]
 - app/api/notifications/route.ts  [GET]
 - app/api/openapi/route.ts  [GET]
@@ -445,7 +446,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -456,6 +457,8 @@
 - ApprovalStep: id, requestId, request, sequence, roleKey, label, requiredApprovals, status, decidedAt, decisions
 - ApprovalDecision: id, requestId, request, stepId, step, deciderId, decider, onBehalfOfId, onBehalfOf, viaProxy, action, comment, decidedAt
 - ApprovalDelegation: id, delegatorId, delegator, delegateId, delegate, module, validFrom, validUntil, reason, revokedAt, createdAt
+- EmailTemplate: id, module, key, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
+- NotificationPreference: id, userId, user, kind, inApp, email, updatedAt
 - AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, headEmployeeId, head, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
@@ -556,7 +559,7 @@
 - JmlHrAssignmentRule: id, scope, scopeId, priority, active, caseTypes, juniorHrUserId, juniorHr, seniorHrUserId, seniorHr, createdAt, updatedAt
 - JmlContractType: id, name, code, sortOrder, active, createdAt, updatedAt, joiners
 - JmlEmploymentTypeConfig: id, employmentType, active, defaultTemplateId, payrollApplicableDefault, notes, sortOrder, createdAt, updatedAt
-- JmlEmailLog: id, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
+- EmailLog: id, module, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, subjectType, subjectId, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
 - JmlEmailTemplateOverride: id, type, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - JmlJoinDetail: caseId, case, contractTypeId, contractType, plannedStartDate, actualStartDate, contractStartDate, contractEndDate, probationMonths, payrollApplicable, clientAssignedRole, introSentence, hobbies, msAccountRequired, laptopRequired, accessCardRequired, itReadinessConfirmed, itReadinessAt, itReadinessById, itReadinessBy, itIntakeSubmittedAt, itIntakeReference, itIntakeError, sourceRef, createdAt, updatedAt
 - JmlPreboarding: caseId, case, linkIssuedAt, linkExpiresAt, submittedAt, photoPathname, photoContentType, photoUploadedAt
@@ -587,8 +590,12 @@
 - lib/core/approvals/delegation-access.ts: canDelegateApprovals, canReceiveDelegation
 - lib/core/approvals/rules.ts: StepState, DecisionState, currentStep, RefusalCode, decisionRefusal, Outcome, decisionOutcome, vacantSteps, delegationLive
 - lib/core/approvals/store.ts: Tx, OpenRoundInput, cancelOpenRounds, openRound, Round, latestRound, latestRounds, decisionStates, ApprovalRefusal, Qualification, DecideInput, decide, delegatorsFor, delegationsOf, createDelegation, revokeDelegation
+- lib/core/email/send.ts: EmailMeta, sendLoggedEmail
+- lib/core/email/templates.ts: TemplateModule, TemplateOverride, templateOverride, templateOverrides, saveTemplateOverride, clearTemplateOverride
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/core/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
+- lib/core/notify/preferences.ts: PreferenceRow, preferencesFor, savePreferences, mutedInApp, wantEmail
+- lib/core/notify/registry.ts: KindInfo, NOTIFICATION_REGISTRY, NOTIFICATION_KINDS, Preference, effectivePreference
 - lib/core/notify/store.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, PendingNotification, persistNotifications
 - lib/core/notify/user-notify.ts: PREVIEW_CHARS, UserNotice, notifyUsers, resolveUserNotices, shortPreview
 - lib/core/permissions.ts: PmsRole, PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
@@ -944,6 +951,7 @@
 - lib/validations/change-request.ts: createChangeRequestSchema, decideChangeRequestSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/core/approvals.ts: DELEGABLE_MODULES, delegationSchema
+- lib/validations/core/notifications.ts: preferencesSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema, remindLateSchema
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput
@@ -1302,6 +1310,7 @@
 - components/rbac/RoleMatrix.tsx
 - components/rbac/RolesSection.tsx
 - components/rbac/UserSearch.tsx
+- components/settings/NotificationPreferences.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx
 - components/shared/Chart.impl.tsx

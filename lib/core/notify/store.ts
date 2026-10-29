@@ -1,6 +1,7 @@
 import type { NotificationKind } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { mutedInApp } from "./preferences";
 
 /**
  * The core notification store (P2 platform, ADR-091): who a feed belongs to and
@@ -54,6 +55,36 @@ export type PendingNotification = {
   /** JML S2 — hidden until this instant (the working window). */
   sendAfter?: Date | null;
 };
+
+/**
+ * Drop the notices their recipient has turned off (ADR-095 preferences). A
+ * mandatory kind is never dropped; an employee recipient is matched through
+ * their login. Two bounded queries for the whole batch.
+ */
+async function withoutMuted(
+  pending: readonly PendingNotification[],
+): Promise<readonly PendingNotification[]> {
+  const employeeIds = [
+    ...new Set(pending.map((p) => p.recipientEmployeeId).filter((x): x is string => Boolean(x))),
+  ];
+  const logins = employeeIds.length
+    ? await prisma.employee.findMany({
+        where: { id: { in: employeeIds }, userId: { not: null } },
+        select: { id: true, userId: true },
+        take: employeeIds.length,
+      })
+    : [];
+  const loginOf = new Map(logins.map((e) => [e.id, e.userId!]));
+  const userOf = (p: PendingNotification) =>
+    p.recipientEmployeeId ? loginOf.get(p.recipientEmployeeId) : (p.recipientUserId ?? undefined);
+  const users = [...new Set(pending.map(userOf).filter((x): x is string => Boolean(x)))];
+  const off = await mutedInApp(users, [...new Set(pending.map((p) => p.kind))]);
+  if (off.size === 0) return pending;
+  return pending.filter((p) => {
+    const u = userOf(p);
+    return !u || !off.has(`${u}:${p.kind}`);
+  });
+}
 
 /** Keys per existence query. Postgres copes with far more; this keeps the plan flat. */
 const EXISTS_CHUNK = 500;
@@ -109,7 +140,9 @@ export async function persistNotifications(
   let failed = 0;
 
   const sent = await alreadySent(pending);
-  const unsent = pending.filter((p) => !sent.has(p.dedupeKey));
+  // Fail open: a preferences read that fails must not swallow a notice.
+  const wanted = await withoutMuted(pending).catch(() => pending);
+  const unsent = wanted.filter((p) => !sent.has(p.dedupeKey));
   // Anything past the budget is not lost — it has no row, so the next run's
   // `alreadySent` will still report it missing and it moves to the front of the
   // queue. The count is reported so a backlog that never drains is visible.

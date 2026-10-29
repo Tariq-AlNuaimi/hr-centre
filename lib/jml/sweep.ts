@@ -28,8 +28,8 @@ export type SweepStep = {
 
 /** AC-7.4: a FAILED message with a case tells the case owner, once per case and type. */
 async function alertFailedEmails({ calendar, now }: { now: Date; calendar: WorkingCalendar }) {
-  const failed = await prisma.jmlEmailLog.findMany({
-    where: { status: "FAILED", caseId: { not: null } },
+  const failed = await prisma.emailLog.findMany({
+    where: { module: "jml", status: "FAILED", caseId: { not: null } },
     orderBy: { updatedAt: "desc" },
     take: 100,
     select: {

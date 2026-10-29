@@ -211,7 +211,18 @@
     "confirmPassword": "تأكيد كلمة المرور",
     "passwordChanged": "تم تغيير كلمة المرور بنجاح",
     "passwordMismatch": "كلمات المرور غير متطابقة",
-    "passwordChangeFailed": "فشل تغيير كلمة المرور"
+    "passwordChangeFailed": "فشل تغيير كلمة المرور",
+    "notificationPrefs": {
+      "title": "Notifications",
+      "note": "Choose which notices you get in the app and by email. Notices the organisation relies on, such as escalations and statutory deadlines, can't be turned off.",
+      "loadFailed": "Your notification settings couldn't be loaded.",
+      "required": "Always on",
+      "inApp": "In the app",
+      "email": "By email",
+      "save": "Save notification settings",
+      "saved": "Notification settings saved",
+      "saveFailed": "Your notification settings couldn't be saved."
+    }
   },
   "auditLog": {
     "title": "سجل التدقيق",

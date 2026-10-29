@@ -13,6 +13,7 @@ import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { NotificationPreferences } from "@/components/settings/NotificationPreferences";
 
 export default function ProfilePage() {
   const t = useTranslations("settings");
@@ -117,6 +118,10 @@ export default function ProfilePage() {
           </Form>
         </CardContent>
       </Card>
+
+      <Separator className="my-6" />
+
+      <NotificationPreferences />
     </>
   );
 }

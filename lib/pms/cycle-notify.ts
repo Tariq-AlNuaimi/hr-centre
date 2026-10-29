@@ -1,6 +1,7 @@
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { prisma } from "@/lib/prisma";
-import { isEmailEnabled, sendEmail } from "@/lib/email";
+import { isEmailEnabled } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/core/email/send";
 import type { LadderEvent } from "./compliance";
 import { managerChain } from "./org-tree";
 import {
@@ -314,11 +315,15 @@ async function deliver(
     try {
       // Recipient addresses are Confidential (SECURITY.md §1) — never logged
       // here; lib/email.ts itself logs a recipient COUNT only.
-      const result = await sendEmail({
-        to: person.email,
-        subject,
-        text: `${body.join("\n")}\n`,
-      });
+      const result = await sendLoggedEmail(
+        { to: person.email, subject, text: `${body.join("\n")}\n` },
+        {
+          module: "performance",
+          type: "cycle-ladder",
+          subjectType: "employee",
+          subjectId: person.id,
+        },
+      );
       if (result.sent) sent += 1;
     } catch {
       // One bad address must not stop the rest of the run's mail.

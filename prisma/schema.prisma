@@ -104,7 +104,7 @@ model User {
   jmlTaskComments          JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
   jmlRulesAsOwner          JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
   jmlRulesAsSenior         JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
-  jmlEmailsSent            JmlEmailLog[]              @relation("JmlEmailSentBy")
+  jmlEmailsSent            EmailLog[]                 @relation("JmlEmailSentBy")
   jmlEmailTemplateEdits    JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
   jmlItReadinessConfirmed  JmlJoinDetail[]            @relation("JmlItReadinessBy")
   jmlApprovalsDecided      JmlApproval[]              @relation("JmlApprovalDecidedBy")
@@ -127,6 +127,8 @@ model User {
   approvalsOnBehalfOf      ApprovalDecision[]         @relation("ApprovalOnBehalfOf")
   approvalDelegations      ApprovalDelegation[]       @relation("ApprovalDelegator")
   approvalDelegatedTo      ApprovalDelegation[]       @relation("ApprovalDelegate")
+  emailTemplatesUpdated    EmailTemplate[]            @relation("EmailTemplateUpdatedBy")
+  notificationPreferences  NotificationPreference[]   @relation("NotificationPreferences")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -366,6 +368,42 @@ model ApprovalDelegation {
   @@index([delegateId, validUntil])
   @@index([delegatorId])
   @@map("core_approval_delegations")
+}
+
+/// Core email template overrides (ADR-095): an administrator's edit to one
+/// module template. A module owns its default wording in code; a row shadows
+/// subject / body / cc, and no row means the default applies.
+model EmailTemplate {
+  id           String   @id @default(cuid())
+  module       String   @db.VarChar(20)
+  key          String   @db.VarChar(80)
+  subject      String?
+  body         String?  @db.Text
+  ccRecipients String[] @default([]) @map("cc_recipients")
+  updatedById  String?  @map("updated_by_id")
+  updatedBy    User?    @relation("EmailTemplateUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([module, key])
+  @@index([updatedById])
+  @@map("core_email_templates")
+}
+
+/// A person's choice for one notification kind (ADR-095). No row = the default
+/// (in-app on, email on where the kind has one). Mandatory kinds ignore it
+/// (lib/core/notify/registry.ts).
+model NotificationPreference {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  user      User             @relation("NotificationPreferences", fields: [userId], references: [id], onDelete: Cascade)
+  kind      NotificationKind
+  inApp     Boolean          @default(true) @map("in_app")
+  email     Boolean          @default(true)
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@unique([userId, kind])
+  @@map("core_notification_preferences")
 }
 
 // ---------------------------------------------------------------------------
@@ -3805,11 +3843,14 @@ enum JmlRuleScope {
   DEPARTMENT
 }
 
-enum JmlEmailStatus {
+/// Core email log status (ADR-095). The Postgres type keeps its original name.
+enum EmailStatus {
   QUEUED
   SENT
   FAILED
   CANCELLED
+
+  @@map("JmlEmailStatus")
 }
 
 enum JmlRagFlag {
@@ -3899,7 +3940,7 @@ model JmlCase {
   anonymisedAt    DateTime? @map("anonymised_at")
 
   tasks          JmlTask[]
-  emailLogs      JmlEmailLog[]
+  emailLogs      EmailLog[]
   /// JML S3 — the joiner details of a JOIN case.
   joinDetail     JmlJoinDetail?
   preboarding    JmlPreboarding?
@@ -4140,29 +4181,39 @@ model JmlEmploymentTypeConfig {
 }
 
 /// Queued email (Onboarding §11). NO body column, ever (§11.3) — rendered at send.
-model JmlEmailLog {
-  id            String         @id @default(cuid())
+/// The platform's one email log and outbound queue (ADR-095) — every module's
+/// sends, with recipient (Confidential) and subject, never the body.
+model EmailLog {
+  id            String      @id @default(cuid())
+  /// Which module sent it ("jml", "tickets", …); rows before ADR-095 are JML.
+  module        String      @default("jml") @db.VarChar(20)
   type          String
   recipient     String
   cc            String?
   subject       String
-  status        JmlEmailStatus @default(QUEUED)
-  scheduledFor  DateTime       @map("scheduled_for")
-  sentAt        DateTime?      @map("sent_at")
-  failureReason String?        @map("failure_reason")
-  caseId        String?        @map("case_id")
-  case          JmlCase?       @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  sentById      String?        @map("sent_by_id")
-  sentBy        User?          @relation("JmlEmailSentBy", fields: [sentById], references: [id], onDelete: SetNull)
-  resendOfId    String?        @map("resend_of_id")
-  resendOf      JmlEmailLog?   @relation("JmlEmailResend", fields: [resendOfId], references: [id], onDelete: SetNull)
-  resends       JmlEmailLog[]  @relation("JmlEmailResend")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  status        EmailStatus @default(QUEUED)
+  scheduledFor  DateTime    @map("scheduled_for")
+  sentAt        DateTime?   @map("sent_at")
+  failureReason String?     @map("failure_reason")
+  /// What it is about, for modules without a typed link (`tickets.escalation`, …).
+  subjectType   String?     @map("subject_type") @db.VarChar(40)
+  subjectId     String?     @map("subject_id")
+  /// The JML case it belongs to (JML's typed link; cascades with the case).
+  caseId        String?     @map("case_id")
+  case          JmlCase?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sentById      String?     @map("sent_by_id")
+  sentBy        User?       @relation("JmlEmailSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+  resendOfId    String?     @map("resend_of_id")
+  resendOf      EmailLog?   @relation("JmlEmailResend", fields: [resendOfId], references: [id], onDelete: SetNull)
+  resends       EmailLog[]  @relation("JmlEmailResend")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
   @@index([status, scheduledFor])
   @@index([caseId, createdAt])
-  @@map("jml_email_logs")
+  @@index([module, createdAt])
+  @@index([subjectType, subjectId])
+  @@map("core_email_logs")
 }
 
 /// Admin edits shadowing the approved email copy (Onboarding §11 override layer).

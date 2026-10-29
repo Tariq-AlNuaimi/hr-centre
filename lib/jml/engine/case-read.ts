@@ -201,7 +201,7 @@ export async function getCaseDetail(actor: JmlActor, caseId: string) {
 
 export async function listCaseEmails(actor: JmlActor, caseId: string) {
   await loadCaseFor(actor, caseId, "jml.view");
-  return prisma.jmlEmailLog.findMany({
+  return prisma.emailLog.findMany({
     where: { caseId },
     orderBy: { createdAt: "desc" },
     take: 100,

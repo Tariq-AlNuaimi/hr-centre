@@ -1086,3 +1086,12 @@ Considered:
   external systems stay on the access checklist until an IdP integration exists.
 
 Decision: build — one nullable instant on the leave case and pure helpers the sweep already calls.
+
+### 2026-10-29 — Core email log, templates, logged sender, notification preferences (P2 platform, ADR-095)
+
+Scope: lib/core/email/**, lib/core/notify/registry.ts, lib/core/notify/preferences.ts, lib/validations/core/notifications.ts
+Considered: **Postmark / SendGrid / Resend templates and activity logs** (rejected for now —
+SMTP is the deployment's transport and HR-edited wording must be audited here).
+**Novu / Knock preference centres** (rejected — an external record of who was told what).
+Decision: build — generalise the JML log in place, one template table, a registry and a
+preferences table.

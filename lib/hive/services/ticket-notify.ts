@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { sendLoggedEmail } from "@/lib/core/email/send";
+import { wantEmail } from "@/lib/core/notify/preferences";
 import { env } from "@/lib/env";
 import { formatTicketId } from "@/lib/hive/ticket-id";
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
@@ -241,9 +242,19 @@ async function deliver(kind: Kind, escalationId: string): Promise<void> {
     if ((kind === "opened" || kind === "reopened") && (await pairOverQuota(ticket.hrPairId))) {
       return;
     }
-    const to = [...new Set((await emailsOf(ids)).map((e) => e.trim().toLowerCase()))];
+    // ADR-095: people who turned this kind's email off are left out.
+    const emailIds = inApp ? await wantEmail([...ids], inApp).catch(() => [...ids]) : [...ids];
+    const to = [...new Set((await emailsOf(emailIds)).map((e) => e.trim().toLowerCase()))];
     if (to.length === 0) return;
-    await sendEmail({ to, ...composeNotification(kind as EmailKind, ticket, ticketPrefix) });
+    await sendLoggedEmail(
+      { to, ...composeNotification(kind as EmailKind, ticket, ticketPrefix) },
+      {
+        module: "tickets",
+        type: `ticket-${kind}`,
+        subjectType: "tickets.escalation",
+        subjectId: ticket.id,
+      },
+    );
   } catch {
     // Deliberately swallowed and not detailed: the error can carry addresses
     // and the question, and the transition it follows has already committed.

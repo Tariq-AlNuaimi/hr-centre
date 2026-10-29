@@ -10,7 +10,7 @@ import { jml } from "@/lib/jml/route";
 export const POST = withRateLimit(
   withAuth(
     jml(async ({ params, actor }) => {
-      const row = await prisma.jmlEmailLog.findUnique({
+      const row = await prisma.emailLog.findUnique({
         where: { id: params.id! },
         select: { caseId: true },
       });

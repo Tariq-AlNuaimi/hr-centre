@@ -71,7 +71,7 @@ export async function onActivated(caseId: string): Promise<void> {
 async function notifyProIfVisaRequired(caseId: string): Promise<boolean> {
   const pro = await desks.pro();
   if (!pro || !(await hasOpenVisaWork(caseId))) return false;
-  const already = await prisma.jmlEmailLog.findFirst({
+  const already = await prisma.emailLog.findFirst({
     where: { caseId, type: EMAIL_TYPES.PRO_VISA, status: { not: "CANCELLED" } },
     select: { id: true },
   });
