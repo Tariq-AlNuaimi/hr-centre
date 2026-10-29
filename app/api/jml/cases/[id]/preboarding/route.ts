@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
 import {
@@ -7,14 +6,13 @@ import {
   revokePreboardingLinks,
 } from "@/lib/jml/preboarding/hr";
 import { body, jml } from "@/lib/jml/route";
+import { preboardingIssueSchema } from "@/lib/validations/jml/preboarding";
 
 /**
  * P2-4 — the joiner's preboarding link, from the HR side. GET needs view access
  * to the case; issuing and revoking need `jml.manageJoiners` in scope (checked
  * by the service through `loadCaseFor`; out of scope is a 404).
  */
-
-const issueSchema = z.object({ email: z.boolean().default(false) }).strict();
 
 export const GET = withRateLimit(
   withAuth(jml(async ({ params, actor }) => ok(await preboardingStatus(actor, params.id!)))),
@@ -24,7 +22,7 @@ export const GET = withRateLimit(
 export const POST = withRateLimit(
   withAuth(
     jml(async ({ req, params, actor }) => {
-      const input = await body(req, issueSchema);
+      const input = await body(req, preboardingIssueSchema);
       return ok(await issuePreboardingLink(actor, params.id!, input));
     }),
   ),

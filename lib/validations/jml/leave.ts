@@ -395,3 +395,13 @@ export const generateDocumentSchema = z.object({
   useCurrent: z.boolean().default(false),
   reason: z.string().trim().max(500).nullable().default(null),
 });
+
+/** P2-5 — a leaver's access cut-off: wall-clock time in the organisation's zone, or null for the default. */
+export const accessCutoffSchema = z
+  .object({
+    at: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Use a date and time.")
+      .nullable(),
+  })
+  .strict();

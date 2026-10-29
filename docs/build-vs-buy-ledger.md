@@ -1075,3 +1075,14 @@ approvals over Restricted pay and personal data must stay in the audited databas
 **Keep module tables with a shared inbox only** (rejected — delegation and SoD would stay
 duplicated).
 Decision: build — four tables and a pure rules module.
+
+### 2026-10-29 — P2 scheduled access cut-off for leavers
+
+Scope: lib/jml/leave/cutoff.ts
+Considered:
+
+- **Identity-provider lifecycle automation (Entra ID / Okta scheduled deprovisioning, Rippling).**
+  Rejected for now: SSO is not live and HR Centre's own login is what the sweep revokes; the
+  external systems stay on the access checklist until an IdP integration exists.
+
+Decision: build — one nullable instant on the leave case and pure helpers the sweep already calls.

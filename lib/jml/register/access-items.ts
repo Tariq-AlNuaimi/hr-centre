@@ -3,6 +3,9 @@ import { auditedTransaction, prisma } from "@/lib/prisma";
 import { canFor, loadCaseFor, MANAGE_PERMISSION, type JmlActor } from "../access";
 import { JmlError } from "../errors";
 import { accessConfirmationProblem, rotationFor, type AccessConfirmation } from "./rules";
+import { loadSchedule } from "@/lib/working-time/load";
+import { zonedToday } from "@/lib/working-time/calendar";
+import { accessSummary, defaultCutoff, localInputToInstant } from "../leave/cutoff";
 
 /**
  * The access register (Offboarding §9.8, D3): GRANT items on a joiner, REVOKE
@@ -33,8 +36,12 @@ export async function listAccessItems(actor: JmlActor, caseId: string) {
     select: ITEM_SELECT,
     take: 300,
   });
+  const { timeZone } = await loadSchedule();
   return {
     items,
+    // P2-5 — per-system status at a glance, and (leavers) when the login is cut.
+    summary: accessSummary(items, zonedToday(new Date(), timeZone)),
+    cutoff: kase.caseType === "LEAVE" ? await cutoffFor(caseId, timeZone) : null,
     open: items.filter((i) => !i.confirmedDate).length,
     unrotatedShared: items
       .filter((i) => i.sharedCredential && !i.confirmedDate)
@@ -129,4 +136,45 @@ export async function confirmAccessItem(
   );
   const open = await prisma.jmlAccessItem.count({ where: { caseId, confirmedDate: null } });
   return { confirmed: true, open };
+}
+
+async function cutoffFor(caseId: string, timeZone: string) {
+  const d = await prisma.leaveCaseDetail.findUnique({
+    where: { caseId },
+    select: { accessCutoffAt: true, lastPhysicalWorkingDay: true, loginRevokedAt: true },
+  });
+  if (!d) return null;
+  return {
+    at: d.accessCutoffAt ?? defaultCutoff(d.lastPhysicalWorkingDay, timeZone),
+    isDefault: d.accessCutoffAt === null,
+    loginRevokedAt: d.loginRevokedAt,
+    timeZone,
+  };
+}
+
+/**
+ * P2-5 — HR sets (or clears, back to the 17:00 default) the leaver's access
+ * cut-off. `at` is a wall-clock time in the schedule's zone ("YYYY-MM-DDTHH:mm").
+ * Refused once the login is already revoked: the cut-off has happened.
+ */
+export async function setAccessCutoff(actor: JmlActor, caseId: string, at: string | null) {
+  const kase = await loadCaseFor(actor, caseId, "jml.manageLeavers", "LEAVE");
+  if (["CLOSED", "CANCELLED", "ARCHIVED"].includes(kase.status)) {
+    throw new JmlError("The access cut-off is set on an open exit.", 409);
+  }
+  const d = await prisma.leaveCaseDetail.findUnique({
+    where: { caseId },
+    select: { loginRevokedAt: true },
+  });
+  if (!d) throw new JmlError("Case not found", 404);
+  if (d.loginRevokedAt) throw new JmlError("The login has already been revoked.", 409);
+  const { timeZone } = await loadSchedule();
+  const instant = at === null ? null : localInputToInstant(at, timeZone);
+  if (at !== null && !instant) throw new JmlError("at: use a date and time.", 422);
+  await prisma.leaveCaseDetail.update({
+    where: { caseId },
+    data: { accessCutoffAt: instant },
+    select: { caseId: true },
+  });
+  return cutoffFor(caseId, timeZone);
 }

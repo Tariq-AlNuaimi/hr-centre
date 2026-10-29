@@ -12,6 +12,7 @@ import { ActionDialog } from "../ActionDialog";
 import { Field } from "../Field";
 import { LoadFailed, LoadingBlock } from "../States";
 import { useJmlAction } from "../use-jml";
+import { AccessCutoff, AccessSummary, type Cutoff, type DomainSummary } from "./AccessCutoff";
 
 export const ACCESS_DOMAINS = [
   "IDENTITY",
@@ -37,7 +38,14 @@ type Item = {
   confirmingParty: string | null;
   reference: string | null;
 };
-type Listing = { items: Item[]; open: number; unrotatedShared: string[]; can: { manage: boolean } };
+type Listing = {
+  items: Item[];
+  open: number;
+  unrotatedShared: string[];
+  can: { manage: boolean };
+  summary: DomainSummary[];
+  cutoff: Cutoff | null;
+};
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -58,6 +66,10 @@ export function AccessSection({ caseId, active }: { caseId: string; active: bool
       subtitle={t("openCount", { count: d.open })}
       actions={d.can.manage && active ? <AddAccess caseId={caseId} /> : null}
     >
+      {d.cutoff ? (
+        <AccessCutoff caseId={caseId} cutoff={d.cutoff} canManage={d.can.manage && active} />
+      ) : null}
+      <AccessSummary rows={d.summary} />
       {d.unrotatedShared.length > 0 ? (
         <p role="status" className="mb-3 rounded-md bg-status-warn p-2 text-sm text-status-warn-fg">
           {t("unrotated", { list: d.unrotatedShared.join(", ") })}

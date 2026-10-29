@@ -33,3 +33,6 @@ export const preboardingSubmitSchema = z
   .strict();
 
 export type PreboardingSubmit = z.infer<typeof preboardingSubmitSchema>;
+
+/** P2-4 — HR issues a link; `email` also sends it to the joiner's personal address. */
+export const preboardingIssueSchema = z.object({ email: z.boolean().default(false) }).strict();
