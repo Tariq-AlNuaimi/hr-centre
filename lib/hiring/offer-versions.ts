@@ -1,10 +1,13 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
+import { openRound } from "@/lib/core/approvals/store";
+import { OFFER_SUBJECT } from "./offer-round";
 import type { HiringActor } from "./access";
 import { computeChain, totalMonthlyComp } from "./approval-chain";
 import { randomUUID } from "node:crypto";
 import { notifyApprovalStep } from "./notify";
 import {
+  approvalRoleLabel,
   assertChainStaffed,
   configToChainOptions,
   loadApprovalConfig,
@@ -191,13 +194,18 @@ export async function reviseOffer(actor: HiringActor, l: LoadedOffer, body: Revi
     const now = new Date();
     for (const prior of existing)
       await tx.hiringOfferVersion.update({ where: { id: prior.id }, data: { supersededAt: now } });
-    if (restart) {
-      const old = await tx.hiringOfferApproval.findMany({
-        where: { offerId: o.id },
-        select: { id: true },
-        take: 50,
+    if (restart && routed) {
+      // A pay change restarts approval: a fresh core round (ADR-094).
+      await openRound(tx, {
+        module: "hiring",
+        subjectType: OFFER_SUBJECT,
+        subjectId: o.id,
+        title: o.candidate.name,
+        href: `/hiring/offers/${o.id}`,
+        submittedById: actor.userId,
+        excludedIds: [o.candidate.referredById],
+        steps: routed.map((s) => ({ roleKey: s.role, label: approvalRoleLabel(s.role) })),
       });
-      for (const a of old) await tx.hiringOfferApproval.delete({ where: { id: a.id } });
     }
     await tx.hiringOffer.update({
       where: { id: o.id, status: "SENT" },

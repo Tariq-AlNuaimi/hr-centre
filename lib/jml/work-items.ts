@@ -97,6 +97,7 @@ async function approvalsToRecord(actor: JmlActor) {
     key: `jml-approval:${a.id}`,
     module: "jml",
     kind: "jmlApproval",
+    approval: true,
     params: {
       approval: humanize(a.approvalType),
       holder: a.holderRoleKey.replaceAll("_", " "),

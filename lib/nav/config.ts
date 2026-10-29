@@ -101,6 +101,17 @@ export type NavEntry = NavLink & { group: NavGroup; icon: NavIcon; tabs?: readon
 
 export const NAV: readonly NavEntry[] = [
   { key: "home", group: "home", icon: "home", label: "home", href: "/", show: always },
+  // ADR-094: every decision waiting on the viewer, across modules.
+  {
+    key: "approvals",
+    group: "home",
+    icon: "inbox",
+    label: "approvals",
+    href: "/approvals",
+    // Anyone who can be routed (or delegated) an approval: hiring readers, JML
+    // approval deciders and ticket staff. Others never have one waiting.
+    show: (c) => c.hiring("hiring.view") || c.jml("jml.decideApprovals") || c.hive.seeTickets,
+  },
 
   // ME — everyone with a login.
   {

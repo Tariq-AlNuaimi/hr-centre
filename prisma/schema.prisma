@@ -122,6 +122,11 @@ model User {
   leaveGatesSatisfied      LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
   leaveGatesOverridden     LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
   moduleSettingsUpdated    ModuleSetting[]            @relation("ModuleSettingUpdatedBy")
+  approvalsSubmitted       ApprovalRequest[]          @relation("ApprovalSubmittedBy")
+  approvalDecisions        ApprovalDecision[]         @relation("ApprovalDecider")
+  approvalsOnBehalfOf      ApprovalDecision[]         @relation("ApprovalOnBehalfOf")
+  approvalDelegations      ApprovalDelegation[]       @relation("ApprovalDelegator")
+  approvalDelegatedTo      ApprovalDelegation[]       @relation("ApprovalDelegate")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -246,6 +251,121 @@ model ModuleSetting {
   @@unique([module, key])
   @@index([updatedById])
   @@map("core_module_settings")
+}
+
+/// Core approvals engine (ADR-094). One request per approval ROUND of a subject
+/// (`subjectType` + soft `subjectId`); a send-back, rejection or resubmission
+/// closes the round and the next submission opens a new one, so every earlier
+/// decision stays on record.
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT_BACK
+  CANCELLED
+}
+
+enum ApprovalStepStatus {
+  WAITING
+  CURRENT
+  APPROVED
+  REJECTED
+  SENT_BACK
+  CANCELLED
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+  SENT_BACK
+}
+
+model ApprovalRequest {
+  id            String                @id @default(cuid())
+  module        String                @db.VarChar(20)
+  subjectType   String                @map("subject_type") @db.VarChar(40)
+  subjectId     String                @map("subject_id")
+  /// Display only (a candidate name, a requisition title) — never pay or IDs.
+  title         String
+  href          String
+  status        ApprovalRequestStatus @default(PENDING)
+  submittedById String?               @map("submitted_by_id")
+  submittedBy   User?                 @relation("ApprovalSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  /// People who may never decide this round besides the submitter (a referrer).
+  excludedIds   String[]              @default([]) @map("excluded_ids")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  closedAt      DateTime?             @map("closed_at")
+  steps         ApprovalStep[]
+  decisions     ApprovalDecision[]
+
+  @@index([subjectType, subjectId, createdAt])
+  @@index([status, module])
+  @@index([submittedById])
+  @@map("core_approval_requests")
+}
+
+model ApprovalStep {
+  id                String             @id @default(cuid())
+  requestId         String             @map("request_id")
+  request           ApprovalRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sequence          Int
+  /// The module's role key ("HR_MANAGER", "hiring.coo", …); the module resolves holders.
+  roleKey           String             @map("role_key") @db.VarChar(60)
+  label             String
+  /// Two-holder steps: how many DIFFERENT people must approve before it passes.
+  requiredApprovals Int                @default(1) @map("required_approvals")
+  status            ApprovalStepStatus @default(WAITING)
+  decidedAt         DateTime?          @map("decided_at")
+  decisions         ApprovalDecision[]
+
+  @@unique([requestId, sequence])
+  @@index([status])
+  @@map("core_approval_steps")
+}
+
+model ApprovalDecision {
+  id           String          @id @default(cuid())
+  requestId    String          @map("request_id")
+  request      ApprovalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  stepId       String          @map("step_id")
+  step         ApprovalStep    @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  deciderId    String          @map("decider_id")
+  decider      User            @relation("ApprovalDecider", fields: [deciderId], references: [id], onDelete: Restrict)
+  /// Set when a delegate decided for a holder (ApprovalDelegation).
+  onBehalfOfId String?         @map("on_behalf_of_id")
+  onBehalfOf   User?           @relation("ApprovalOnBehalfOf", fields: [onBehalfOfId], references: [id], onDelete: SetNull)
+  /// A module administrator decided without holding the step's role (proxy).
+  viaProxy     Boolean         @default(false) @map("via_proxy")
+  action       ApprovalAction
+  comment      String?
+  decidedAt    DateTime        @default(now()) @map("decided_at")
+
+  @@unique([stepId, deciderId])
+  @@index([requestId])
+  @@index([deciderId])
+  @@index([onBehalfOfId])
+  @@map("core_approval_decisions")
+}
+
+/// "Decide my approvals while I am away": the delegate may decide any step the
+/// delegator could, for one module or all (`module` null), between the dates.
+/// Decision authority only — the delegate still needs read access to the record.
+model ApprovalDelegation {
+  id          String    @id @default(cuid())
+  delegatorId String    @map("delegator_id")
+  delegator   User      @relation("ApprovalDelegator", fields: [delegatorId], references: [id], onDelete: Cascade)
+  delegateId  String    @map("delegate_id")
+  delegate    User      @relation("ApprovalDelegate", fields: [delegateId], references: [id], onDelete: Cascade)
+  module      String?   @db.VarChar(20)
+  validFrom   DateTime  @map("valid_from")
+  validUntil  DateTime  @map("valid_until")
+  reason      String?
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([delegateId, validUntil])
+  @@index([delegatorId])
+  @@map("core_approval_delegations")
 }
 
 // ---------------------------------------------------------------------------

@@ -1065,3 +1065,13 @@ Considered:
   in by hand and personal data would leave the system.
 
 Decision: build — on the core magic-link service (ADR-090) and the JML task engine (ADR-093).
+
+### 2026-10-29 — Core approvals engine (P2 platform, ADR-094)
+
+Scope: lib/core/approvals/**, lib/validations/core/approvals.ts, lib/hiring/offer-round.ts
+Considered: **Camunda / Temporal human-task workflows** (rejected — a runtime and BPMN for
+one-to-four-step chains). **Workflow SaaS (Kissflow, Zapier approvals)** (rejected —
+approvals over Restricted pay and personal data must stay in the audited database).
+**Keep module tables with a shared inbox only** (rejected — delegation and SoD would stay
+duplicated).
+Decision: build — four tables and a pure rules module.

@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
-import { auditedTransaction, prisma } from "@/lib/prisma";
-import { actsAs, isHiringAdmin, type HiringActor } from "./access";
+import { prisma } from "@/lib/prisma";
+import { ApprovalRefusal, decide, latestRound } from "@/lib/core/approvals/store";
+import type { HiringActor } from "./access";
 import { chainFromSnapshot, computeChain, totalMonthlyComp } from "./approval-chain";
 import {
   configToChainOptions,
@@ -12,7 +13,8 @@ import { loadCandidate } from "./candidates";
 import { HiringRuleError } from "./http";
 import { toNum } from "./money";
 import { bandVerdict } from "./offer-package";
-import { nextOfferStep, offerDecisionRefusal } from "./offer-rules";
+import { nextOfferStep, offerDecisionRefusal, offerRefusalMessage } from "./offer-rules";
+import { OFFER_SUBJECT, delegatorActors, qualifyForRole, roundDecisions } from "./offer-round";
 import { offerPay, type LoadedOffer } from "./offers";
 import { notifyApprovalStep, notifyOfferDecided } from "./notify";
 import { resolveUserNotices } from "@/lib/core/notify/user-notify";
@@ -23,6 +25,9 @@ import { orgNames, peopleById } from "./people";
  * `/api/offers/[id]/approvals`. The chain is the submit-time snapshot; before
  * submission it is a preview of what submitting would route. D17: nobody
  * approves two steps of the same round.
+ *
+ * Rounds and decisions live in the core approvals engine (ADR-094,
+ * `lib/core/approvals`); this file keeps Hiring's chain, holders and sentences.
  */
 
 async function chainFor(l: LoadedOffer) {
@@ -40,27 +45,16 @@ async function chainFor(l: LoadedOffer) {
 export async function approvalView(actor: HiringActor, l: LoadedOffer) {
   const o = l.offer;
   const { steps, preview } = await chainFor(l);
-  const [routed, decisions] = await Promise.all([
+  const [routed, round, delegators] = await Promise.all([
     routeChain(steps, l.subject),
-    prisma.hiringOfferApproval.findMany({
-      where: { offerId: o.id },
-      orderBy: { sequence: "asc" },
-      take: 50,
-    }),
+    latestRound(OFFER_SUBJECT, o.id),
+    delegatorActors(actor),
   ]);
+  const decisions = roundDecisions(round);
   const people = await peopleById([...decisions.map((d) => d.approverId), o.submittedById]);
   const referrer = o.candidate.referredById;
   const pending = o.status === "PENDING_APPROVAL";
-  const next = pending
-    ? nextOfferStep(
-        routed,
-        decisions.map((d) => ({
-          sequence: d.sequence ?? 0,
-          approverId: d.approverId,
-          action: d.action,
-        })),
-      )
-    : undefined;
+  const next = pending ? nextOfferStep(routed, decisions) : undefined;
   const chain = routed.map((s) => {
     const d = decisions.find((x) => x.sequence === s.sequence);
     const approvers = s.approvers.filter((a) => a.id !== referrer);
@@ -75,7 +69,7 @@ export async function approvalView(actor: HiringActor, l: LoadedOffer) {
       comment: d?.comment ?? null,
     };
   });
-  const refusal = next ? decisionRefusal(actor, l, next.role, decisions) : null;
+  const refusal = next ? refusalFor(actor, delegators, l, next, round) : null;
   const pay = l.comp ? offerPay(o) : null;
   return {
     preview,
@@ -107,18 +101,25 @@ async function packageConfirmed(candidateId: string) {
   return c?.packageStatus ?? null;
 }
 
-function decisionRefusal(
+/** Why the actor may not decide `step` now (Hiring's sentence), or null. */
+function refusalFor(
   actor: HiringActor,
+  delegators: readonly HiringActor[],
   l: LoadedOffer,
-  role: Parameters<typeof actsAs>[1],
-  decisions: readonly { approverId: string; action: string | null }[],
+  step: { sequence: number; role: Parameters<typeof qualifyForRole>[2] },
+  round: Awaited<ReturnType<typeof latestRound>>,
 ) {
+  const q = qualifyForRole(actor, delegators, step.role, l.subject);
+  const decided = round?.status === "PENDING" ? round.decisions : [];
   return offerDecisionRefusal({
     actorId: actor.userId,
+    actingForId: q?.onBehalfOfId ?? null,
     submitterId: l.offer.submittedById,
     referrerId: l.offer.candidate.referredById,
-    qualified: isHiringAdmin(actor) || actsAs(actor, role, l.subject),
-    priorApproverIds: decisions.filter((d) => d.action === "APPROVED").map((d) => d.approverId),
+    qualified: q !== null,
+    priorApproverIds: decided
+      .filter((d) => d.action === "APPROVED" && d.step.sequence !== step.sequence)
+      .flatMap((d) => [d.deciderId, d.onBehalfOfId].filter((x): x is string => Boolean(x))),
   });
 }
 
@@ -136,20 +137,14 @@ export async function decideOffer(
       "This offer has no valid approval chain. Send it back to drafting and submit it again.",
       409,
     );
-  const decisions = await prisma.hiringOfferApproval.findMany({
-    where: { offerId: o.id },
-    take: 50,
-  });
-  const step = nextOfferStep(
-    steps,
-    decisions.map((d) => ({
-      sequence: d.sequence ?? 0,
-      approverId: d.approverId,
-      action: d.action,
-    })),
-  );
-  if (!step) throw new HiringRuleError("Every step of this offer is already approved.", 409);
-  const refusal = decisionRefusal(actor, l, step.role, decisions);
+  // Refusals first, then the reason check — the order users saw before ADR-094.
+  const [round, delegators] = await Promise.all([
+    latestRound(OFFER_SUBJECT, o.id),
+    delegatorActors(actor),
+  ]);
+  const pendingStep = nextOfferStep(steps, roundDecisions(round));
+  if (!pendingStep) throw new HiringRuleError("Every step of this offer is already approved.", 409);
+  const refusal = refusalFor(actor, delegators, l, pendingStep, round);
   if (refusal) throw new HiringRuleError(refusal, 403);
   if (body.action !== "APPROVED" && !body.comment?.trim()) {
     throw new HiringRuleError(
@@ -157,33 +152,43 @@ export async function decideOffer(
       400,
     );
   }
-  const final = body.action === "APPROVED" && steps[steps.length - 1].sequence === step.sequence;
-  const back = body.action !== "APPROVED";
-  await auditedTransaction(async (tx) => {
-    if (back) {
-      const others = decisions.filter((d) => d.sequence !== step.sequence);
-      for (const d of others) await tx.hiringOfferApproval.delete({ where: { id: d.id } });
-    }
-    await tx.hiringOfferApproval.create({
-      data: {
-        offerId: o.id,
-        approverId: actor.userId,
-        sequence: step.sequence,
-        requiredRole: step.role,
-        action: body.action,
-        comment: body.comment?.trim() || null,
-        decidedAt: new Date(),
+  let result;
+  try {
+    result = await decide({
+      subjectType: OFFER_SUBJECT,
+      subjectId: o.id,
+      actorId: actor.userId,
+      action: body.action,
+      comment: body.comment,
+      qualify: async (_round, s) =>
+        qualifyForRole(actor, delegators, s.roleKey as (typeof steps)[number]["role"], l.subject),
+      onOutcome: async (tx, outcome) => {
+        if (outcome === "APPROVED" || outcome === "REJECTED" || outcome === "SENT_BACK") {
+          await tx.hiringOffer.update({
+            where: { id: o.id, status: "PENDING_APPROVAL" },
+            data:
+              outcome === "APPROVED"
+                ? { status: "APPROVED" }
+                : { status: "DRAFTING", approvalChain: Prisma.DbNull },
+            select: { id: true },
+          });
+        }
       },
-      select: { id: true },
     });
-    if (final || back) {
-      await tx.hiringOffer.update({
-        where: { id: o.id, status: "PENDING_APPROVAL" },
-        data: final ? { status: "APPROVED" } : { status: "DRAFTING", approvalChain: Prisma.DbNull },
-        select: { id: true },
-      });
-    }
-  });
+  } catch (e) {
+    if (!(e instanceof ApprovalRefusal)) throw e;
+    if (e.code === "NOT_PENDING" || e.code === "CHANGED")
+      throw new HiringRuleError("This offer changed since you loaded it — reload and retry.", 409);
+    if (e.code === "NO_STEP")
+      throw new HiringRuleError("Every step of this offer is already approved.", 409);
+    throw new HiringRuleError(offerRefusalMessage(e.code), 403);
+  }
+  const step = steps.find((s) => s.sequence === result.step.sequence) ?? {
+    sequence: result.step.sequence,
+    role: result.step.roleKey as (typeof steps)[number]["role"],
+  };
+  const final = result.outcome === "APPROVED";
+  const back = body.action !== "APPROVED";
   await notifyAfterDecision(actor, l, steps, step, body.action, final);
   return {
     status: final ? "APPROVED" : back ? "DRAFTING" : "PENDING_APPROVAL",

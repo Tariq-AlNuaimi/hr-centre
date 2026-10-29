@@ -11,6 +11,7 @@ import {
 import { loadApprovalConfig } from "./approval-config";
 import { isUnreadable, openAmount, openJson } from "./comp-crypto";
 import { toNum } from "./money";
+import { delegatorActors } from "./offer-round";
 import { orgNames, peopleById } from "./people";
 import { requisitionScopeWhere, requisitionSubject, requisitionSubjects } from "./scope";
 import { APPROVAL_ROLES, ROLE_PERMISSION } from "./access";
@@ -65,12 +66,22 @@ export type LoadedOffer = {
   entity: OfferEntity;
 };
 
-/** Holds any approval-role permission for this subject (an approver may read the offer). */
-function isOfferApprover(actor: HiringActor, subject: ScopeSubject, chain?: unknown): boolean {
+/**
+ * Holds any approval-role permission for this subject (an approver may read the
+ * offer) — themselves, or as the delegate of someone who does (ADR-094). A
+ * delegate still needs `hiring.view` on the record: delegation passes decision
+ * authority, not data access.
+ */
+function isOfferApprover(
+  actor: HiringActor,
+  subject: ScopeSubject,
+  chain: unknown,
+  delegators: readonly HiringActor[] = [],
+): boolean {
   if (isHiringAdmin(actor)) return true;
   // Only roles on the submitted chain count: before submission nobody is routed yet.
   const roles = chainFromSnapshot(chain)?.map((s) => s.role) ?? [];
-  return roles.some((r) => actsAs(actor, r, subject));
+  return roles.some((r) => [actor, ...delegators].some((a) => actsAs(a, r, subject)));
 }
 
 /**
@@ -89,7 +100,12 @@ export async function loadOffer(
   if (!offer) return null;
   const subject = await requisitionSubject(offer.requisition);
   const manage = can(actor, "hiring.manage", subject);
-  const approver = isOfferApprover(actor, subject, offer.approvalChain);
+  const approver = isOfferApprover(
+    actor,
+    subject,
+    offer.approvalChain,
+    manage ? [] : await delegatorActors(actor),
+  );
   if (need === "manage" ? !manage : !(manage || (approver && can(actor, "hiring.view", subject))))
     return null;
   const comp = seesComp(actor, subject, {
@@ -195,7 +211,10 @@ export async function listOffers(actor: HiringActor, q: OfferListQuery) {
     prisma.hiringOffer.count({ where }),
     loadApprovalConfig(),
   ]);
-  const subjects = await requisitionSubjects(rows.map((r) => r.requisition));
+  const [subjects, delegators] = await Promise.all([
+    requisitionSubjects(rows.map((r) => r.requisition)),
+    delegatorActors(actor),
+  ]);
   const [people, org] = await Promise.all([
     peopleById(rows.map((r) => r.submittedById)),
     orgNames(
@@ -207,7 +226,7 @@ export async function listOffers(actor: HiringActor, q: OfferListQuery) {
   const data = rows.flatMap((r) => {
     const subject = subjects.get(r.requisition.id)!;
     const manage = can(actor, "hiring.manage", subject);
-    const approver = isOfferApprover(actor, subject, r.approvalChain);
+    const approver = isOfferApprover(actor, subject, r.approvalChain, delegators);
     if (!manage && !approver) return [];
     const comp = seesComp(actor, subject, {
       hiringManagerId: r.requisition.hiringManagerId,

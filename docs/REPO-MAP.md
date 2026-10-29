@@ -21,6 +21,7 @@
 - app/[locale]/(dashboard)/admin/settings/page.tsx
 - app/[locale]/(dashboard)/admin/settings/performance/page.tsx
 - app/[locale]/(dashboard)/admin/strategy-scores/page.tsx
+- app/[locale]/(dashboard)/approvals/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
 - app/[locale]/(dashboard)/calibration/page.tsx
 - app/[locale]/(dashboard)/executive/page.tsx
@@ -144,6 +145,8 @@
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
 - app/api/agency/[token]/submit/route.ts  [POST]
+- app/api/approvals/delegations/[id]/route.ts  [DELETE]
+- app/api/approvals/delegations/route.ts  [GET,POST]
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
@@ -441,13 +444,17 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - MagicLink: id, purpose, subjectId, tokenHash, expiresAt, revokedAt, lastUsedAt, createdById, createdAt
 - ModuleSetting: id, module, key, value, updatedById, updatedBy, createdAt, updatedAt
+- ApprovalRequest: id, module, subjectType, subjectId, title, href, status, submittedById, submittedBy, excludedIds, createdAt, closedAt, steps, decisions
+- ApprovalStep: id, requestId, request, sequence, roleKey, label, requiredApprovals, status, decidedAt, decisions
+- ApprovalDecision: id, requestId, request, stepId, step, deciderId, decider, onBehalfOfId, onBehalfOf, viaProxy, action, comment, decidedAt
+- ApprovalDelegation: id, delegatorId, delegator, delegateId, delegate, module, validFrom, validUntil, reason, revokedAt, createdAt
 - AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, headEmployeeId, head, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
@@ -576,6 +583,9 @@
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
 - lib/core/actor.ts: ResolvedActor, resolveActor
+- lib/core/approvals/delegation-access.ts: canDelegateApprovals, canReceiveDelegation
+- lib/core/approvals/rules.ts: StepState, DecisionState, currentStep, RefusalCode, decisionRefusal, Outcome, decisionOutcome, vacantSteps, delegationLive
+- lib/core/approvals/store.ts: Tx, OpenRoundInput, cancelOpenRounds, openRound, Round, latestRound, latestRounds, decisionStates, ApprovalRefusal, Qualification, DecideInput, decide, delegatorsFor, delegationsOf, createDelegation, revokeDelegation
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/core/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
 - lib/core/notify/store.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, PendingNotification, persistNotifications
@@ -646,7 +656,8 @@
 - lib/hiring/offer-acceptance.ts: recordAcceptance, uploadSignedLetter, signedLetterUrl
 - lib/hiring/offer-approvals.ts: approvalView, decideOffer, previewChain
 - lib/hiring/offer-package.ts: ALLOWANCE_KEYS, CompBreakdown, buildCompBreakdown, BandStatus, bandVerdict, OfferTerms, OfferTermField, diffOfferTerms, restartsApproval, summarizeVersion, nextVersionNumber, withSupersession
-- lib/hiring/offer-rules.ts: OFFER_STATUSES, offerTransitions, offerTransitionError, APPROVAL_BOUND_FIELDS, LIVE_OFFER_STATUSES, OfferStep, OfferDecision, nextOfferStep, offerDecisionRefusal, sameMuscatDay
+- lib/hiring/offer-round.ts: OFFER_SUBJECT, delegatorActors, qualifyForRole, roundDecisions
+- lib/hiring/offer-rules.ts: OFFER_STATUSES, offerTransitions, offerTransitionError, APPROVAL_BOUND_FIELDS, LIVE_OFFER_STATUSES, OfferStep, OfferDecision, nextOfferStep, offerRefusalMessage, offerDecisionRefusal, sameMuscatDay
 - lib/hiring/offer-versions.ts: termsOf, ensureInitialVersion, listVersions, RevisionBody, reviseOffer
 - lib/hiring/offer-write.ts: OfferBody, createOffer, updateOffer, deleteOffer
 - lib/hiring/offers.ts: OfferRow, OfferEntity, LoadedOffer, loadOffer, offerPay, OfferListQuery, listOffers, offerDetail
@@ -930,6 +941,7 @@
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: createChangeRequestSchema, decideChangeRequestSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/core/approvals.ts: DELEGABLE_MODULES, delegationSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema, remindLateSchema
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput
@@ -977,6 +989,7 @@
 - lib/working-time/load.ts: loadSchedule, loadWorkingCalendar
 
 ## components/
+- components/approvals/ApprovalsInbox.tsx
 - components/dashboard/DashboardContent.tsx
 - components/hiring/EmployeeHiringTab.tsx
 - components/hiring/MyHiringReview.tsx

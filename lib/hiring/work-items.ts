@@ -9,6 +9,8 @@ import { approvalRoleLabel, configToChainOptions, loadApprovalConfig } from "./a
 import { signableSlots } from "./jd-rules";
 import { toOMRorNull } from "./money";
 import { nextOfferStep, offerDecisionRefusal } from "./offer-rules";
+import { delegatorActors, OFFER_SUBJECT, qualifyForRole, roundDecisions } from "./offer-round";
+import { decisionStates, latestRounds } from "@/lib/core/approvals/store";
 import { nextUnsignedStep } from "./requisition-rules";
 import { candidateScopeWhere, requisitionScopeWhere, requisitionSubjects } from "./scope";
 
@@ -89,6 +91,7 @@ async function requisitionApprovals(actor: HiringActor): Promise<WorkItem[]> {
         key: `hiring-req:${r.id}`,
         module: "hiring" as const,
         kind: "hiringRequisitionApproval",
+        approval: true,
         params: { title: r.title, role: approvalRoleLabel(step.role) },
         dueAt: null,
         href: `/hiring/requisitions/${r.id}/approval`,
@@ -98,7 +101,9 @@ async function requisitionApprovals(actor: HiringActor): Promise<WorkItem[]> {
 }
 
 async function offerApprovals(actor: HiringActor): Promise<WorkItem[]> {
-  if (!holdsAnApprovalRole(actor)) return [];
+  // Delegates see the steps they may decide for someone away (ADR-094).
+  const delegators = await delegatorActors(actor);
+  if (!holdsAnApprovalRole(actor) && !delegators.some(holdsAnApprovalRole)) return [];
   const scope = await requisitionScopeWhere(actor, "hiring.view");
   if (scope === null) return [];
   const offers = await prisma.hiringOffer.findMany({
@@ -114,28 +119,33 @@ async function offerApprovals(actor: HiringActor): Promise<WorkItem[]> {
     },
   });
   if (offers.length === 0) return [];
-  const [subjects, decisions] = await Promise.all([
+  const [subjects, rounds] = await Promise.all([
     requisitionSubjects(offers.map((o) => o.requisition)),
-    prisma.hiringOfferApproval.findMany({
-      where: { offerId: { in: offers.map((o) => o.id) } },
-      select: { offerId: true, sequence: true, approverId: true, action: true },
-      take: 500,
-    }),
+    latestRounds(
+      OFFER_SUBJECT,
+      offers.map((o) => o.id),
+    ),
   ]);
   return offers.flatMap((o) => {
     const steps = chainFromSnapshot(o.approvalChain);
-    if (!steps) return [];
-    const mine = decisions
-      .filter((d) => d.offerId === o.id)
-      .map((d) => ({ sequence: d.sequence ?? 0, approverId: d.approverId, action: d.action }));
-    const next = nextOfferStep(steps, mine);
+    const round = rounds.get(o.id);
+    if (!steps || !round || round.status !== "PENDING") return [];
+    const next = nextOfferStep(steps, roundDecisions(round));
     if (!next) return [];
+    const subject = subjects.get(o.requisition.id)!;
+    // Role holders and their delegates only — a hiring admin's proxy right is
+    // not "waiting on you" (it would bury the work that actually is theirs).
+    const q = qualifyForRole(actor, delegators, next.role, subject);
+    if (!q || q.viaProxy) return [];
     const refusal = offerDecisionRefusal({
       actorId: actor.userId,
+      actingForId: q.onBehalfOfId,
       submitterId: o.submittedById,
       referrerId: o.candidate.referredById,
-      qualified: actsAs(actor, next.role, subjects.get(o.requisition.id)!),
-      priorApproverIds: mine.filter((d) => d.action === "APPROVED").map((d) => d.approverId),
+      qualified: true,
+      priorApproverIds: decisionStates(round)
+        .filter((d) => d.action === "APPROVED" && d.sequence !== next.sequence)
+        .flatMap((d) => [d.deciderId, d.onBehalfOfId].filter((x): x is string => Boolean(x))),
     });
     if (refusal) return [];
     return [
@@ -146,6 +156,7 @@ async function offerApprovals(actor: HiringActor): Promise<WorkItem[]> {
         params: { name: o.candidate.name, role: approvalRoleLabel(next.role) },
         dueAt: null,
         href: `/hiring/offers/${o.id}`,
+        approval: true,
       },
     ];
   });
@@ -204,6 +215,7 @@ async function jdSignoffs(actor: HiringActor): Promise<WorkItem[]> {
         key: `hiring-jd:${r.id}`,
         module: "hiring" as const,
         kind: "hiringJdSignoff",
+        approval: true,
         params: { title: r.title },
         dueAt: null,
         href: `/hiring/requisitions/${r.id}/jd`,

@@ -28,6 +28,7 @@ export const ticketWorkProvider: WorkProvider = {
       },
       dueAt: null,
       href: `/tickets/${r.id}`,
+      approval: kind === "ticketApprove",
     });
     const items = [
       ...tasks.toApprove.rows.map((r) => row("ticketApprove", r)),

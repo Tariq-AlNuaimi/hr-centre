@@ -107,7 +107,8 @@
     "moduleTabs": "{module} sections",
     "settingsEmail": "Email templates",
     "settingsPerformance": "Performance",
-    "myHiring": "My hiring"
+    "myHiring": "My hiring",
+    "approvals": "Approvals"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -7368,6 +7369,31 @@
         "CLOSED": "Closed",
         "ARCHIVED": "Archived"
       }
+    }
+  },
+  "approvals": {
+    "title": "Approvals",
+    "subtitle": "Every decision waiting on you, across hiring, joiners and leavers, and HR tickets.",
+    "waiting": "Waiting on you",
+    "waitingNote": "Open one to read it and decide.",
+    "none": "Nothing is waiting for your approval.",
+    "loadFailed": "Your approvals couldn't be loaded. Refresh to try again.",
+    "partial": "Some approvals couldn't be loaded: {modules}.",
+    "delegation": {
+      "title": "Decide my approvals while I'm away",
+      "note": "The person you choose can decide hiring approvals you could decide, for the dates you set. Decisions record that they acted for you.",
+      "none": "Nobody decides for you, and you decide for nobody else.",
+      "loadFailed": "Your delegations couldn't be loaded.",
+      "row": "{from} → {to}, {start} to {end}",
+      "delegate": "Delegate to",
+      "from": "From",
+      "until": "Until",
+      "reason": "Reason (optional)",
+      "save": "Delegate",
+      "saved": "Delegation saved",
+      "end": "End now",
+      "ended": "Delegation ended",
+      "failed": "The delegation couldn't be saved."
     }
   }
 }
