@@ -4,7 +4,7 @@ import { grantsOf } from "@/lib/core/permissions";
 import { has } from "@/lib/rbac/grants";
 import { permissionsFrom } from "@/lib/hive/services/permissions";
 import { hasWorkerTasks } from "@/lib/jml/routing/worker";
-import type { NavContext } from "./config";
+import { personaOf, type NavContext } from "./config";
 
 /**
  * The server-side twin of `useNavContext`: the same `NavContext`, built from
@@ -18,7 +18,7 @@ export async function navContextFor(session: Session): Promise<NavContext> {
   const grants = grantsOf(actor);
   const hive = permissionsFrom(grants);
   const c = actor.capabilities;
-  return {
+  const ctx: Omit<NavContext, "persona"> = {
     isAdmin: session.user?.role === "ADMIN",
     employeeId: actor.employeeId,
     pms: {
@@ -41,4 +41,6 @@ export async function navContextFor(session: Session): Promise<NavContext> {
     jmlTaskWorker: await hasWorkerTasks(actor),
     hiring: (p) => has(grants, p),
   };
+  // P2 (R22) — the persona flag, derived from the same capabilities.
+  return { ...ctx, persona: personaOf(ctx) };
 }

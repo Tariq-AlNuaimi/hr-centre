@@ -20,6 +20,7 @@ import { navTrail } from "../../lib/nav/trail";
  */
 
 const NONE: NavContext = {
+  persona: "employee",
   isAdmin: false,
   employeeId: null,
   pms: {
@@ -38,6 +39,7 @@ const NONE: NavContext = {
 };
 
 const ALL: NavContext = {
+  persona: "staff",
   isAdmin: true,
   employeeId: "emp-me",
   pms: {
@@ -96,9 +98,10 @@ test("every destination is a real page", () => {
   for (const href of hrefs) assert.ok(routes.has(href), `${href} has no page.tsx`);
 });
 
-test("a full-access user sees at most 17 sidebar entries, in task-based groups", () => {
+test("a full-access user sees at most 18 sidebar entries, in task-based groups", () => {
   const entries = visibleNav(ALL);
-  assert.ok(entries.length <= 17, `got ${entries.length}`);
+  // 17 (ADR-087) + "My HR" (P2 R22: my requests and documents, one entry with two tabs).
+  assert.ok(entries.length <= 18, `got ${entries.length}`);
   assert.deepEqual(
     groupedNav(ALL).map((g) => g.group),
     ["home", "me", "team", "people", "talent", "service", "insights", "admin"],
@@ -114,11 +117,17 @@ test("fails closed: no access shows Home, My performance, Directory and Org char
 });
 
 test("a line manager gets My profile and My team, nothing administrative", () => {
-  const manager = { ...NONE, employeeId: "e1", pms: { ...NONE.pms, lineManager: true } };
+  const manager = {
+    ...NONE,
+    persona: "staff" as const,
+    employeeId: "e1",
+    pms: { ...NONE.pms, lineManager: true },
+  };
   assert.deepEqual(keys(manager), [
     "home",
     "me-profile",
     "me-performance",
+    "me-hr",
     "team",
     "people",
     "org",
@@ -127,7 +136,11 @@ test("a line manager gets My profile and My team, nothing administrative", () =>
 });
 
 test("an entry opens on its first tab the viewer may use", () => {
-  const reportsOnly = { ...NONE, hive: { ...NONE.hive, viewReports: true } };
+  const reportsOnly = {
+    ...NONE,
+    persona: "staff" as const,
+    hive: { ...NONE.hive, viewReports: true },
+  };
   const insights = visibleNav(reportsOnly).find((e) => e.key === "insights");
   assert.equal(insights?.href, "/tickets/reports");
   assert.deepEqual(

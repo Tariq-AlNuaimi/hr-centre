@@ -109,7 +109,10 @@
     "settingsPerformance": "Performance",
     "myHiring": "My hiring",
     "approvals": "Approvals",
-    "settingsAi": "AI"
+    "settingsAi": "AI",
+    "myRequests": "My requests",
+    "myDocuments": "My documents",
+    "myHr": "My HR"
   },
   "auth": {
     "login": "Login",
@@ -7624,5 +7627,41 @@
     },
     "updatedOn": "Last updated {date} ·",
     "privacy": "This page shows only the stage of your application. Contact the recruiting team with any question."
+  },
+  "me": {
+    "requests": {
+      "title": "My requests",
+      "subtitle": "The HR questions you raised and where each one stands.",
+      "listTitle": "Your questions",
+      "empty": "You have not raised an HR question yet. Ask Siraaj, and anything it cannot answer comes to HR.",
+      "opened": "Asked {date}",
+      "answered": "Answered {date}; the answer was emailed to you",
+      "state": {
+        "WITH_HR": "With HR",
+        "ANSWERED": "Answered",
+        "CLOSED": "Closed"
+      },
+      "notLinked": "Your account is not linked yet",
+      "notLinkedHelp": "HR links your login to your employee record. Ask HR if this stays empty."
+    },
+    "documents": {
+      "title": "My documents",
+      "subtitle": "Your ID documents on file and the evidence you attached to your goals.",
+      "idTitle": "ID documents",
+      "idHelp": "Expiry dates only. HR keeps the numbers.",
+      "kind": {
+        "CIVIL_ID": "Civil ID",
+        "PASSPORT": "Passport"
+      },
+      "expires": "Expires {date}",
+      "noExpiry": "No expiry date on file",
+      "evidenceTitle": "Goal evidence",
+      "evidenceHelp": "Files and links you attached to your goals.",
+      "noEvidence": "You have not attached any evidence yet.",
+      "evidenceFor": "{goal} · added {date}",
+      "lettersNote": "Need a letter, such as a salary certificate? Ask HR through Siraaj.",
+      "notLinked": "Your account is not linked yet",
+      "notLinkedHelp": "HR links your login to your employee record. Ask HR if this stays empty."
+    }
   }
 }

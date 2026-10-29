@@ -26,7 +26,7 @@ import { usePmsActor } from "@/hooks/use-pms-actor";
 import { useHiveAccess } from "@/components/hive/use-hive-access";
 import { useJmlAccess } from "@/components/jml/use-jml";
 import { useHiringMe } from "@/components/hiring/ui/api";
-import type { NavContext, NavIcon } from "@/lib/nav/config";
+import { personaOf, type NavContext, type NavIcon } from "@/lib/nav/config";
 
 /**
  * The viewer's navigation context, assembled from the access hooks the shell
@@ -41,7 +41,7 @@ export function useNavContext(): NavContext {
   const hiring = useHiringMe();
   const isAdmin = session?.user?.role === "ADMIN";
   const employeeId = actor?.employeeId ?? null;
-  return {
+  const ctx: Omit<NavContext, "persona"> = {
     isAdmin,
     employeeId,
     pms: {
@@ -64,6 +64,8 @@ export function useNavContext(): NavContext {
     jmlTaskWorker: jml.taskWorker,
     hiring: hiring.has,
   };
+  // P2 (R22) — the persona flag, derived once from the same capabilities.
+  return { ...ctx, persona: personaOf(ctx) };
 }
 
 const ICONS: Record<NavIcon, ReactNode> = {
