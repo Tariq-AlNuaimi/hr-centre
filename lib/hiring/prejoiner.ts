@@ -71,6 +71,20 @@ async function acceptedOffer(candidateId: string) {
   });
 }
 
+/**
+ * QA2 N-13 — the joiner draft's line manager, prefilled from the requisition's
+ * hiring manager (a login) when that login belongs to a current employee. HR
+ * can still change it on the draft; null when there is no such employee.
+ */
+export async function hiringManagerEmployeeId(userId: string | null): Promise<string | null> {
+  if (!userId) return null;
+  const e = await prisma.employee.findFirst({
+    where: { userId, deletedAt: null, status: "ACTIVE" },
+    select: { id: true },
+  });
+  return e?.id ?? null;
+}
+
 async function ensurePreJoiner(
   candidateId: string,
 ): Promise<{ employeeId: string } | { reason: string }> {
@@ -83,7 +97,9 @@ async function ensurePreJoiner(
       phone: true,
       nationality: true,
       employeeId: true,
-      requisition: { select: { title: true, entityId: true, departmentId: true } },
+      requisition: {
+        select: { title: true, entityId: true, departmentId: true, hiringManagerId: true },
+      },
     },
   });
   if (!c) return { reason: "The candidate no longer exists." };
@@ -98,6 +114,7 @@ async function ensurePreJoiner(
   const start = offer ? muscatMidnight(offer.joiningDate ?? offer.startDate) : null;
   const odooId = provisionalOdooId();
   const req = c.requisition;
+  const managerId = await hiringManagerEmployeeId(req.hiringManagerId);
   const employeeId = await auditedTransaction(async (tx) => {
     const e = await tx.employee.create({
       data: employeeCreateData(
@@ -122,7 +139,7 @@ async function ensurePreJoiner(
           personalPhone: c.phone,
           nationality: c.nationality,
         },
-        { userId: null },
+        { userId: null, managerId },
       ),
       select: { id: true },
     });

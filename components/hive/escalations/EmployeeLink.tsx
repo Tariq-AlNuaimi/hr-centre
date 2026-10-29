@@ -16,9 +16,14 @@ export function EmployeeLink({ detail }: { detail: Detail }) {
   return (
     <p className="mb-0 mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
       <span>{detail.employeeEmail}</span>
-      <Badge variant={detail.identityVerified ? "success" : "outline"}>
-        {detail.identityVerified ? t("identityVerified") : t("identityUnverified")}
-      </Badge>
+      {/* QA2 N-14 — an HR-raised ticket says so; "confirmed by Siraaj" was false. */}
+      {detail.source === "HR" ? (
+        <Badge variant="outline">{t("identityRaisedByHr")}</Badge>
+      ) : (
+        <Badge variant={detail.identityVerified ? "success" : "outline"}>
+          {detail.identityVerified ? t("identityVerified") : t("identityUnverified")}
+        </Badge>
+      )}
       {detail.employee ? (
         <Link
           href={`/${locale}/people/${detail.employee.id}?tab=tickets`}

@@ -21,6 +21,8 @@ export interface Detail {
   employeeName: string;
   employeeEmail: string;
   identityVerified: boolean;
+  /** HIVE, SIRAAJ or HR (raised on the employee's behalf). */
+  source?: string;
   employee: { id: string; name: string } | null;
   question: string;
   draftAnswer: string | null;

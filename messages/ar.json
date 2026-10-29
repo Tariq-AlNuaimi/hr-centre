@@ -2686,6 +2686,7 @@
       "noMatch": "لا توجد تذاكر تطابق عوامل التصفية هذه.",
       "identityVerified": "Identity confirmed by Siraaj",
       "identityUnverified": "Identity not confirmed",
+      "identityRaisedByHr": "Raised by HR on the employee's behalf",
       "employeeRecord": "Open the employee record",
       "noEmployeeRecord": "No employee record has this email",
       "viewLabel": "View",
