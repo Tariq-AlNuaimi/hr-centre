@@ -13,13 +13,18 @@ export function joinFacts(p: {
   nationality: string | null;
   workLocation: string | null;
   payrollApplicable: boolean | null;
+  laptopRequired?: boolean | null;
+  accessCardRequired?: boolean | null;
 }): ConditionFacts {
+  const yesNo = (v: boolean | null | undefined) => (v == null ? null : v ? "yes" : "no");
   return {
     companyId: p.companyCode,
     employmentType: p.employmentType,
     contractTypeId: p.contractTypeCode,
     nationality: p.nationality,
     workLocation: p.workLocation,
-    payrollApplicable: p.payrollApplicable === null ? null : p.payrollApplicable ? "yes" : "no",
+    payrollApplicable: yesNo(p.payrollApplicable),
+    laptopRequired: yesNo(p.laptopRequired),
+    accessCardRequired: yesNo(p.accessCardRequired),
   };
 }

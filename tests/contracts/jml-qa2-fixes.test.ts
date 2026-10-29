@@ -108,3 +108,29 @@ test("N-09 an impossible access cut-off (2026-02-30T10:00) is refused, never rol
   assert.equal(localInputToInstant("2026-02-30T10:00", "Asia/Muscat"), null);
   assert.ok(localInputToInstant("2026-02-28T10:00", "Asia/Muscat"));
 });
+
+// --- N-11 — the joiner's IT answers decide the laptop / access-card tasks -------
+
+import { taskApplies } from "../../lib/jml/engine/conditions";
+import { joinFacts } from "../../lib/jml/join/facts";
+import { STARTER_JOIN_TEMPLATE } from "../../prisma/seed-jml-templates";
+
+test("N-11 'No' to laptop and access card generates neither task; 'Yes' or unanswered does", () => {
+  const task = (code: string) => STARTER_JOIN_TEMPLATE.tasks.find((t) => t.code === code)!;
+  const base = {
+    companyCode: "RIHAL",
+    employmentType: "PERMANENT",
+    contractTypeCode: null,
+    nationality: "Omani",
+    workLocation: "Muscat",
+    payrollApplicable: true,
+  };
+  const no = joinFacts({ ...base, laptopRequired: false, accessCardRequired: false });
+  const yes = joinFacts({ ...base, laptopRequired: true, accessCardRequired: true });
+  const unknown = joinFacts(base);
+  for (const code of ["T22", "T24"]) {
+    assert.equal(taskApplies(task(code).conditions, no), false, `${code} with No`);
+    assert.equal(taskApplies(task(code).conditions, yes), true, `${code} with Yes`);
+    assert.equal(taskApplies(task(code).conditions, unknown), true, `${code} unanswered`);
+  }
+});

@@ -3371,7 +3371,9 @@
           "contractTypeId": "Contract type code",
           "nationality": "Nationality",
           "workLocation": "Work location",
-          "payrollApplicable": "Payroll applicable (yes or no)"
+          "payrollApplicable": "Payroll applicable (yes or no)",
+          "laptopRequired": "Laptop required (yes or no)",
+          "accessCardRequired": "Access card required (yes or no)"
         },
         "taskRows": "{count, plural, one {# task} other {# tasks}}",
         "addTask": "Add task",

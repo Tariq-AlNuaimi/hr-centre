@@ -17,6 +17,8 @@ const FACTS = [
   "nationality",
   "workLocation",
   "payrollApplicable",
+  "laptopRequired",
+  "accessCardRequired",
 ] as const;
 export const CRITERIA = [
   "companyId",

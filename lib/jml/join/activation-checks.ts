@@ -18,6 +18,8 @@ export function factsOf(row: JoinerRow, companyCode: string | null) {
     nationality: row.employee.nationality,
     workLocation: row.employee.workLocation,
     payrollApplicable: row.joinDetail?.payrollApplicable ?? true,
+    laptopRequired: row.joinDetail?.laptopRequired ?? null,
+    accessCardRequired: row.joinDetail?.accessCardRequired ?? null,
   });
 }
 
