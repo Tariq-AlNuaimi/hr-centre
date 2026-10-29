@@ -650,8 +650,14 @@ const DEFAULTS: Record<string, Prisma.InputJsonValue> = {
 };
 
 async function setOnce(prisma: PrismaClient, key: string, value: Prisma.InputJsonValue) {
-  const found = await prisma.hiringSetting.findUnique({ where: { key }, select: { id: true } });
-  if (!found) await prisma.hiringSetting.create({ data: { key, value }, select: { id: true } });
+  // The core settings store (ADR-092), module "hiring".
+  const where = { module_key: { module: "hiring", key } };
+  const found = await prisma.moduleSetting.findUnique({ where, select: { id: true } });
+  if (!found)
+    await prisma.moduleSetting.create({
+      data: { module: "hiring", key, value },
+      select: { id: true },
+    });
 }
 
 /** Created only if no role carries the key and no live role has the name. */
@@ -683,8 +689,8 @@ export async function seedHiring(prisma: PrismaClient): Promise<void> {
   await seedStarterRoles(prisma);
   for (const [key, value] of Object.entries(DEFAULTS)) await setOnce(prisma, key, value);
 
-  const marker = await prisma.hiringSetting.findUnique({
-    where: { key: "seed.referenceVersion" },
+  const marker = await prisma.moduleSetting.findUnique({
+    where: { module_key: { module: "hiring", key: "seed.referenceVersion" } },
     select: { value: true },
   });
   if (marker?.value === REFERENCE_VERSION) return;

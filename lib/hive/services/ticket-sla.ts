@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { addWorkingHours } from "@/lib/working-time/calendar";
 import { loadWorkingCalendar } from "@/lib/working-time/load";
+import { readModuleSetting } from "@/lib/core/settings/store";
 import { DEFAULT_RESPONSE_HOURS } from "@/lib/validations/hive/ticket-settings";
 
 /**
@@ -14,14 +14,13 @@ import { DEFAULT_RESPONSE_HOURS } from "@/lib/validations/hive/ticket-settings";
 /** When a ticket raised at `now` should be answered by. Never throws — null when unknown. */
 export async function answerDueAt(now: Date = new Date()): Promise<Date | null> {
   try {
-    const [settings, calendar] = await Promise.all([
-      prisma.hiveTicketSettings.findUnique({
-        where: { id: "singleton" },
-        select: { responseHours: true },
-      }),
-      loadWorkingCalendar(now),
-    ]);
-    return addWorkingHours(now, settings?.responseHours ?? DEFAULT_RESPONSE_HOURS, calendar);
+    const stored = await readModuleSetting("tickets", "responseHours");
+    const calendar = await loadWorkingCalendar(now);
+    const hours =
+      typeof stored === "number" && Number.isInteger(stored) && stored > 0
+        ? stored
+        : DEFAULT_RESPONSE_HOURS;
+    return addWorkingHours(now, hours, calendar);
   } catch {
     return null;
   }
