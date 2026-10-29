@@ -1149,3 +1149,11 @@ Considered:
   the page is a stage mapping over the existing candidate record on the core magic link (ADR-090).
 
 Decision: build.
+
+### 2026-10-29 — Core documents (P2 platform, ADR-098)
+
+Scope: lib/core/documents/**, lib/validations/core/documents.ts
+Considered: **SharePoint / Google Drive / M-Files as the document store** (rejected for now —
+per-module access rules and Restricted pay/ID files would be mirrored outside the database).
+**Copying module files into one table** (rejected — a read-model union keeps one source each).
+Decision: build — one small store for record files plus a union read model.

@@ -67,6 +67,8 @@ const SOFT_DELETE_MODELS = new Set([
   // Core catalogues (ADR-097), moved from Hiring with their soft-delete.
   "Grade",
   "Competency",
+  // Core document store (ADR-098).
+  "Document",
 ]);
 
 /**

@@ -56,6 +56,7 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   // Core catalogues (ADR-097).
   Grade: { displayField: "name" },
   Competency: { displayField: "name" },
+  Document: { displayField: "title" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

@@ -129,6 +129,7 @@ model User {
   approvalDelegatedTo      ApprovalDelegation[]       @relation("ApprovalDelegate")
   emailTemplatesUpdated    EmailTemplate[]            @relation("EmailTemplateUpdatedBy")
   notificationPreferences  NotificationPreference[]   @relation("NotificationPreferences")
+  documentsUploaded        Document[]                 @relation("DocumentUploadedBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -449,6 +450,34 @@ model Competency {
   @@index([deletedAt, createdAt])
   @@index([name])
   @@map("core_competencies")
+}
+
+/// Core document store (ADR-098): files kept on a person's record — contracts,
+/// certificates, letters received — uploaded by HR. Module files (JML letters,
+/// KPI evidence, hiring package documents) stay with their module and are
+/// UNIONED onto the Employee › Documents tab by `lib/core/documents`.
+/// Confidential by default; Restricted when HR marks it (e.g. a pay letter).
+model Document {
+  id           String    @id @default(cuid())
+  employeeId   String    @map("employee_id")
+  employee     Employee  @relation("EmployeeDocuments", fields: [employeeId], references: [id], onDelete: Cascade)
+  category     String    @db.VarChar(40)
+  title        String
+  fileName     String    @map("file_name")
+  contentType  String    @map("content_type")
+  sizeBytes    Int       @map("size_bytes")
+  blobPathname String    @map("blob_pathname")
+  restricted   Boolean   @default(false)
+  uploadedById String?   @map("uploaded_by_id")
+  uploadedBy   User?     @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+
+  @@index([employeeId, createdAt])
+  @@index([deletedAt, createdAt])
+  @@map("core_documents")
 }
 
 // ---------------------------------------------------------------------------
@@ -989,6 +1018,8 @@ model Employee {
   deletedBy String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  documents Document[] @relation("EmployeeDocuments")
 
   @@index([deletedAt, createdAt])
   @@index([managerId]) // hierarchy walk (lib/pms/org-tree.ts recursive CTE)
@@ -3589,6 +3620,9 @@ model HiringNegotiationNote {
 /// Step 14 — the hiring-side record of the pre-boarding handover.
 model HiringHandover {
   id           String             @id @default(cuid())
+  /// ADR-098: the JML joiner case this hand-over opened (the candidate → joiner
+  /// trace, and where the candidate's documents follow the person).
+  jmlCaseId    String?            @map("jml_case_id")
   candidateId  String             @unique
   candidate    HiringCandidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   kind         HiringHandoverKind

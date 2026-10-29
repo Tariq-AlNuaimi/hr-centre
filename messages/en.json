@@ -2311,6 +2311,36 @@
         "passportExpiry": "passport expiry",
         "userId": "login"
       }
+    },
+    "documents": {
+      "title": "Files",
+      "note": "Everything on file for this person, from every module. Each file opens only for people allowed to see it.",
+      "none": "No files are on record for this person yet.",
+      "source": {
+        "core": "Record",
+        "jml": "Joiners & leavers",
+        "performance": "Performance",
+        "hiring": "Hiring"
+      },
+      "restricted": "Restricted",
+      "open": "Open",
+      "remove": "Remove",
+      "removed": "File removed",
+      "removeFailed": "The file couldn't be removed.",
+      "titleLabel": "Title",
+      "category": "Kind",
+      "categories": {
+        "contract": "Contract",
+        "certificate": "Certificate",
+        "letter": "Letter",
+        "identity": "Identity document",
+        "other": "Other"
+      },
+      "file": "File (PDF or image, up to 10 MB)",
+      "markRestricted": "Restricted (pay or similar; only people with pay access see it)",
+      "upload": "Add file",
+      "uploaded": "File added",
+      "uploadFailed": "The file couldn't be added."
     }
   },
   "rbac": {
