@@ -16,6 +16,11 @@ import { useOrgOptions } from "../ui/org";
 import { PersonPicker, type Person } from "../ui/person-picker";
 import { Notice, QueryState } from "../ui/states";
 import { CompSection } from "./RequisitionCompSection";
+import { countryName } from "@/lib/hiring/careers-jd";
+import { WORK_ARRANGEMENTS } from "@/lib/validations/hiring/requisition";
+
+/** Countries offered for a role's location (any other stored code is kept and shown). */
+const COUNTRIES = ["OM", "AE", "SA", "QA", "BH", "KW", "EG", "JO", "IN", "PK", "GB", "US"];
 
 /**
  * The JD-template-driven requisition form (Interview Hub `PositionForm`,
@@ -51,6 +56,9 @@ type Detail = {
   hmSeesSalary: boolean;
   hiringManager: Person | null;
   owner: Person | null;
+  locationCity: string;
+  locationCountry: string;
+  workArrangement: string;
 };
 
 const EMPTY = {
@@ -67,6 +75,9 @@ const EMPTY = {
   targetCloseDate: "",
   businessNeed: "",
   alternativesConsidered: "",
+  locationCity: "Muscat",
+  locationCountry: "OM",
+  workArrangement: "ON_SITE",
 };
 
 const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
@@ -99,6 +110,9 @@ function initialFrom(d: Detail | undefined): typeof EMPTY {
     targetCloseDate: d.targetCloseDate ? d.targetCloseDate.slice(0, 10) : "",
     businessNeed: s(d.businessNeed),
     alternativesConsidered: s(d.alternativesConsidered),
+    locationCity: d.locationCity,
+    locationCountry: d.locationCountry,
+    workArrangement: d.workArrangement,
   };
 }
 
@@ -134,6 +148,9 @@ function requestBody(
     businessNeed: orNull(f.businessNeed),
     alternativesConsidered: orNull(f.alternativesConsidered),
     hmSeesSalary: x.hmSeesSalary,
+    locationCity: f.locationCity,
+    locationCountry: f.locationCountry,
+    workArrangement: f.workArrangement,
   };
 }
 
@@ -257,6 +274,43 @@ function RequisitionFormBody({ id, detail }: { id?: string; detail?: Detail }) {
                 {org.departmentsOf(f.entityId).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label={t("locationCity")} htmlFor="rf-city" required>
+              <Input
+                id="rf-city"
+                value={f.locationCity}
+                maxLength={80}
+                onChange={(e) => set("locationCity")(e.target.value)}
+              />
+            </Field>
+            <Field label={t("locationCountry")} htmlFor="rf-country" required>
+              <NativeSelect
+                id="rf-country"
+                value={f.locationCountry}
+                onChange={(e) => set("locationCountry")(e.target.value)}
+              >
+                {(COUNTRIES.includes(f.locationCountry)
+                  ? COUNTRIES
+                  : [f.locationCountry, ...COUNTRIES]
+                ).map((code) => (
+                  <option key={code} value={code}>
+                    {countryName(code)}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label={t("workArrangement")} htmlFor="rf-arrangement" required>
+              <NativeSelect
+                id="rf-arrangement"
+                value={f.workArrangement}
+                onChange={(e) => set("workArrangement")(e.target.value)}
+              >
+                {WORK_ARRANGEMENTS.map((a) => (
+                  <option key={a} value={a}>
+                    {t(`arrangement.${a}`)}
                   </option>
                 ))}
               </NativeSelect>

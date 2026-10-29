@@ -67,6 +67,19 @@ export const createHiringRequestSchema = z.discriminatedUnion("mode", [
 ]);
 export type CreateHiringRequestInput = z.infer<typeof createHiringRequestSchema>;
 
+/** Overnight item 3 — where the role is worked. */
+export const WORK_ARRANGEMENTS = ["ON_SITE", "HYBRID", "REMOTE"] as const;
+const locationFields = {
+  locationCity: z.string().trim().min(1, "Enter the city").max(80),
+  /** ISO 3166-1 alpha-2 (OM, AE…), stored upper case. */
+  locationCountry: z
+    .string()
+    .trim()
+    .transform((v) => v.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{2}$/, "Choose the country")),
+  workArrangement: z.enum(WORK_ARRANGEMENTS),
+};
+
 /** The JD-template-driven requisition form (Interview Hub `/positions/new`). */
 const requisitionObject = z.object({
   title: z.string().trim().min(1).max(255),
@@ -89,6 +102,10 @@ const requisitionObject = z.object({
   businessNeed: narrative.optional().nullable(),
   alternativesConsidered: narrative.optional().nullable(),
   hmSeesSalary: z.boolean().optional(),
+  // Absent on create = the column defaults (Muscat, OM, on-site).
+  locationCity: locationFields.locationCity.optional(),
+  locationCountry: locationFields.locationCountry.optional(),
+  workArrangement: locationFields.workArrangement.optional(),
 });
 
 export const createRequisitionSchema = requisitionObject

@@ -17,6 +17,7 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
   const locale = useLocale();
   const [team, setTeam] = useState<string | null>(null);
   const [company, setCompany] = useState<string | null>(null);
+  const [place, setPlace] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CareersRole | null>(null);
   const teams = useMemo(
@@ -27,18 +28,20 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
     () => [...new Set(roles.map((r) => r.company).filter(Boolean))].sort(),
     [roles],
   );
+  const places = useMemo(() => [...new Set(roles.map((r) => r.place))].sort(), [roles]);
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return roles.filter(
       (r) =>
         (!team || r.department === team) &&
         (!company || r.company === company) &&
+        (!place || r.place === place) &&
         (!needle ||
-          `${r.title} ${r.department} ${r.company} ${r.description}`
+          `${r.title} ${r.department} ${r.company} ${r.place} ${r.description}`
             .toLowerCase()
             .includes(needle)),
     );
-  }, [roles, team, company, query]);
+  }, [roles, team, company, place, query]);
   return (
     <>
       <section className="relative overflow-hidden bg-careers-panel">
@@ -85,6 +88,15 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
               onSelect={setCompany}
             />
           ) : null}
+          {places.length > 1 ? (
+            <Chips
+              label={t("locations")}
+              allLabel={t("allLocations")}
+              options={places}
+              active={place}
+              onSelect={setPlace}
+            />
+          ) : null}
           {teams.length > 1 ? (
             <Chips
               label={t("teams")}
@@ -103,7 +115,7 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
             <button
               type="button"
               className="text-careers-royal underline"
-              onClick={() => (setTeam(null), setCompany(null), setQuery(""))}
+              onClick={() => (setTeam(null), setCompany(null), setPlace(null), setQuery(""))}
             >
               {t("showAll", { count: roles.length })}
             </button>
@@ -127,6 +139,9 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
                     </h2>
                     <p className="text-sm text-careers-muted">
                       {[r.company, r.department].filter(Boolean).join(" · ")}
+                    </p>
+                    <p className="text-sm text-careers-muted">
+                      {r.place} · {t(`arrangement.${r.location.arrangement}`)}
                     </p>
                     {r.description ? (
                       <p className="mt-2 line-clamp-2 text-sm text-careers-ink">{r.description}</p>

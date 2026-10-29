@@ -74,6 +74,7 @@ test("JobPosting structured data cannot close its script tag", () => {
     postedAt: "2026-10-20T08:00:00.000Z",
     validThrough: null,
     url: "https://hr.example/en/careers/engineer-cmvr6sie40003ia7d4z63r6vm",
+    location: { city: "Muscat", country: "OM", arrangement: "ON_SITE" },
   });
   assert.equal(ld["@type"], "JobPosting");
   assert.equal(ld.datePosted, "2026-10-20");

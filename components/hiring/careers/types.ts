@@ -7,4 +7,7 @@ export type CareersRole = {
   description: string;
   postedAt: string | null;
   slug: string;
+  location: { city: string; country: string; arrangement: "ON_SITE" | "HYBRID" | "REMOTE" };
+  /** "Muscat, Oman". */
+  place: string;
 };
