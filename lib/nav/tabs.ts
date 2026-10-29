@@ -179,6 +179,13 @@ export const SETTING_AREAS: readonly NavLink[] = [
     show: (c) => [c.jml("jml.configure"), c.jml("jml.verifyStatutory")].some(Boolean),
   },
   {
+    // ADR-097: the platform's AI provider and limits.
+    key: "ai-settings",
+    label: "settingsAi",
+    href: "/admin/settings/ai",
+    show: (c) => c.hiring("hiring.configure"),
+  },
+  {
     key: "hiring-settings",
     label: "settingsHiring",
     href: "/hiring/settings",

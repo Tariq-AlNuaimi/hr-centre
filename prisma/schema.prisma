@@ -406,6 +406,51 @@ model NotificationPreference {
   @@map("core_notification_preferences")
 }
 
+/// Core grade catalogue (ADR-097): one list of grades and pay bands per company
+/// (`entityId` null = group-wide), used by Hiring (requisition/offer bands) and
+/// People (`Employee.gradeId`). Bands are pay: shown only to pay readers.
+model Grade {
+  id        String     @id @default(cuid())
+  code      String
+  name      String
+  minSalary Decimal?   @db.Decimal(12, 3)
+  maxSalary Decimal?   @db.Decimal(12, 3)
+  order     Int        @default(0)
+  entityId  String?
+  employees Employee[] @relation("EmployeeGrade")
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([code])
+  @@index([entityId, code])
+  @@map("core_grades")
+}
+
+/// Core competency catalogue (ADR-097): the framework Hiring scores against and
+/// Performance can reference. BARS anchors { "1": "...", …, "5": "..." }.
+model Competency {
+  id         String  @id @default(cuid())
+  name       String
+  definition String?
+  category   String?
+  roleFamily String?
+  entityId   String?
+  anchors    Json?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([name])
+  @@map("core_competencies")
+}
+
 // ---------------------------------------------------------------------------
 // Performance Management System (PMS) — Phase 1: org foundation & import layer
 //
@@ -864,7 +909,12 @@ model Employee {
   // All optional: the import and the form fill them; Performance never reads them.
   // Job & contract — Internal.
   jobTitle          String?       @map("job_title")
+  /// The grade as written (import, form, joiner). Kept as the record's value;
+  /// `gradeId` links it to the core catalogue (ADR-097), maintained by a
+  /// database trigger on every write, so every writer stays in step.
   grade             String?
+  gradeId           String?       @map("grade_id")
+  gradeRef          Grade?        @relation("EmployeeGrade", fields: [gradeId], references: [id], onDelete: SetNull)
   contractType      ContractType? @map("contract_type")
   probationEndDate  DateTime?     @map("probation_end_date") @db.Date
   workLocation      String?       @map("work_location")
@@ -946,6 +996,7 @@ model Employee {
   @@index([teamId])
   @@index([entityId])
   @@index([status])
+  @@index([gradeId])
   @@map("employees")
 }
 

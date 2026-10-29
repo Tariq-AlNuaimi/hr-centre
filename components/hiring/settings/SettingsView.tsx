@@ -1,12 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useHiringMe } from "../ui/api";
 import { Notice } from "../ui/states";
 import { Tabs } from "../ui/tabs";
-import { AiLimitsCard } from "./AiLimitsCard";
-import { AiProviderCard } from "./AiProviderCard";
 import { ApprovalsCard } from "./ApprovalsCard";
 import { BudgetCard } from "./BudgetCard";
 import { TawteenCard } from "./TawteenCard";
@@ -19,6 +18,7 @@ import { PanelModeCard, WeightsCard } from "./ScoringCards";
  */
 export function SettingsView() {
   const t = useTranslations("hiring.settings");
+  const locale = useLocale();
   const { has, isLoading } = useHiringMe();
   if (!isLoading && !has("hiring.manage")) {
     return (
@@ -36,11 +36,17 @@ export function SettingsView() {
           {
             key: "ai",
             label: t("tabAi"),
+            // ADR-097: the provider and limits are platform settings now.
             content: (
-              <div className="space-y-4">
-                <AiProviderCard />
-                <AiLimitsCard />
-              </div>
+              <Notice>
+                {t.rich("aiMoved", {
+                  link: (chunks) => (
+                    <Link href={`/${locale}/admin/settings/ai`} className="underline">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </Notice>
             ),
           },
           {

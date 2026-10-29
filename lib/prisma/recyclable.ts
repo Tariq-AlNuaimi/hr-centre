@@ -53,6 +53,9 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   HiringGrade: { displayField: "name" },
   HiringJdTemplate: { displayField: "title" },
   HiringBulkJob: { displayField: "actionKind" },
+  // Core catalogues (ADR-097).
+  Grade: { displayField: "name" },
+  Competency: { displayField: "name" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

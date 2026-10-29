@@ -696,10 +696,10 @@ export async function seedHiring(prisma: PrismaClient): Promise<void> {
   if (marker?.value === REFERENCE_VERSION) return;
 
   for (const g of GRADES) {
-    await prisma.hiringGrade.create({ data: g, select: { id: true } });
+    await prisma.grade.create({ data: g, select: { id: true } });
   }
   for (const c of COMPETENCIES) {
-    await prisma.hiringCompetency.create({ data: c, select: { id: true } });
+    await prisma.competency.create({ data: c, select: { id: true } });
   }
   for (const j of JD_TEMPLATES) {
     await prisma.hiringJdTemplate.create({ data: j, select: { id: true } });

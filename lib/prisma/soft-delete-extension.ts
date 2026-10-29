@@ -64,6 +64,9 @@ const SOFT_DELETE_MODELS = new Set([
   "HiringJdTemplate",
   "HiringBulkJob",
   "JmlCase",
+  // Core catalogues (ADR-097), moved from Hiring with their soft-delete.
+  "Grade",
+  "Competency",
 ]);
 
 /**

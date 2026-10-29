@@ -101,7 +101,7 @@ export async function brief(actor: HiringActor, l: LoadedInterview) {
       take: QUESTION_CAP,
       select: { id: true, questionText: true, competency: true, category: true },
     }),
-    prisma.hiringCompetency.findMany({
+    prisma.competency.findMany({
       where: { name: { in: competencies } },
       select: { name: true, anchors: true },
       take: 50,

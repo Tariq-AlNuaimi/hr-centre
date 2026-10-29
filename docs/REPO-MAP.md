@@ -18,6 +18,7 @@
 - app/[locale]/(dashboard)/admin/imports/page.tsx
 - app/[locale]/(dashboard)/admin/org-setup/page.tsx
 - app/[locale]/(dashboard)/admin/roles/page.tsx
+- app/[locale]/(dashboard)/admin/settings/ai/page.tsx
 - app/[locale]/(dashboard)/admin/settings/email-templates/page.tsx
 - app/[locale]/(dashboard)/admin/settings/page.tsx
 - app/[locale]/(dashboard)/admin/settings/performance/page.tsx
@@ -464,6 +465,8 @@
 - ApprovalDelegation: id, delegatorId, delegator, delegateId, delegate, module, validFrom, validUntil, reason, revokedAt, createdAt
 - EmailTemplate: id, module, key, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - NotificationPreference: id, userId, user, kind, inApp, email, updatedAt
+- Grade: id, code, name, minSalary, maxSalary, order, entityId, employees, deletedAt, deletedBy, createdAt, updatedAt
+- Competency: id, name, definition, category, roleFamily, entityId, anchors, deletedAt, deletedBy, createdAt, updatedAt
 - AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, headEmployeeId, head, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
@@ -471,7 +474,7 @@
 - OrgUnitChange: id, unitKind, unitId, effectiveDate, newName, moveParent, newParentId, note, status, beforeName, beforeParentId, appliedAt, failureReason, createdById, createdAt, updatedAt
 - Team: id, name, departmentId, department, headEmployeeId, head, employees, employeesAgree, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, headEmployeeId, head, directorateId, directorate, directorateAgree, teams, employees, employeesAgree, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, departmentEntityAgree, entityId, entity, teamId, team, teamDepartmentAgree, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, headOfEntities, headOfDirectorates, headOfDepartments, headOfTeams, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, departmentEntityAgree, entityId, entity, teamId, team, teamDepartmentAgree, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, headOfEntities, headOfDirectorates, headOfDepartments, headOfTeams, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, basicSalary, basicSalaryEnc, status, jobTitle, grade, gradeId, gradeRef, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, kind, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, reference, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -593,9 +596,11 @@
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
 - lib/core/actor.ts: ResolvedActor, resolveActor
+- lib/core/ai/settings.ts: PlatformAiKey, readPlatformAiSettings, writePlatformAiSetting
 - lib/core/approvals/delegation-access.ts: canDelegateApprovals, canReceiveDelegation
 - lib/core/approvals/rules.ts: StepState, DecisionState, currentStep, RefusalCode, decisionRefusal, Outcome, decisionOutcome, vacantSteps, delegationLive
 - lib/core/approvals/store.ts: Tx, OpenRoundInput, cancelOpenRounds, openRound, Round, latestRound, latestRounds, decisionStates, ApprovalRefusal, Qualification, DecideInput, decide, delegatorsFor, delegationsOf, createDelegation, revokeDelegation
+- lib/core/catalogue/grades.ts: relinkEmployeeGrades
 - lib/core/email/send.ts: EmailMeta, sendLoggedEmail
 - lib/core/email/templates.ts: TemplateModule, TemplateOverride, templateOverride, templateOverrides, saveTemplateOverride, clearTemplateOverride
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
@@ -1324,6 +1329,7 @@
 - components/rbac/RolesSection.tsx
 - components/rbac/UserSearch.tsx
 - components/settings/NotificationPreferences.tsx
+- components/settings/PlatformAiSettings.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx
 - components/shared/Chart.impl.tsx

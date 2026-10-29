@@ -1130,3 +1130,12 @@ Considered:
   RFC 4180 writer with formula neutralisation is enough.
 
 Decision: build.
+
+### 2026-10-29 — Core catalogues and platform AI settings (P2 platform, ADR-097)
+
+Scope: lib/core/catalogue/grades.ts, lib/core/ai/settings.ts
+Considered: **A job-architecture product (Workday job profiles, Mercer/WTW grade libraries)**
+(rejected — HR Centre is the system of record; grades are a short list per company).
+**App-level linking in every employee writer** (rejected — a database trigger keeps every
+writer in step).
+Decision: build — two catalogue tables, a link column with a trigger, and a settings move.

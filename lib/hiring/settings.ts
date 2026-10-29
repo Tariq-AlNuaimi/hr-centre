@@ -15,22 +15,12 @@ import {
  * SCRUB_FIELDS then redacts by name.
  */
 
+// The AI provider, key and limits are platform settings now (lib/core/ai, ADR-097).
 const HIRING_SETTING_KEYS = [
   "approvals.config",
   "assessment.config",
   "budget.envelope",
   "panel.aiMode",
-  "ai.provider",
-  "ai.baseUrl",
-  "ai.model",
-  "ai.apiKey",
-  "ai.pdfVision",
-  "ai.killSwitch",
-  "ai.dailyTokenCap",
-  "ai.dailySpendCap",
-  "ai.timeoutMs",
-  "ai.pricePer1kIn",
-  "ai.pricePer1kOut",
   "ai.scoringWeights",
   "comms.flags",
   "careers.dailyCapPerPosition",
