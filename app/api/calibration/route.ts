@@ -14,6 +14,7 @@ import {
   isCurveEligible,
   tally,
 } from "@/lib/pms/calibration";
+import { nineBox } from "@/lib/pms/distribution";
 import { adjustSchema, setTargetSchema } from "@/lib/validations/calibration";
 
 /**
@@ -185,7 +186,7 @@ export const GET = withRateLimit(
     const cycleId = new URL(request.url).searchParams.get("cycleId");
     if (!cycleId) return err("cycleId is required");
 
-    const [target, runs, participantCount] = await Promise.all([
+    const [target, runs, participantCount, cycle] = await Promise.all([
       prisma.calibrationTarget.findUnique({
         where: { cycleId },
         select: {
@@ -204,8 +205,13 @@ export const GET = withRateLimit(
         select: { id: true },
       }),
       prisma.cycleParticipant.count({ where: countableParticipantWhere(cycleId) }),
+      prisma.performanceCycle.findUnique({ where: { id: cycleId }, select: { year: true } }),
     ]);
+    if (!cycle) return notFound("Cycle");
     const runId = runs[0]?.id ?? null;
+
+    const prior = await priorCycleBands(cycle.year);
+    const priorBandOf = new Map(prior?.scores.map((p) => [p.employeeId, p.calibratedBand]) ?? []);
 
     const scores = runId
       ? await prisma.employeeScore.findMany({
@@ -216,6 +222,7 @@ export const GET = withRateLimit(
             rawScore: true,
             rawBand: true,
             calibratedBand: true,
+            threeSixtyScore: true,
             // Red-team F8 — §9.5 averages over however many raters arrived, so a
             // raw score can rest on one 360 form rather than three. §10.5 gives
             // HR a manual override on every department, and this is precisely
@@ -290,6 +297,8 @@ export const GET = withRateLimit(
           // never "nobody rated them". The screen must render the two
           // differently, or it invents a fact about a real person's score.
           threeSixtyRaterCount: s.threeSixtyRaterCount,
+          // P2-1 — last cycle's calibrated band; null when they were not scored then.
+          priorBand: priorBandOf.get(s.employee.id) ?? null,
         })),
       };
     });
@@ -306,7 +315,50 @@ export const GET = withRateLimit(
         headcount: scores.length,
       }),
       departments: departments.sort((a, b) => a.name.localeCompare(b.name)),
+      // P2-1 — chart inputs: raw counts so the client derives shares once.
+      headcount: scores.length,
+      targetPctByBand: target ? targetPct : null,
+      prior: prior
+        ? {
+            year: prior.year,
+            headcount: prior.scores.length,
+            counts: tally(prior.scores.map((p) => p.calibratedBand)),
+          }
+        : null,
+      nineBox: nineBox(
+        scores.map((s) => ({
+          employeeId: s.employee.id,
+          name: s.employee.name,
+          calibratedBand: s.calibratedBand,
+          threeSixtyLevel: s.threeSixtyScore === null ? null : Number(s.threeSixtyScore),
+        })),
+      ),
     });
   }),
   { id: "pms-calibration-read", limit: 60, windowMs: 60_000 },
 );
+
+/**
+ * P2-1 — the prior-cycle comparison (Culture Amp's "compare with past cycles"):
+ * the nearest earlier year that has a score run, read from its latest run's
+ * CALIBRATED band — what that year actually decided. Null when there is none,
+ * or when that run scored nobody, so the screen never draws a zero-filled year.
+ */
+async function priorCycleBands(year: number) {
+  const priorCycle = await prisma.performanceCycle.findFirst({
+    where: { year: { lt: year }, scoreRuns: { some: {} } },
+    orderBy: { year: "desc" },
+    select: {
+      year: true,
+      scoreRuns: { take: 1, orderBy: { startedAt: "desc" }, select: { id: true } },
+    },
+  });
+  const runId = priorCycle?.scoreRuns[0]?.id;
+  if (!priorCycle || !runId) return null;
+  const scores = await prisma.employeeScore.findMany({
+    where: { scoreRunId: runId },
+    take: 4000,
+    select: { employeeId: true, calibratedBand: true },
+  });
+  return scores.length > 0 ? { year: priorCycle.year, scores } : null;
+}

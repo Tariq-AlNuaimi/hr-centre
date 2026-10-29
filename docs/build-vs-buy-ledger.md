@@ -1024,3 +1024,15 @@ show last use, both ADR-070 requirements). **Third-party magic-link services (Ma
 Stytch)** (rejected — an external dependency for 100 lines of hashing over our own table;
 the data is Confidential).
 Decision: build — consolidate the two existing in-house implementations into one core service.
+
+### 2026-10-29 — P2 performance: distribution chart, 9-box, prior-cycle comparison
+
+Scope: lib/pms/distribution.ts
+Considered:
+
+- **Culture Amp / Lattice calibration modules** (ratings matrix, past-cycle comparison). Rejected:
+  PMS already lives here; these are read-only views over `EmployeeScore`, a few pure functions.
+- **A charting add-on (Tremor, @ant-design/plots)**. Rejected: recharts is the locked engine
+  (ADR-001) and `components/shared/Chart` gains a multi-series bar option instead.
+
+Decision: build — pure, client-safe tally/share/9-box helpers next to the calibration rules.

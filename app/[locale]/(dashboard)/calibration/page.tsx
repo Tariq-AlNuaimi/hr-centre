@@ -23,6 +23,9 @@ import { CyclePicker } from "@/components/pms/CyclePicker";
 import { PublishGate } from "@/components/pms/PublishGate";
 import { ScoreRunPanel } from "@/components/pms/ScoreRunPanel";
 import { CalibrationTargetEditor } from "@/components/pms/CalibrationTargetEditor";
+import { BandDistributionChart } from "@/components/pms/BandDistributionChart";
+import { NineBox } from "@/components/pms/NineBox";
+import type { NineBoxCell } from "@/lib/pms/distribution";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -84,8 +87,14 @@ interface CalibrationResponse {
       calibratedBand: string;
       /** Red-team F8. `null` is "unknown", never "nobody rated them". */
       threeSixtyRaterCount: number | null;
+      /** P2-1 — last cycle's calibrated band; null when not scored then. */
+      priorBand: string | null;
     }>;
   }>;
+  headcount: number;
+  targetPctByBand: Record<string, number> | null;
+  prior: { year: number; headcount: number; counts: Record<string, number> } | null;
+  nineBox: { cells: NineBoxCell[]; withoutFeedback: number };
 }
 
 export default function CalibrationPage() {
@@ -181,8 +190,23 @@ export default function CalibrationPage() {
           )}
 
           <SectionCard title={t("orgWide")} subtitle={t("orgWideHelp")}>
-            <GapTable rows={data.orgWide} />
+            <div className="space-y-4">
+              <GapTable rows={data.orgWide} />
+              {/* P2-1 — the curve itself: actual vs target, and last cycle. */}
+              <BandDistributionChart
+                counts={Object.fromEntries(data.orgWide.map((r) => [r.band, r.actualCount]))}
+                headcount={data.headcount}
+                targetPct={data.targetPctByBand}
+                prior={data.prior}
+              />
+            </div>
           </SectionCard>
+
+          {data.headcount > 0 && (
+            <SectionCard title={t("nineBoxTitle")} subtitle={t("nineBoxHelp")}>
+              <NineBox cells={data.nineBox.cells} withoutFeedback={data.nineBox.withoutFeedback} />
+            </SectionCard>
+          )}
 
           {data.departments.map((department) => (
             <SectionCard
@@ -259,6 +283,7 @@ function AdjustRow({
     rawBand: string;
     calibratedBand: string;
     threeSixtyRaterCount: number | null;
+    priorBand: string | null;
   };
   cycleId: string;
 }) {
@@ -295,6 +320,12 @@ function AdjustRow({
           {/* §10.1's separate layer, visible: raw stays, the calibrated band
               is what moved. */}
           {moved && ` → ${tBand(employee.calibratedBand)}`}
+        </div>
+        {/* P2-1 — prior-cycle comparison, per person. */}
+        <div className="text-xs text-muted-foreground">
+          {employee.priorBand
+            ? t("priorBand", { band: tBand(employee.priorBand) })
+            : t("noPriorBand")}
         </div>
         {/*
           Red-team F8 — §9.5 averages over however many raters arrived, so this

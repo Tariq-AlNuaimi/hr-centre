@@ -14,6 +14,7 @@ import { CyclePicker } from "@/components/pms/CyclePicker";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
+import { BandDistributionChart } from "@/components/pms/BandDistributionChart";
 
 /**
  * §13.6 — the executive dashboard (COO / Ops Director).
@@ -210,6 +211,14 @@ export default function ExecutivePage() {
                     );
                   })}
                 </ul>
+                <div className="mt-4">
+                  <BandDistributionChart
+                    counts={data.distribution.orgWide.bands}
+                    headcount={data.distribution.orgWide.headcount}
+                    targetPct={null}
+                    prior={null}
+                  />
+                </div>
               </SectionCard>
 
               <SectionCard title={t("byDepartment")}>

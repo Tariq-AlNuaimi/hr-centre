@@ -8,6 +8,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { TableSkeleton } from "@/components/shared/Skeletons";
 import { Badge } from "@/components/ui/badge";
 import { apiClient } from "@/lib/api-client";
+import { BandDistributionChart } from "@/components/pms/BandDistributionChart";
 
 /**
  * §13.5 — "Results distribution report — band breakdown per department / entity /
@@ -151,6 +152,14 @@ export function DistributionReport({ cycleId }: { cycleId: string }) {
             );
           })}
         </ul>
+        <div className="mt-4">
+          <BandDistributionChart
+            counts={data.orgWide.calibrated}
+            headcount={data.orgWide.headcount}
+            targetPct={data.targetPct}
+            prior={null}
+          />
+        </div>
       </SectionCard>
 
       <SectionCard title={t("byDepartment")} subtitle={t("movementHelp")} noBodyPadding>
