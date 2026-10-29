@@ -73,7 +73,7 @@ async function activateEmployee(
 }
 
 /** QA2 N-12 — how much earlier than planned a start may be confirmed. */
-export const EARLY_START_DAYS = 7;
+const EARLY_START_DAYS = 7;
 
 export function dayOneProblem(p: {
   actualStart: Date;
