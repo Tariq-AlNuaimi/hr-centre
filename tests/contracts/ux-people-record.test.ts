@@ -100,14 +100,18 @@ test("record page hides each gated category when the select left it out", () => 
   const src = readFileSync("app/[locale]/(dashboard)/people/[id]/page.tsx", "utf8");
   for (const line of [
     'if (!detail.record.personal) hidden.push("personal")',
-    'if (!detail.record.idDocuments) hidden.push("documents")',
+    // ADR-098: Documents unions every module's files; the tab hides only when
+    // no source is open, and the ID-documents section still needs its own gate.
+    'if (!documentsVisible) hidden.push("documents")',
+    "Boolean(detail.record.idDocuments) ||",
+    "{record.idDocuments ? <IdSection record={record} /> : null}",
     'if (basicSalary === undefined) hidden.push("compensation")',
     'if (!canSeeHistory) hidden.push("history")',
   ]) {
     assert.ok(src.includes(line), `missing: ${line}`);
   }
   // History is for whoever may edit this person.
-  assert.match(src, /hiddenCoreTabs\(detail, basicSalary, canEditPerson\)/);
+  assert.match(src, /hiddenCoreTabs\(detail, basicSalary, canEditPerson, documentsVisible\)/);
 });
 
 test("placeholder employee IDs read as pending", () => {

@@ -136,9 +136,15 @@ export async function recordHandover(
     note: body.note,
   });
   if (refusal) throw new HiringRuleError(refusal.message, refusal.status, refusal.code);
+  // ADR-098: the joiner case this hand-over belongs to, as a stored link.
+  const join = await prisma.jmlJoinDetail.findUnique({
+    where: { sourceRef: sourceRefFor(l.cand.id) },
+    select: { caseId: true },
+  });
   await prisma.hiringHandover.create({
     data: {
       candidateId: l.cand.id,
+      jmlCaseId: join?.caseId ?? null,
       kind: f.route === "TRANSFERRED" ? "TRANSFERRED" : "RETAINED",
       fromUserId: f.ownerId,
       fromRole: f.hrManagers.includes(f.ownerId ?? "") ? "HR_MANAGER" : null,

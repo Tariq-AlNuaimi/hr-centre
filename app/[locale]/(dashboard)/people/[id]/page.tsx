@@ -33,6 +33,9 @@ import { DescriptionList } from "@/components/shared/DescriptionList";
 import { departurePreview } from "@/lib/pms/departure";
 import { isHrSuperAdmin } from "@/lib/core/permissions";
 import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
+import { EmployeeDocuments } from "@/components/people/EmployeeDocuments";
+import { listEmployeeDocuments } from "@/lib/core/documents/employee-documents";
+import { canViewEvidence } from "@/lib/pms/evidence";
 import type { UpdateEmployeeInput } from "@/lib/validations/employee";
 
 /**
@@ -246,8 +249,27 @@ export default async function EmployeeDetailPage({
   // R10 — the core-category tabs a viewer is not entitled to are absent (the
   // gated select already left their data out), and History is for whoever may
   // edit this person. An unentitled ?tab= shows the overview.
-  const allHidden = [...hiddenTabs, ...hiddenCoreTabs(detail, basicSalary, canEditPerson)];
+  // ADR-098 — Documents is the person's files from every module, so it shows
+  // when any source is open to this viewer (ID documents, JML, Hiring, evidence).
+  const documentsVisible =
+    Boolean(detail.record.idDocuments) ||
+    !hiddenTabs.includes("jml") ||
+    !hiddenTabs.includes("hiring") ||
+    canViewEvidence(actor, { id: employee.id, managerId: employee.managerId });
+  const allHidden = [
+    ...hiddenTabs,
+    ...hiddenCoreTabs(detail, basicSalary, canEditPerson, documentsVisible),
+  ];
   const shown: RecordTab = allHidden.includes(tab) ? "overview" : tab;
+  const documents =
+    shown === "documents"
+      ? await listEmployeeDocuments(
+          session,
+          actor,
+          { id: employee.id, managerId: employee.managerId },
+          canEditPerson,
+        )
+      : null;
   const view = recordView(t, employee, detail.record.directorate, locale);
 
   // Joiner from the record (PRE_JOINER without a live onboarding) and a ticket
@@ -310,6 +332,7 @@ export default async function EmployeeDetailPage({
         record={detail.record}
         jmlData={jmlData}
         hiringData={hiringData}
+        documents={documents}
         compensation={compensationCard(t, basicSalary)}
         login={loginPanel(actor, subject, employee)}
         footer={
@@ -336,10 +359,11 @@ function hiddenCoreTabs(
   detail: ReturnType<typeof serializeEmployeeDetail>,
   basicSalary: string | null | undefined,
   canSeeHistory: boolean,
+  documentsVisible: boolean,
 ): RecordTab[] {
   const hidden: RecordTab[] = [];
   if (!detail.record.personal) hidden.push("personal");
-  if (!detail.record.idDocuments) hidden.push("documents");
+  if (!documentsVisible) hidden.push("documents");
   if (basicSalary === undefined) hidden.push("compensation");
   if (!canSeeHistory) hidden.push("history");
   return hidden;
@@ -354,6 +378,7 @@ async function RecordPanel(props: {
   record: EmployeeRecordView;
   jmlData: Awaited<ReturnType<typeof employeeJml>>;
   hiringData: Awaited<ReturnType<typeof employeeHiring>>;
+  documents: Awaited<ReturnType<typeof listEmployeeDocuments>> | null;
   compensation: React.ReactNode;
   login: React.ReactNode;
   footer: React.ReactNode;
@@ -398,7 +423,19 @@ async function RecordPanel(props: {
     case "personal":
       return <PersonalSection record={record} />;
     case "documents":
-      return <IdSection record={record} />;
+      return (
+        <>
+          {record.idDocuments ? <IdSection record={record} /> : null}
+          {props.documents ? (
+            <EmployeeDocuments
+              employeeId={props.employeeId}
+              locale={props.locale}
+              items={props.documents.items.map((d) => ({ ...d, date: d.date.toISOString() }))}
+              canUpload={props.documents.canUpload}
+            />
+          ) : null}
+        </>
+      );
     case "compensation":
       return props.compensation;
     case "history":

@@ -57,3 +57,30 @@ export async function employeeJml(actor: JmlActor, employeeId: string) {
 }
 
 export type EmployeeJml = NonNullable<Awaited<ReturnType<typeof employeeJml>>>;
+
+/**
+ * Employee › Documents (ADR-098): the letters generated on this person's cases,
+ * for a viewer who may see their JML cases. Opened from the case's documents tab.
+ */
+export async function employeeJmlDocuments(actor: JmlActor, employeeId: string) {
+  if (!(await jmlTabVisible(actor, employeeId))) return [];
+  const rows = await prisma.jmlGeneratedDocument.findMany({
+    where: { case: { employeeId } },
+    orderBy: { generatedAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      documentType: true,
+      templateVersion: true,
+      generatedAt: true,
+      case: { select: { id: true, caseRef: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    title: `${r.case.caseRef} · ${r.documentType} v${r.templateVersion}`,
+    category: r.documentType,
+    date: r.generatedAt,
+    href: `/jml/cases/${r.case.id}?tab=documents`,
+  }));
+}

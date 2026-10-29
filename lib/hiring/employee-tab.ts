@@ -87,3 +87,40 @@ export async function hiringTabVisible(session: Session, employeeId: string): Pr
   const actor = await resolveHiringActor(session);
   return can(actor, "hiring.view", await requisitionSubject(c.requisition));
 }
+
+/** Pay evidence (Restricted) — listed only to readers with hiring pay access. */
+const PAY_KINDS = new Set(["PAYSLIP", "BANK_STATEMENT"]);
+
+/**
+ * Employee › Documents (ADR-098): the package documents this person brought
+ * through Hiring — for a viewer who manages that requisition; payslips and bank
+ * statements only with hiring pay access. Opened on the candidate's page.
+ */
+export async function employeeHiringDocuments(session: Session, employeeId: string) {
+  const c = await prisma.hiringCandidate.findFirst({
+    where: { employeeId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, requisition: { select: { entityId: true, departmentId: true } } },
+  });
+  if (!c?.requisition) return [];
+  const actor = await resolveHiringActor(session);
+  const subject = await requisitionSubject(c.requisition);
+  if (!can(actor, "hiring.manage", subject)) return [];
+  const pay = can(actor, "hiring.viewComp", subject);
+  const docs = await prisma.hiringCandidateDocument.findMany({
+    where: { candidateId: c.id },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: { id: true, kind: true, label: true, createdAt: true },
+  });
+  return docs
+    .filter((d) => pay || !PAY_KINDS.has(d.kind))
+    .map((d) => ({
+      id: d.id,
+      title: d.label,
+      category: d.kind,
+      date: d.createdAt,
+      href: `/hiring/candidates/${c.id}`,
+      restricted: PAY_KINDS.has(d.kind),
+    }));
+}

@@ -18,6 +18,7 @@ import { newHiringId, openAmount, sealAmount } from "./comp-crypto";
 import { HiringRuleError } from "./http";
 import { peopleById, personOrNull } from "./people";
 import { toOMRorNull } from "./money";
+import { DOC_TYPES, MAX_DOCUMENT_BYTES, sniffType } from "@/lib/core/documents/file-type";
 
 /**
  * CVs and package evidence (Interview Hub `cv`, `documents`, `package` routes).
@@ -27,23 +28,15 @@ import { toOMRorNull } from "./money";
  * browser claimed.
  */
 
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const DOC_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"] as const;
+export const MAX_FILE_BYTES = MAX_DOCUMENT_BYTES;
 const DOC_CAP = 200;
 
 export const cvPathname = (candidateId: string) => `hiring/cvs/${candidateId}/cv.pdf`;
 const documentPathname = (candidateId: string, docId: string) =>
   `hiring/docs/${candidateId}/${docId}`;
 
-/** The content type the bytes actually are (of the ones we accept), or null. */
-export function sniffType(bytes: Uint8Array): (typeof DOC_TYPES)[number] | null {
-  const starts = (sig: number[], at = 0) => sig.every((b, i) => bytes[at + i] === b);
-  if (starts([0x25, 0x50, 0x44, 0x46])) return "application/pdf";
-  if (starts([0x89, 0x50, 0x4e, 0x47])) return "image/png";
-  if (starts([0xff, 0xd8, 0xff])) return "image/jpeg";
-  if (starts([0x52, 0x49, 0x46, 0x46]) && starts([0x57, 0x45, 0x42, 0x50], 8)) return "image/webp";
-  return null;
-}
+/** The content type the bytes actually are (core, ADR-098). */
+export { sniffType };
 
 export function requireStorage() {
   if (!isStorageConfigured()) {
