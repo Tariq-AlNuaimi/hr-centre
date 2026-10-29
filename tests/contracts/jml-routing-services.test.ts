@@ -64,6 +64,7 @@ before(async () => {
         notices.push({ userIds, body: n.body, key: n.key, kind: n.kind });
         return userIds.length;
       },
+      resolveUserNotices: async () => 0,
     },
   });
   desks = await import("../../lib/jml/routing/desks");

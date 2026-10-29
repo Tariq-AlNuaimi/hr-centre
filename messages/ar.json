@@ -2098,6 +2098,7 @@
       "noParent": "No directorate",
       "from": "From",
       "schedule": "Schedule change",
+      "applyNow": "This date is in the past. Apply the change now",
       "scheduled": "Change scheduled",
       "cancelled": "Change cancelled",
       "failed": "The change could not be saved.",
