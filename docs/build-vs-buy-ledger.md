@@ -1157,3 +1157,13 @@ Considered: **SharePoint / Google Drive / M-Files as the document store** (rejec
 per-module access rules and Restricted pay/ID files would be mirrored outside the database).
 **Copying module files into one table** (rejected — a read-model union keeps one source each).
 Decision: build — one small store for record files plus a union read model.
+
+### 2026-10-29 — P2 employee "Me" area
+
+Scope: lib/people/me.ts
+Considered:
+
+- **An employee self-service portal (BambooHR, HiBob, Zoho People ESS).** Rejected: HR Centre is
+  the system of record; the area is two read-only pages over the employee's own rows.
+
+Decision: build.

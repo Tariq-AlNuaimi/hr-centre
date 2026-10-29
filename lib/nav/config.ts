@@ -43,7 +43,17 @@ export const NAV_GROUPS = [
 ] as const;
 export type NavGroup = (typeof NAV_GROUPS)[number];
 
+/**
+ * P2 (UX R22) — who the viewer is to the navigation. "employee" holds no HR,
+ * manager, hiring, ticket or admin capability: they see Home, Me and the
+ * people directory, and every HR tool is hidden by a second, explicit gate
+ * (`personas: ["staff"]`) on top of each entry's own permission check.
+ */
+export type Persona = "employee" | "staff";
+
 export type NavContext = {
+  /** P2 (R22) — derived from the capabilities below; see `personaOf`. */
+  persona: Persona;
   /** Platform administrator (`User.role = ADMIN`). */
   isAdmin: boolean;
   employeeId: string | null;
@@ -97,7 +107,28 @@ export type NavLink = {
   match?: readonly string[];
 };
 
-export type NavEntry = NavLink & { group: NavGroup; icon: NavIcon; tabs?: readonly NavLink[] };
+export type NavEntry = NavLink & {
+  group: NavGroup;
+  icon: NavIcon;
+  tabs?: readonly NavLink[];
+  /** P2 (R22) — personas this entry is for; absent = everyone it is otherwise shown to. */
+  personas?: readonly Persona[];
+};
+
+/** P2 (R22) — "staff" when the viewer holds any HR, manager, hiring, ticket or admin capability. */
+export function personaOf(ctx: Omit<NavContext, "persona">): Persona {
+  const staff =
+    ctx.isAdmin ||
+    Object.values(ctx.pms).some(Boolean) ||
+    Object.values(ctx.hive).some(Boolean) ||
+    ctx.jmlTaskWorker ||
+    ctx.jml("jml.view") ||
+    ctx.hiring("hiring.view");
+  return staff ? "staff" : "employee";
+}
+
+/** P2 (R22) — HR and manager tools: never shown to the employee persona. */
+const STAFF_ONLY: readonly Persona[] = ["staff"];
 
 export const NAV: readonly NavEntry[] = [
   { key: "home", group: "home", icon: "home", label: "home", href: "/", show: always },
@@ -136,6 +167,29 @@ export const NAV: readonly NavEntry[] = [
     ],
   },
   {
+    // P2 (R22) — the employee's own HR self-service: their questions and documents.
+    key: "me-hr",
+    group: "me",
+    icon: "inbox",
+    label: "myHr",
+    href: "/me/requests",
+    show: byTabs,
+    tabs: [
+      {
+        key: "me-requests",
+        label: "myRequests",
+        href: "/me/requests",
+        show: (c) => c.employeeId !== null,
+      },
+      {
+        key: "me-documents",
+        label: "myDocuments",
+        href: "/me/documents",
+        show: (c) => c.employeeId !== null,
+      },
+    ],
+  },
+  {
     key: "me-interviews",
     group: "me",
     icon: "interviews",
@@ -148,6 +202,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "team",
     group: "team",
+    personas: STAFF_ONLY,
     icon: "team",
     label: "team",
     href: "/team",
@@ -177,6 +232,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "jml",
     group: "people",
+    personas: STAFF_ONLY,
     icon: "lifecycle",
     label: "jmlHome",
     href: "/jml",
@@ -188,6 +244,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "hiring",
     group: "talent",
+    personas: STAFF_ONLY,
     icon: "briefcase",
     label: "hiring",
     href: "/hiring",
@@ -197,6 +254,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "performance-cycles",
     group: "talent",
+    personas: STAFF_ONLY,
     icon: "cycles",
     label: "cycles",
     href: "/admin/cycles",
@@ -219,6 +277,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "tickets",
     group: "service",
+    personas: STAFF_ONLY,
     icon: "inbox",
     label: "tickets",
     href: "/tickets",
@@ -229,6 +288,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "insights",
     group: "insights",
+    personas: STAFF_ONLY,
     icon: "insights",
     label: "insights",
     href: "/executive",
@@ -240,6 +300,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "settings",
     group: "admin",
+    personas: STAFF_ONLY,
     icon: "settings",
     label: "settings",
     href: "/admin/settings",
@@ -257,6 +318,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "roles-access",
     group: "admin",
+    personas: STAFF_ONLY,
     icon: "shield",
     label: "rolesAccess",
     href: "/admin/roles",
@@ -274,6 +336,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "audit-log",
     group: "admin",
+    personas: STAFF_ONLY,
     icon: "audit",
     label: "auditLog",
     href: "/audit-log",
@@ -283,6 +346,7 @@ export const NAV: readonly NavEntry[] = [
   {
     key: "recycling-bin",
     group: "admin",
+    personas: STAFF_ONLY,
     icon: "trash",
     label: "recyclingBin",
     href: "/recycling-bin",

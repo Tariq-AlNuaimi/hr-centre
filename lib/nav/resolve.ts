@@ -39,6 +39,8 @@ function resolveLink(link: NavLink, ctx: NavContext): ResolvedLink | null {
 export function visibleNav(ctx: NavContext): ResolvedEntry[] {
   const out: ResolvedEntry[] = [];
   for (const entry of NAV) {
+    // P2 (R22) — the persona gate, on top of the entry's own permission check.
+    if (entry.personas && !entry.personas.includes(ctx.persona)) continue;
     const self = resolveLink(entry, ctx);
     if (!self) continue;
     const tabs = (entry.tabs ?? [])

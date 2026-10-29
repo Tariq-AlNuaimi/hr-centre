@@ -109,6 +109,8 @@
 - app/[locale]/(dashboard)/jml/settings/task-routing/page.tsx
 - app/[locale]/(dashboard)/jml/settings/templates/page.tsx
 - app/[locale]/(dashboard)/jml/statutory/page.tsx
+- app/[locale]/(dashboard)/me/documents/page.tsx
+- app/[locale]/(dashboard)/me/requests/page.tsx
 - app/[locale]/(dashboard)/mid-year/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/mid-year/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
@@ -873,7 +875,7 @@
 - lib/jml/watch/risk.ts: StatutoryRisk, RISK_ORDER, statutoryRisk
 - lib/jml/watch/statutory.ts: statutoryWatch
 - lib/jml/work-items.ts: jmlWorkProvider
-- lib/nav/config.ts: NAV_GROUPS, NavGroup, NavContext, NavIcon, NavLink, NavEntry, NAV
+- lib/nav/config.ts: NAV_GROUPS, NavGroup, Persona, NavContext, NavIcon, NavLink, NavEntry, personaOf, NAV
 - lib/nav/legacy-redirects.ts: Redirect, legacyRedirects
 - lib/nav/resolve.ts: ResolvedEntry, hrefOf, visibleNav, groupedNav, normalisePath, covers, ActiveNav, activeNav, tabsFor, PaletteItem, paletteItems
 - lib/nav/server-context.ts: navContextFor
@@ -896,6 +898,7 @@
 - lib/people/history.ts: HistoryEntry, employeeHistory, changedFields
 - lib/people/id-documents.ts: IdDocumentKeyError, encryptIdNumber, readIdNumber
 - lib/people/logins.ts: generateTemporaryPassword, LoginState, loginStateOf, loginSummary, issueTemporaryPassword, disableLogin, changeOwnPassword
+- lib/people/me.ts: MyRequestState, myRequestState, myRequests, myDocuments
 - lib/people/odoo-id.ts: recordOdooId
 - lib/people/pending-id.ts: isPendingEmployeeId
 - lib/people/provisional-id.ts: PROVISIONAL_PREFIX, provisionalOdooId, isProvisionalOdooId, PLACEHOLDER_EMAIL_DOMAIN, placeholderEmail, isPlaceholderEmail
