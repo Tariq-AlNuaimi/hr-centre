@@ -6,6 +6,7 @@ import {
   GOAL_SETTING_STAGE,
   isWeightageComplete,
   kpiEditBlockedReason,
+  kpiSetAccessRefusal,
   signOffBlockedReason,
   weightageGap,
   weightageMessage,
@@ -356,4 +357,23 @@ test("§8.3 the exemption is about the WORK, not the enrolment", () => {
 
 test("KPI drafting and goal sign-off name the same stage", () => {
   assert.equal(GOAL_SETTING_STAGE, "GOAL_SETTING");
+});
+
+test("QA2 D-15 an employee drafting their OWN KPIs is refused with 403 (authority), not 409 (state)", () => {
+  const params = {
+    visible: true,
+    employee: { id: "emp-1", managerId: "mgr-1", roleTrack: "INDIVIDUAL" as const },
+    cycleStatus: "OPEN",
+    stage: GOAL_SETTING,
+    goalsApprovedAt: null,
+    now: DURING,
+  };
+  const self = kpiSetAccessRefusal({
+    ...params,
+    actor: actor({ employeeId: "emp-1", isLineManager: false }),
+  });
+  assert.equal(self?.status, 403);
+  assert.equal(self?.reason, "Only this employee's direct line manager may draft their KPIs.");
+  const late = kpiSetAccessRefusal({ ...params, actor: actor(), now: AFTER });
+  assert.equal(late?.status, 409, "a locked stage is still a state refusal");
 });

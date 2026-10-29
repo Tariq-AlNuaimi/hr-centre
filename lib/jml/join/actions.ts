@@ -72,6 +72,37 @@ async function activateEmployee(
   });
 }
 
+/** QA2 N-12 — how much earlier than planned a start may be confirmed. */
+const EARLY_START_DAYS = 7;
+
+export function dayOneProblem(p: {
+  actualStart: Date;
+  plannedStart: Date | null;
+  email: string | null | undefined;
+}): { message: string; status: 400 | 409 } | null {
+  if (p.plannedStart) {
+    const earliest = utcDate(p.plannedStart).getTime() - EARLY_START_DAYS * DAY_MS;
+    if (utcDate(p.actualStart).getTime() < earliest) {
+      return {
+        status: 400,
+        message:
+          `The actual start is more than ${EARLY_START_DAYS} days before the planned start ` +
+          `(${utcDate(p.plannedStart).toISOString().slice(0, 10)}). Move the planned start first ` +
+          `if they really started early.`,
+      };
+    }
+  }
+  if (!p.email || isPlaceholderEmail(p.email)) {
+    return {
+      status: 409,
+      message:
+        "Add the joiner's work email before confirming the start: without it they get no login and " +
+        "show a placeholder address everywhere.",
+    };
+  }
+  return null;
+}
+
 /** AC-7.2/7.3: once, ACTIVE cases only, never in the future (Muscat today). */
 export async function confirmActualStart(actor: JmlActor, caseId: string, date: Date) {
   const { kase, detail } = await loadJoin(actor, caseId);
@@ -88,6 +119,20 @@ export async function confirmActualStart(actor: JmlActor, caseId: string, date: 
   if (utcDate(date) > zonedToday(new Date(), calendar.schedule.timeZone)) {
     throw new JmlError("The actual start date cannot be in the future.", 400);
   }
+  // QA2 N-12 — day-one guards. A start confirmed three weeks before the
+  // planned (contract) start was accepted, and an ACTIVE employee was left
+  // with a placeholder address and no login.
+  const problem = dayOneProblem({
+    actualStart: date,
+    plannedStart: detail.plannedStartDate,
+    email: (
+      await prisma.employee.findUnique({
+        where: { id: kase.employeeId },
+        select: { email: true },
+      })
+    )?.email,
+  });
+  if (problem) throw new JmlError(problem.message, problem.status);
   const completed = await auditedTransaction(async (tx) => {
     await tx.jmlJoinDetail.update({
       where: { caseId },

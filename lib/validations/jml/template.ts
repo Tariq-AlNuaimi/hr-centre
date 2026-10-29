@@ -59,6 +59,8 @@ export const conditionsSchema = z
     nationality: rule.optional(),
     workLocation: rule.optional(),
     payrollApplicable: rule.optional(),
+    laptopRequired: rule.optional(),
+    accessCardRequired: rule.optional(),
   })
   .strict()
   .default({});

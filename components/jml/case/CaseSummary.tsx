@@ -56,7 +56,7 @@ export function CaseSummary({ detail }: { detail: CaseDetail }) {
     <dl className="sticky top-0 z-10 grid grid-cols-2 gap-x-6 gap-y-3 rounded-md border border-border bg-card p-4 sm:grid-cols-3 lg:grid-cols-6">
       {keyDates(detail).map(([key, value]) => item(t(key), <DateText value={value} />))}
       {item(t("owner"), detail.hrOwner?.name ?? t("noOwner"))}
-      {item(t("risk"), <RagBadge flag={detail.ragFlag} />)}
+      {item(t("risk"), <RagBadge flag={detail.ragFlag} status={detail.status} />)}
       {item(
         t("nextDue"),
         next ? (

@@ -209,6 +209,9 @@
     "name": "Name",
     "email": "Email",
     "role": "Role",
+    "platformAdmin": "Platform administrator",
+    "platformAdminYes": "Yes",
+    "platformAdminNo": "No — your HR access is set by role assignments",
     "changePassword": "Change password",
     "currentPassword": "Current password",
     "newPassword": "New password",
@@ -2028,12 +2031,12 @@
     "subtitle": "Companies, directorates, departments and teams. Imports place people into these units — they never create them.",
     "companies": "Companies",
     "companiesNote": "Company codes are import keys, so companies can be renamed but not re-coded.",
-    "companyCounts": "{departments} departments · {people} people",
+    "companyCounts": "{departments, plural, one {# department} other {# departments}} · {people, plural, one {# person} other {# people}}",
     "noCompanies": "No companies yet",
     "directorates": "Directorates",
     "directoratesNote": "An optional level between a company and its departments.",
     "noDirectorates": "No directorates yet — only Rihal uses them.",
-    "directorateCounts": "{departments} departments",
+    "directorateCounts": "{departments, plural, one {# department} other {# departments}}",
     "directorateName": "Directorate name",
     "addDirectorate": "Add directorate",
     "departments": "Departments",
@@ -2687,6 +2690,7 @@
       "noMatch": "No tickets match these filters.",
       "identityVerified": "Identity confirmed by Siraaj",
       "identityUnverified": "Identity not confirmed",
+      "identityRaisedByHr": "Raised by HR on the employee's behalf",
       "employeeRecord": "Open the employee record",
       "noEmployeeRecord": "No employee record has this email",
       "viewLabel": "View",
@@ -3026,6 +3030,7 @@
   "jml": {
     "common": {
       "notPermitted": "You do not have access to this. Ask a platform administrator for a joiners, movers & leavers role.",
+      "notFound": "This case does not exist, or you do not have access to it.",
       "loadFailed": "This could not be loaded. Refresh the page to try again.",
       "cancel": "Cancel",
       "dash": "—",
@@ -3043,7 +3048,8 @@
       "rag": {
         "GREEN": "On track",
         "AMBER": "At risk",
-        "RED": "Off track"
+        "RED": "Off track",
+        "none": "Not applicable"
       }
     },
     "settings": {
@@ -3369,7 +3375,9 @@
           "contractTypeId": "Contract type code",
           "nationality": "Nationality",
           "workLocation": "Work location",
-          "payrollApplicable": "Payroll applicable (yes or no)"
+          "payrollApplicable": "Payroll applicable (yes or no)",
+          "laptopRequired": "Laptop required (yes or no)",
+          "accessCardRequired": "Access card required (yes or no)"
         },
         "taskRows": "{count, plural, one {# task} other {# tasks}}",
         "addTask": "Add task",
@@ -7306,7 +7314,7 @@
     "footer": "© {year} Rihal · Equal-opportunity employer",
     "metaTitle": "Careers at Rihal",
     "metaDescription": "Open roles at Rihal, Transformation Pioneers and Codeline",
-    "heroChip": "We're hiring across Oman",
+    "heroChip": "We're hiring",
     "heroTitle": "Build technology that moves",
     "heroTitleAccent": "Oman forward",
     "heroBody": "Join Rihal, Transformation Pioneers and Codeline — building software for the region's most important institutions. We hire for competency and grow people for the long term.",

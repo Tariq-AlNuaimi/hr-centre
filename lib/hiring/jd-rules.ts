@@ -27,6 +27,8 @@ export type JdContext = {
   description?: string | null;
   jdAuthorId: string | null;
   hiringManagerId: string;
+  /** The requisition's own status (QA2 N-16): a DRAFT request has no JD round yet. */
+  requisitionStatus?: string;
   /** Signatures on the CURRENT version. */
   signatures: { signatory: HiringJdSignatory; actorId: string }[];
 };
@@ -99,6 +101,11 @@ export function canRequestJdChanges(actor: JdActor, ctx: JdContext): Result {
 
 export function canSubmitJd(actor: JdActor, ctx: JdContext): Result {
   if (!hasStanding(actor, ctx)) return no("You don't have permission to submit a job description.");
+  if (ctx.requisitionStatus === "DRAFT") {
+    return no(
+      "Submit the hiring request first. Its job description goes for sign-off once the request is submitted.",
+    );
+  }
   if (ctx.jdStatus === "AWAITING_SIGNOFF")
     return no("This job description is already awaiting sign-off.");
   if (ctx.jdStatus === "APPROVED") {

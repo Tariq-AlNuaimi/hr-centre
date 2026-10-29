@@ -18,6 +18,12 @@ export function NotPermitted({ title }: { title: string }) {
   );
 }
 
+/** QA2 N-20 — the record asked for does not exist (or is not yours to see). */
+export function NotFoundBlock() {
+  const t = useTranslations("jml.common");
+  return <EmptyState description={t("notFound")} />;
+}
+
 export function LoadFailed() {
   const t = useTranslations("jml.common");
   return (

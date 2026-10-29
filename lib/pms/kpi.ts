@@ -279,10 +279,12 @@ export const GOAL_SETTING_STAGE: CycleStageKind = "GOAL_SETTING";
  *
  * Returns null when the actor may act. Otherwise a sentence written for the
  * operator and a status: 404 to avoid an existence oracle (§4.2 — a manager
- * probing ids must not learn who exists from a status code), 409 for a refusal
- * about state.
+ * probing ids must not learn who exists from a status code), 403 when the actor
+ * can see the employee but may not draft for them (QA2 D-15 — an employee
+ * drafting their own KPIs got 409, which reads as "try again later"), 409 for a
+ * refusal about state.
  */
-export type KpiAccessRefusal = { reason: string; status: 404 | 409 };
+export type KpiAccessRefusal = { reason: string; status: 403 | 404 | 409 };
 
 export function kpiSetAccessRefusal(params: {
   actor: PmsActor;
@@ -330,5 +332,8 @@ export function kpiSetAccessRefusal(params: {
     now,
     goalsApprovedAt,
   });
-  return blocked === null ? null : { reason: blocked, status: 409 };
+  if (blocked === null) return null;
+  // Authority, not state: the same sentence, the status that says so.
+  const authority = !canActOnEmployee(actor, { id: employee.id, managerId: employee.managerId });
+  return { reason: blocked, status: authority ? 403 : 409 };
 }

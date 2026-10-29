@@ -59,6 +59,45 @@ const FW = "FIRST_WEEK" as const;
 const NOT_OMANI = { nationality: { notIn: ["Omani"] } };
 const OMANI = { nationality: { in: ["Omani"] } };
 const PAYROLL = { payrollApplicable: { in: ["yes"] } };
+// QA2 N-11 — generated only when the joiner's IT answers say so (an unanswered
+// question still generates the task: a null fact fails towards the work).
+const LAPTOP = { laptopRequired: { in: ["yes"] } };
+const ACCESS_CARD = { accessCardRequired: { in: ["yes"] } };
+
+/**
+ * QA2 N-11 — the starter template was seeded before T22/T24 carried a
+ * condition, and `seedTemplateOnce` never touches an existing template. This
+ * adds the condition to those two tasks ONLY while it is still empty (an
+ * administrator who set one keeps theirs). Idempotent; every version.
+ */
+export async function addStarterItConditions(prisma: PrismaClient): Promise<number> {
+  const wanted: Record<string, Record<string, { in: string[] }>> = {
+    T22: LAPTOP,
+    T24: ACCESS_CARD,
+  };
+  const rows = await prisma.jmlTemplateTask.findMany({
+    where: {
+      code: { in: Object.keys(wanted) },
+      template: { name: "Standard onboarding (§10.2 starter)", caseType: "JOIN" },
+    },
+    select: { id: true, code: true, name: true, conditions: true },
+    take: 200,
+  });
+  let changed = 0;
+  for (const r of rows) {
+    const c = r.conditions as Record<string, unknown> | null;
+    const empty = !c || Object.keys(c).length === 0;
+    const matches = r.code === "T22" ? /laptop/i.test(r.name) : /access card/i.test(r.name);
+    if (!empty || !matches) continue;
+    await prisma.jmlTemplateTask.update({
+      where: { id: r.id },
+      data: { conditions: wanted[r.code] },
+      select: { id: true },
+    });
+    changed += 1;
+  }
+  return changed;
+}
 
 /**
  * HR Onboarding §10.2 — the 36-task starter checklist (`prisma/seeds/
@@ -98,9 +137,9 @@ export const STARTER_JOIN_TEMPLATE: SeedTemplate = {
     t(16, PRE, "Complete internal verification for applicable full-time expatriates", -7, false),
     t(20, FD, "Welcome employee", 0, true),
     t(21, FD, "Conduct orientation", 0, true),
-    t(22, FD, "Hand over laptop", 0, true),
+    t(22, FD, "Hand over laptop", 0, true, { conditions: LAPTOP }),
     t(23, FD, "Confirm credentials shared", 0, true),
-    t(24, FD, "Confirm access card issued", 0, true),
+    t(24, FD, "Confirm access card issued", 0, true, { conditions: ACCESS_CARD }),
     t(25, FD, "Sign employment contract", 0, true),
     t(26, FD, "Share Trust Code email and acknowledgement links", 0, true),
     t(27, FD, "Issue welcome kit", 0, false),

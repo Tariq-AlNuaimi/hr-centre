@@ -108,3 +108,56 @@ test("N-09 an impossible access cut-off (2026-02-30T10:00) is refused, never rol
   assert.equal(localInputToInstant("2026-02-30T10:00", "Asia/Muscat"), null);
   assert.ok(localInputToInstant("2026-02-28T10:00", "Asia/Muscat"));
 });
+
+// --- N-11 — the joiner's IT answers decide the laptop / access-card tasks -------
+
+import { taskApplies } from "../../lib/jml/engine/conditions";
+import { joinFacts } from "../../lib/jml/join/facts";
+import { STARTER_JOIN_TEMPLATE } from "../../prisma/seed-jml-templates";
+
+test("N-11 'No' to laptop and access card generates neither task; 'Yes' or unanswered does", () => {
+  const task = (code: string) => STARTER_JOIN_TEMPLATE.tasks.find((t) => t.code === code)!;
+  const base = {
+    companyCode: "RIHAL",
+    employmentType: "PERMANENT",
+    contractTypeCode: null,
+    nationality: "Omani",
+    workLocation: "Muscat",
+    payrollApplicable: true,
+  };
+  const no = joinFacts({ ...base, laptopRequired: false, accessCardRequired: false });
+  const yes = joinFacts({ ...base, laptopRequired: true, accessCardRequired: true });
+  const unknown = joinFacts(base);
+  for (const code of ["T22", "T24"]) {
+    assert.equal(taskApplies(task(code).conditions, no), false, `${code} with No`);
+    assert.equal(taskApplies(task(code).conditions, yes), true, `${code} with Yes`);
+    assert.equal(taskApplies(task(code).conditions, unknown), true, `${code} unanswered`);
+  }
+});
+
+// --- N-12 — day one ------------------------------------------------------------
+
+import { dayOneProblem } from "../../lib/jml/join/actions";
+
+test("N-12 a start weeks before the planned start, or with no work email, is refused", () => {
+  const planned = new Date("2026-11-20T00:00:00Z");
+  const email = "a.person@rihal.om";
+  assert.equal(
+    dayOneProblem({ actualStart: new Date("2026-10-29T00:00:00Z"), plannedStart: planned, email })
+      ?.status,
+    400,
+  );
+  assert.equal(
+    dayOneProblem({ actualStart: new Date("2026-11-16T00:00:00Z"), plannedStart: planned, email }),
+    null,
+    "a few days early is normal",
+  );
+  assert.equal(
+    dayOneProblem({
+      actualStart: planned,
+      plannedStart: planned,
+      email: "pending-abc@pre-joiner.invalid",
+    })?.status,
+    409,
+  );
+});

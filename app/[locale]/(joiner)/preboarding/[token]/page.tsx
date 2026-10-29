@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { preboardingView, resolvePreboarding } from "@/lib/jml/preboarding/joiner";
 import { preboardingTokenSchema } from "@/lib/validations/jml/preboarding";
 import { PreboardingForm } from "@/components/jml/preboarding/PreboardingForm";
-import { PreboardingInvalid } from "@/components/jml/preboarding/PreboardingInvalid";
+import { notFound } from "next/navigation";
 
 /**
  * `/preboarding/<token>` — P2-4, the joiner's form before day one (ADR-093).
@@ -23,10 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PreboardingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const parsed = preboardingTokenSchema.safeParse(token);
-  if (!parsed.success) return <PreboardingInvalid />;
+  // QA2 N-17 — every failure is a real 404; ./not-found.tsx renders the same
+  // prop-less invalid page, so a guessed token still learns nothing.
+  if (!parsed.success) notFound();
   const grant = await resolvePreboarding(parsed.data);
-  if (!grant) return <PreboardingInvalid />;
+  if (!grant) notFound();
   const view = await preboardingView(grant.caseId);
-  if (!view) return <PreboardingInvalid />;
+  if (!view) notFound();
   return <PreboardingForm token={parsed.data} view={view} />;
 }

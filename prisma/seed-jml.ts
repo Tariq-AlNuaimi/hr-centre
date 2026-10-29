@@ -9,6 +9,7 @@ import {
   STARTER_JOIN_TEMPLATE,
   STARTER_MOVE_TEMPLATES,
   seedTemplateOnce,
+  addStarterItConditions,
 } from "./seed-jml-templates";
 import { seedJmlDocuments } from "./seed-jml-documents";
 import { seedJmlLeave } from "./seed-jml-leave";
@@ -24,6 +25,7 @@ export async function seedJml(prisma: PrismaClient): Promise<void> {
   await seedStatutoryParameters(prisma);
   await seedReasonTaxonomy(prisma);
   await seedTemplateOnce(prisma, STARTER_JOIN_TEMPLATE);
+  await addStarterItConditions(prisma);
   for (const tpl of STARTER_MOVE_TEMPLATES) await seedTemplateOnce(prisma, tpl);
   await seedJmlLeave(prisma);
   await seedJmlDocuments(prisma);

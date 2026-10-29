@@ -320,6 +320,31 @@ export async function delegatorsFor(
   return [...new Set(rows.filter((r) => delegationLive(r, now)).map((r) => r.delegatorId))];
 }
 
+/**
+ * QA2 N-15 — the live delegates of these approvers for `module` (or all
+ * modules), so a step waiting on someone who is away also reaches the person
+ * deciding for them.
+ */
+export async function delegatesOf(
+  delegatorIds: readonly string[],
+  module: string,
+  now: Date = new Date(),
+): Promise<string[]> {
+  if (delegatorIds.length === 0) return [];
+  const rows = await prisma.approvalDelegation.findMany({
+    where: {
+      delegatorId: { in: [...delegatorIds] },
+      revokedAt: null,
+      validFrom: { lte: now },
+      validUntil: { gt: now },
+      OR: [{ module: null }, { module }],
+    },
+    select: { delegateId: true, validFrom: true, validUntil: true, revokedAt: true },
+    take: 50,
+  });
+  return [...new Set(rows.filter((r) => delegationLive(r, now)).map((r) => r.delegateId))];
+}
+
 const DELEGATION_SELECT = {
   id: true,
   delegatorId: true,

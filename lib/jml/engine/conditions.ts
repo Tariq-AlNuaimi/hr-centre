@@ -20,6 +20,11 @@ const CONDITION_FIELDS = [
   "nationality",
   "workLocation",
   "payrollApplicable",
+  // QA2 N-11 — the joiner's IT answers, "yes"/"no": a "No" to laptop or
+  // access card used to still generate "Hand over laptop" / "Confirm access
+  // card issued".
+  "laptopRequired",
+  "accessCardRequired",
 ] as const;
 
 type ConditionField = (typeof CONDITION_FIELDS)[number];

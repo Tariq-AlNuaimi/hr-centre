@@ -14,8 +14,8 @@ const text = (max: number) => z.string().trim().max(max).nullable().optional();
  * date used to be accepted and would have rewritten the record as of six years
  * ago.
  */
-export const MOVE_BACKDATE_DAYS = 90;
-export const MOVE_AHEAD_DAYS = 366;
+const MOVE_BACKDATE_DAYS = 90;
+const MOVE_AHEAD_DAYS = 366;
 const DAY_MS = 86_400_000;
 const moveEffectiveDate = isoDay.superRefine((d, ctx) => {
   if (!(d instanceof Date)) return;

@@ -136,6 +136,8 @@ const facts = (over: Partial<ConditionFacts> = {}): ConditionFacts => ({
   nationality: "Omani",
   workLocation: "Muscat",
   payrollApplicable: "yes",
+  laptopRequired: null,
+  accessCardRequired: null,
   ...over,
 });
 

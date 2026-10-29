@@ -108,7 +108,10 @@ function Editor({
           </div>
         }
       />
-      {dto?.sourceRef ? <p className="text-sm text-muted-foreground">{t("fromHiring")}</p> : null}
+      {/* QA2 N-19 — the "complete and activate" hint is for the draft only. */}
+      {dto?.sourceRef && isDraft ? (
+        <p className="text-sm text-muted-foreground">{t("fromHiring")}</p>
+      ) : null}
       <CandidateSection v={v} set={set} />
       <PlacementSection v={v} set={set} lookups={lookups} />
       <EmploymentSection v={v} set={set} lookups={lookups} startLocked={!isDraft} />

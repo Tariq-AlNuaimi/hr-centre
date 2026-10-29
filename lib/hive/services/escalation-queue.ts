@@ -15,6 +15,7 @@ export {
   queueWhere,
   type QueueFilter,
 } from "./escalation-read";
+import { resolveUserNotices } from "@/lib/core/notify/user-notify";
 export { approveAndSend, renderTemplate, type ApproveOutcome } from "./escalation-send";
 
 /**
@@ -218,7 +219,11 @@ export async function returnToDraft(
     return { ok: true as const, status: "IN_PROGRESS" as const };
   });
   // UX review P0 (US-6): the drafter hears it in the bell.
-  if ("ok" in outcome) notifyTicket("returned", id);
+  if ("ok" in outcome) {
+    notifyTicket("returned", id);
+    // QA2 N-15 — a return decides the approval as surely as an approve does.
+    await resolveUserNotices(`tickets:submitted:${id}:`);
+  }
   return outcome;
 }
 
