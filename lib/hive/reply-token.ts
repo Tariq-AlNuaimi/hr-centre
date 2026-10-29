@@ -1,6 +1,9 @@
-import { randomBytes, createHash } from "node:crypto";
-import { prisma } from "@/lib/prisma";
-import { recordAudit } from "@/lib/prisma/audit-extension";
+import {
+  issueMagicLink,
+  magicLinkUrl,
+  resolveMagicLink,
+  revokeMagicLinks,
+} from "@/lib/core/tokens/magic-link";
 
 /**
  * ADR-070's reply-link token (AC-9.4…AC-9.7, tasks 5.3 / 5.3b).
@@ -30,6 +33,9 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
  * `app/api/auth/forgot-password/route.ts`, which stores reset tokens the same way
  * and for the same reason.
  *
+ * The mechanics live in the core magic-link service (ADR-090); this file is the
+ * ticket module's binding of it: purpose `hive.reply`, 30 days, `/reply/<token>`.
+ *
  * @public
  */
 
@@ -41,108 +47,37 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
  */
 export const REPLY_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-function digest(raw: string): string {
-  return createHash("sha256").update(raw).digest("hex");
-}
+/** The magic-link purpose that namespaces reply links (ADR-090). */
+const REPLY_LINK_PURPOSE = "hive.reply";
 
 /**
  * Mint a link for one escalation. Returns the RAW token, which is the only time
- * it exists anywhere outside the email.
- *
- * Previous tokens for the escalation are NOT revoked. A re-request is additive
- * on purpose: the employee may have the first email open in one place and the
- * second in another, and invalidating the older link would break the copy they
- * are actually looking at — for a capability that already expires on its own.
+ * it exists anywhere outside the email. Previous links stay valid (additive
+ * re-requests — the employee may be reading the older email).
  */
-export async function issueReplyToken(escalationId: string): Promise<string> {
-  const raw = randomBytes(32).toString("base64url");
-  await prisma.escalationReplyToken.create({
-    data: {
-      escalationId,
-      tokenHash: digest(raw),
-      expiresAt: new Date(Date.now() + REPLY_TOKEN_TTL_MS),
-    },
-    select: { id: true },
+export function issueReplyToken(escalationId: string): Promise<string> {
+  return issueMagicLink({
+    purpose: REPLY_LINK_PURPOSE,
+    subjectId: escalationId,
+    ttlMs: REPLY_TOKEN_TTL_MS,
   });
-  return raw;
 }
 
-/**
- * The full URL that goes in the email.
- *
- * Built from a server-configured origin, never the request's Host header: a
- * forwarded or attacker-controlled Host would poison the emailed link and hand
- * over the token, which is the same reset-poisoning the forgot-password route
- * guards against — except the prize here is a Confidential thread.
- */
+/** The full URL that goes in the email, from a server-configured origin. */
 export function replyLinkFor(origin: string, rawToken: string): string {
-  return `${origin.replace(/\/+$/, "")}/reply/${rawToken}`;
+  return magicLinkUrl(origin, "reply", rawToken);
 }
 
 /**
- * Resolve a raw token to the escalation it grants, or `null`.
- *
- * ADR-070 clause 6 is why there is one failure value rather than an error union.
- * Malformed, unknown, expired and revoked are four different facts, and any way
- * of telling them apart is an oracle: "this token existed but expired" confirms
- * a real escalation to whoever is guessing. The caller gets `null` and says the
- * one thing AC-9.7 permits.
- *
- * `lastUsedAt` is recorded on success. It is not a control — it is what makes a
- * leaked link visible after the fact rather than only in principle.
+ * Resolve a raw token to the escalation it grants, or `null` — malformed,
+ * unknown, expired and revoked are one indistinguishable answer (clause 6).
  */
 export async function resolveReplyToken(raw: string): Promise<{ escalationId: string } | null> {
-  // Cheap shape check first, so a query is not spent on a value that cannot be
-  // a token. 32 bytes of base64url is 43 characters.
-  if (!/^[A-Za-z0-9_-]{43}$/.test(raw)) return null;
-
-  const row = await prisma.escalationReplyToken.findUnique({
-    where: { tokenHash: digest(raw) },
-    select: { id: true, escalationId: true, expiresAt: true, revokedAt: true },
-  });
-  if (!row) return null;
-  // Checked against the clock on READ. An expiry column that is only consulted
-  // by a cleanup job is a suggestion — the row is what the route trusts, so the
-  // row is where the check has to be.
-  if (row.revokedAt !== null) return null;
-  if (row.expiresAt.getTime() <= Date.now()) return null;
-
-  await prisma.escalationReplyToken.update({
-    where: { id: row.id },
-    data: { lastUsedAt: new Date() },
-    select: { id: true },
-  });
-  return { escalationId: row.escalationId };
+  const grant = await resolveMagicLink(REPLY_LINK_PURPOSE, raw);
+  return grant ? { escalationId: grant.subjectId } : null;
 }
 
-/**
- * ADR-070 clause 4: revoke every link to an escalation.
- *
- * Called when HR close it.
- *
- * `updateMany` with ONE explicit audit row, rather than a loop through the
- * audited client. The audit extension does not hook `updateMany`, so the
- * suppression below is paired with a `recordAudit()` that carries the fact worth
- * keeping: bearer access to this escalation was withdrawn, by whom (the request
- * context), and how many links it covered. Looping would produce N rows each
- * restating one boolean about a credential digest — more audit, less signal, and
- * a revocation that is no longer one event.
- */
-export async function revokeReplyTokens(escalationId: string): Promise<number> {
-  const now = new Date();
-  // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- audited by the recordAudit() below, as one revocation event (see above)
-  const result = await prisma.escalationReplyToken.updateMany({
-    where: { escalationId, revokedAt: null },
-    data: { revokedAt: now },
-  });
-  if (result.count > 0) {
-    await recordAudit(prisma, {
-      entityType: "EscalationReplyToken",
-      entityId: escalationId,
-      action: "UPDATE",
-      // No hash, no token, no employee data — just the fact and its size.
-      after: { revoked: result.count, revokedAt: now.toISOString() },
-    });
-  }
-  return result.count;
+/** ADR-070 clause 4: revoke every link to an escalation (called when HR close it). */
+export function revokeReplyTokens(escalationId: string): Promise<number> {
+  return revokeMagicLinks(REPLY_LINK_PURPOSE, escalationId);
 }

@@ -211,6 +211,24 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+/// Core magic link (ADR-090): a hashed, expiring, revocable bearer link to ONE
+/// subject for ONE purpose (`hive.reply`, …). Only the SHA-256 digest is stored.
+/// `subjectId` is a soft link — the purpose names what it points at.
+model MagicLink {
+  id          String    @id @default(cuid())
+  purpose     String
+  subjectId   String    @map("subject_id")
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  lastUsedAt  DateTime? @map("last_used_at")
+  createdById String?   @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([purpose, subjectId, expiresAt])
+  @@map("core_magic_links")
+}
+
 // ---------------------------------------------------------------------------
 // Performance Management System (PMS) — Phase 1: org foundation & import layer
 //

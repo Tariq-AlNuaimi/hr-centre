@@ -1013,3 +1013,14 @@ Considered:
   whole requirement.
 
 Decision: build.
+
+### 2026-10-29 — Core magic links (P2 platform, ADR-090)
+
+Scope: lib/core/tokens/magic-link.ts
+Considered: **Auth.js email provider / verification tokens** (rejected — it mints a
+session, and these links must grant one subject and never a login). **Stateless signed
+tokens (`jose` JWT, `iron-session` seals)** (rejected — cannot be revoked before expiry or
+show last use, both ADR-070 requirements). **Third-party magic-link services (Magic,
+Stytch)** (rejected — an external dependency for 100 lines of hashing over our own table;
+the data is Confidential).
+Decision: build — consolidate the two existing in-house implementations into one core service.

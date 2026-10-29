@@ -1,6 +1,6 @@
-import { createHash, randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
+import { digestToken, isTokenShaped, mintRawToken } from "@/lib/core/tokens/magic-link";
 import { isStorageConfigured, putPrivateFile } from "@/lib/storage";
 import { PRIVACY_NOTICE_VERSION, type AgencySubmitInput } from "@/lib/validations/hiring/public";
 import { alreadyApplied } from "./careers";
@@ -19,9 +19,10 @@ import { canPost } from "./posting-rules";
  * transaction.
  */
 
-const INVITE_TOKEN_BYTES = 32;
-export const generateInviteToken = () => randomBytes(INVITE_TOKEN_BYTES).toString("base64url");
-export const hashInviteToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
+// The token mechanics are the core magic-link primitive (ADR-090); the invite
+// row stays hiring's own because it carries the agency, the cap and the role.
+export const generateInviteToken = mintRawToken;
+export const hashInviteToken = digestToken;
 
 export type InviteState = "valid" | "invalid" | "cap-reached";
 
@@ -69,6 +70,7 @@ export const INVITE_SELECT = {
 
 /** Resolve a raw token. Details come back ONLY for a usable invite. */
 async function resolveInvite(raw: string) {
+  if (!isTokenShaped(raw)) return { state: "invalid" as const, invite: null };
   const invite = await prisma.hiringAgencyInvite.findUnique({
     where: { tokenHash: hashInviteToken(raw) },
     select: INVITE_SELECT,
