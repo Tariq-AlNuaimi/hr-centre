@@ -607,6 +607,7 @@
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/core/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
 - lib/core/imports/record.ts: IMPORT_KINDS, ImportKind, RecordedIssue, recordImport, visibleImportKinds
+- lib/core/notify/audience.ts: isGatedHref, hasAccessRule, whoCanOpen, grantsMemo
 - lib/core/notify/preferences.ts: PreferenceRow, preferencesFor, savePreferences, mutedInApp, wantEmail
 - lib/core/notify/registry.ts: KindInfo, NOTIFICATION_REGISTRY, NOTIFICATION_KINDS, Preference, effectivePreference
 - lib/core/notify/store.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, PendingNotification, persistNotifications
@@ -729,7 +730,7 @@
 - lib/hive/services/escalation-transition.ts: Tx, transition, recordEvent
 - lib/hive/services/escalation.ts: RoutingOutcome, routeEscalation, CreatedEscalation, createEscalation
 - lib/hive/services/my-tasks.ts: ticketTasksFor, ticketsForEmployee
-- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission, opensQueue, ticketReach, pairsFor
+- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission, opensQueue, ticketReach, pairsFor, ticketReaderIds
 - lib/hive/services/reference.ts: PROVIDER_PAGE, listReference, createReference, updateReference, removeReference
 - lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
 - lib/hive/services/report-sla.ts: SlaFigures, slaFigures, backlogTrend, AGE_BANDS, ageing, ageBand, perPerson, reportCsvRows, csvField, toCsv
@@ -751,7 +752,7 @@
 - lib/hive/tools/orgchart.ts: runOrgChart
 - lib/hive/tools/providers.ts: runProviders
 - lib/hive/tools/rotation.ts: loadRotationConfig, runRotation
-- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, caseScopeWhere, AccessibleCase, subjectOf, loadCaseHead, loadCaseFor, MANAGE_PERMISSION
+- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, caseScopeWhere, AccessibleCase, subjectOf, loadCaseHead, loadCaseFor, caseViewerIds, MANAGE_PERMISSION
 - lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
 - lib/jml/dashboard-rules.ts: WorkBucket, workBucket, BUCKET_ORDER, defaultMine
 - lib/jml/dashboard.ts: myTasks, jmlDashboard

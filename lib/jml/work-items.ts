@@ -74,10 +74,12 @@ async function myTasks(actor: JmlActor) {
 
 async function approvalsToRecord(actor: JmlActor) {
   const scope = caseScopeWhere(actor, "jml.decideApprovals");
-  if (scope === null) return { items: [], total: 0 };
+  // The link opens the case, which needs `jml.view` there too (loadCaseFor).
+  const view = caseScopeWhere(actor, "jml.view");
+  if (scope === null || view === null) return { items: [], total: 0 };
   const where: Prisma.JmlApprovalWhereInput = {
     status: "PENDING",
-    case: { ...scope, status: { in: [...LIVE] } },
+    case: { AND: [scope, view, { status: { in: [...LIVE] } }] },
   };
   const [rows, total] = await Promise.all([
     prisma.jmlApproval.findMany({

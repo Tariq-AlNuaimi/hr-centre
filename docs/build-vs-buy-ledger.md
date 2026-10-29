@@ -1167,3 +1167,12 @@ Considered:
   the system of record; the area is two read-only pages over the employee's own rows.
 
 Decision: build.
+
+### 2026-10-29 — Notice recipients filtered by record access
+
+Scope: lib/core/notify/audience.ts
+Considered: **A policy engine (OpenFGA, Cerbos, Oso) answering "can user X read record Y"**
+(rejected — the rules already live in each module's loaders; a second copy in another engine
+would drift from the read routes it must mirror). **Filtering in every emitter** (rejected — one
+missed caller leaks; the core writer is the one choke point every notice passes).
+Decision: build — a small link→loader table applied by the core notification writer.

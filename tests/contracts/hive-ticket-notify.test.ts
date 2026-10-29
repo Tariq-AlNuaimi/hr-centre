@@ -20,6 +20,9 @@ let ticket: Record<string, unknown> | null = null;
 /** Role-builder assignments, as `usersHoldingPermission` would see them. */
 let assignments: { userId: string; permission: string; type: string; id: string | null }[] = [];
 let pairTicketsLastHour = 1;
+/** Who the access gate refuses, and which links it was asked about. */
+let cannotOpen = new Set<string>();
+let gateAsked: (string | null)[] = [];
 
 type Notify = typeof import("../../lib/hive/services/ticket-notify.ts");
 let notify: Notify;
@@ -44,6 +47,8 @@ function reset() {
     { userId: "u-shahed", permission: "tickets.approve", type: "OWN_HR_PAIR", id: null },
   ];
   pairTicketsLastHour = 1;
+  cannotOpen = new Set();
+  gateAsked = [];
   ticket = {
     id: "e1",
     ticketNumber: 47,
@@ -88,6 +93,20 @@ before(async () => {
             .map((a) => a.userId),
         ),
       ],
+    },
+  });
+  // Who may OPEN the ticket is the access gate's question (tested on a real
+  // database in tests/integration/notice-access.test.ts); here everyone the
+  // hand-off names can, so this suite pins only who the hand-off names.
+  mockApi.module!(import.meta.resolve("../../lib/core/notify/audience.ts"), {
+    namedExports: {
+      whoCanOpen: async (href: string | null, ids: Iterable<string>) => {
+        gateAsked.push(href);
+        return new Set([...ids].filter((id) => !cannotOpen.has(id)));
+      },
+      isGatedHref: () => false,
+      hasAccessRule: () => true,
+      grantsMemo: () => async () => new Map(),
     },
   });
   // Spec V2 §8.8 Settings (T5): the prefix HR set. Switchable per test.
@@ -196,6 +215,15 @@ describe("US-T5 — who is told", { skip: !canMock }, () => {
     notify.notifyTicket("sent", "e1");
     await settle();
     assert.equal(sent.length, 0);
+  });
+
+  test("a recipient who can no longer open the ticket is not emailed", async () => {
+    reset();
+    cannotOpen = new Set(["u-rahma"]);
+    notify.notifyTicket("sent", "e1");
+    await settle();
+    assert.deepEqual(gateAsked, ["/tickets/e1"], "the gate is asked about the ticket's own link");
+    assert.equal(sent.length, 0, "the drafter lost the pair, so no email");
   });
 });
 

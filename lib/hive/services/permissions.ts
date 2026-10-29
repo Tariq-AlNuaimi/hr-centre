@@ -203,3 +203,25 @@ export async function pairsFor(
   const own = scopes.some((s) => s.type === "OWN_HR_PAIR") ? await ownPairIds(userId) : [];
   return [...new Set([...named, ...own])];
 }
+
+/**
+ * Of these people, who may OPEN this ticket — the same rule as its read route
+ * (`ticketReach`: See tickets, or Draft/Approve on the ticket's pair). For the
+ * notices about it (bell + email; docs/blueprints/limits.md slice 2).
+ */
+export async function ticketReaderIds(
+  escalationId: string,
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const row = await prisma.escalation.findUnique({
+    where: { id: escalationId },
+    select: { hrPairId: true },
+  });
+  if (!row) return out;
+  for (const userId of userIds) {
+    const reach = await ticketReach(userId);
+    if (reach === "all" || (reach && reach.includes(row.hrPairId))) out.add(userId);
+  }
+  return out;
+}
