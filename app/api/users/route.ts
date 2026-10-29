@@ -155,7 +155,14 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   const user = await prisma.user.create({
     // ADR-070 — the boundary takes a boolean and maps it here, in one place, so
     // the stored enum and the thing a caller can ask for cannot drift apart.
-    data: { email, name, passwordHash, role: roleForPlatformAdmin(isPlatformAdmin) },
+    // QA2 N-10 — an admin-chosen password is temporary: changed on first sign-in.
+    data: {
+      email,
+      name,
+      passwordHash,
+      mustChangePassword: true,
+      role: roleForPlatformAdmin(isPlatformAdmin),
+    },
     select: {
       id: true,
       email: true,

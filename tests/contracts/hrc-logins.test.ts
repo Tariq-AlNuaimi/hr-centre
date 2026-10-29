@@ -80,3 +80,10 @@ test("password change rules", () => {
   );
   assert.equal(issueLoginSchema.safeParse({ action: "delete" }).success, false);
 });
+
+test("QA2 N-10 an admin-set password is temporary: the holder must change it on first sign-in", () => {
+  const update = readFileSync("app/api/users/[id]/route.ts", "utf8");
+  assert.match(update, /if \(id !== session\.user\.id\) data\.mustChangePassword = true;/);
+  const create = readFileSync("app/api/users/route.ts", "utf8");
+  assert.match(create, /mustChangePassword: true,/);
+});

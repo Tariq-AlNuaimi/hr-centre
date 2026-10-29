@@ -2214,7 +2214,7 @@
         "ACTIVE": "Signs in",
         "REVOKED": "Revoked when they left"
       },
-      "notEligible": "Not eligible yet: only HR role holders and line managers get a login before single sign-on",
+      "notEligible": "Not eligible yet: only HR role holders, line managers and task-routing desk members get a login before single sign-on",
       "create": "Create login",
       "reset": "Reset password",
       "disable": "Disable login",
