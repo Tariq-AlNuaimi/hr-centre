@@ -22,6 +22,11 @@ import { COLUMN_TITLES, IMPORT_COLUMNS, type ImportColumn } from "@/lib/pms/impo
  * row answers all of them by demonstration, and the accompanying note says to
  * delete it.
  *
+ * QA2 N-02 — the ids are `EXAMPLE-…` and the addresses `@example.com`, never
+ * real-looking values: `1000`/`1001` matched real employees, so an unedited
+ * template previewed as two UPDATEs that renamed the CEO and changed a salary.
+ * The importer also refuses these rows outright (`checkEmployeeId`).
+ *
  * The row deliberately includes a C-Level employee, because §1.2's exception
  * (entity, no department, no manager) is the single most likely thing to be got
  * wrong and the hardest to infer from a header alone.
@@ -34,15 +39,15 @@ const BLANK_RECORD = Object.fromEntries(RECORD_FIELDS.map((f) => [f, ""])) as Re
 
 const EXAMPLE_ROWS: Array<Record<ImportColumn, string>> = [
   {
-    odooId: "1001",
+    odooId: "EXAMPLE-1",
     name: "Example — delete this row",
-    email: "example@rihal.om",
+    email: "example.manager@example.com",
     dateOfJoining: "2021-03-15",
     department: "Marketing",
     directorate: "",
     team: "",
     entity: "RIHAL",
-    managerOdooId: "1000",
+    managerOdooId: "EXAMPLE-2",
     roleTrack: "Manager",
     basicSalary: "1500",
     status: "Active",
@@ -51,9 +56,9 @@ const EXAMPLE_ROWS: Array<Record<ImportColumn, string>> = [
     ...BLANK_RECORD,
   },
   {
-    odooId: "1000",
+    odooId: "EXAMPLE-2",
     name: "Example C-Level — delete this row",
-    email: "example.clevel@rihal.om",
+    email: "example.clevel@example.com",
     dateOfJoining: "2018-01-08",
     department: "",
     directorate: "",
