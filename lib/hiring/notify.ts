@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { notifyUsers } from "@/lib/core/notify/user-notify";
+import { delegatesOf } from "@/lib/core/approvals/store";
 import { formatDate } from "@/lib/format";
 import { approvalRoleLabel, type RoutedStep } from "./approval-config";
 
@@ -10,8 +11,8 @@ import { approvalRoleLabel, type RoutedStep } from "./approval-config";
  * role and a date — never pay, never an ID number.
  */
 
-/** A requisition / offer approval step is now waiting on its holders. */
-export function notifyApprovalStep(params: {
+/** A requisition / offer approval step is now waiting on its holders — and their delegates (QA2 N-15). */
+export async function notifyApprovalStep(params: {
   what: "requisition" | "offer";
   id: string;
   title: string;
@@ -20,14 +21,16 @@ export function notifyApprovalStep(params: {
   exclude?: ReadonlyArray<string | null | undefined>;
 }) {
   const { step } = params;
-  if (!step) return Promise.resolve(0);
+  if (!step) return 0;
+  const holders = step.approvers.map((a) => a.id);
+  const delegates = await delegatesOf(holders, "hiring").catch(() => [] as string[]);
   const role = approvalRoleLabel(step.role);
   const body =
     params.what === "requisition"
       ? `The hiring request "${params.title}" is waiting for your approval (${role} step).`
       : `The offer for ${params.title} is waiting for your approval (${role} step).`;
   return notifyUsers(
-    step.approvers.map((a) => a.id),
+    [...holders, ...delegates],
     {
       kind: "HIRING_APPROVAL_REQUESTED",
       module: "hiring",

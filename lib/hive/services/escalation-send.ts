@@ -1,5 +1,6 @@
 import { prisma, auditedTransaction } from "@/lib/prisma";
 import { sendLoggedEmail } from "@/lib/core/email/send";
+import { resolveUserNotices } from "@/lib/core/notify/user-notify";
 import { canOnPair, hasHivePermission } from "./permissions";
 import { issueReplyToken, replyLinkFor } from "@/lib/hive/reply-token";
 import { env } from "@/lib/env";
@@ -187,6 +188,9 @@ export async function approveAndSend(id: string, userId: string): Promise<Approv
     if (!retry) await recordEvent(tx, id, "APPROVED", userId);
     return true;
   });
+  // QA2 N-15 / D-14 — the approval is decided: nobody is still being asked
+  // for it, so every "answer waiting for your approval" notice stops reading New.
+  if (claimed && !retry) await resolveUserNotices(`tickets:submitted:${id}:`);
   if (!claimed) {
     const now = await prisma.escalation.findUnique({ where: { id }, select: { status: true } });
     if (now?.status === "SENT") return { error: "already_sent" };
