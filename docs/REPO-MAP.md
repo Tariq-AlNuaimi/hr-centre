@@ -15,6 +15,7 @@
 - app/[locale]/(dashboard)/admin/cycles/page.tsx
 - app/[locale]/(dashboard)/admin/edge-cases/page.tsx
 - app/[locale]/(dashboard)/admin/import/page.tsx
+- app/[locale]/(dashboard)/admin/imports/page.tsx
 - app/[locale]/(dashboard)/admin/org-setup/page.tsx
 - app/[locale]/(dashboard)/admin/roles/page.tsx
 - app/[locale]/(dashboard)/admin/settings/email-templates/page.tsx
@@ -272,6 +273,7 @@
 - app/api/hive/saved-replies/[id]/route.ts  [PUT,DELETE]
 - app/api/hive/saved-replies/route.ts  [GET,POST]
 - app/api/imports/[id]/apply/route.ts  [POST]
+- app/api/imports/history/route.ts  [GET]
 - app/api/imports/route.ts  [GET,POST]
 - app/api/imports/template/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
@@ -469,8 +471,8 @@
 - Team: id, name, departmentId, department, headEmployeeId, head, employees, employeesAgree, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, headEmployeeId, head, directorateId, directorate, directorateAgree, teams, employees, employeesAgree, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
 - Employee: id, odooId, name, email, departmentId, department, departmentEntityAgree, entityId, entity, teamId, team, teamDepartmentAgree, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, headOfEntities, headOfDirectorates, headOfDepartments, headOfTeams, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt
-- ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
-- ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
+- ImportBatch: id, kind, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
+- ImportRowIssue: id, batchId, batch, rowNumber, odooId, reference, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
 - CycleStage: id, cycleId, cycle, kind, opensAt, deadline, graceDays, createdAt, updatedAt
 - CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, changeRequests, createdAt, updatedAt
@@ -597,6 +599,7 @@
 - lib/core/email/templates.ts: TemplateModule, TemplateOverride, templateOverride, templateOverrides, saveTemplateOverride, clearTemplateOverride
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/core/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
+- lib/core/imports/record.ts: IMPORT_KINDS, ImportKind, RecordedIssue, recordImport, visibleImportKinds
 - lib/core/notify/preferences.ts: PreferenceRow, preferencesFor, savePreferences, mutedInApp, wantEmail
 - lib/core/notify/registry.ts: KindInfo, NOTIFICATION_REGISTRY, NOTIFICATION_KINDS, Preference, effectivePreference
 - lib/core/notify/store.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, PendingNotification, persistNotifications
@@ -1140,6 +1143,7 @@
 - components/hive/reply/ReplyClient.tsx
 - components/hive/reply/ReplyInvalid.tsx
 - components/home/MyWork.tsx
+- components/imports/ImportsHub.tsx
 - components/jml/ActionDialog.tsx
 - components/jml/CaseBits.tsx
 - components/jml/EmployeeJmlTab.tsx

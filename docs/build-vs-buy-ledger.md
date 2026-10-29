@@ -1109,3 +1109,11 @@ Considered:
   dependency is not justified at this size.
 
 Decision: build.
+
+### 2026-10-29 — One import record (P2 platform, ADR-096)
+
+Scope: lib/core/imports/record.ts
+Considered: **Flatfile / OneSchema embedded importers** (rejected — personal and pay data
+would leave the database). **A generic import engine with adapters** (deferred — the
+three apply flows differ; see ADR-096).
+Decision: build — a `kind` on the existing record and one hub page.

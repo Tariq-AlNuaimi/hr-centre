@@ -29,6 +29,7 @@ export const GET = withRateLimit(
 
     const [batches, total] = await Promise.all([
       prisma.importBatch.findMany({
+        where: { kind: "people" },
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { createdAt: "desc" },
@@ -46,7 +47,7 @@ export const GET = withRateLimit(
           createdAt: true,
         },
       }),
-      prisma.importBatch.count(),
+      prisma.importBatch.count({ where: { kind: "people" } }),
     ]);
 
     return ok(paginatedResponse(batches, total, pagination));

@@ -347,8 +347,9 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
    */
   departuresNeedingAttention: string[];
 }> {
-  const batch = await prisma.importBatch.findUnique({
-    where: { id: params.batchId },
+  const batch = await prisma.importBatch.findFirst({
+    // ADR-096: the import record is shared; only a people batch applies here.
+    where: { id: params.batchId, kind: "people" },
     select: {
       id: true,
       status: true,

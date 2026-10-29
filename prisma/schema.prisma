@@ -543,6 +543,7 @@ enum ImportStatus {
   PREVIEWED
   APPLIED
   DISCARDED
+  FAILED
 }
 
 // §1.2 — the group: Rihal (parent), TP, CL. Modelled as a table rather than an
@@ -959,8 +960,12 @@ model Employee {
 // reviewed rather than re-parsing the file. The uploaded FILE is never retained:
 // it carries Restricted salary data, and keeping it would create a second,
 // unaudited copy outside the employees table.
+/// The platform's one import record (ADR-096): every import of every kind —
+/// `people` (the employee workbook), `jml.exits` (historical leavers),
+/// `hiring.candidates` (a requisition's candidate list).
 model ImportBatch {
   id       String       @id @default(cuid())
+  kind     String       @default("people") @db.VarChar(40)
   filename String
   status   ImportStatus @default(PREVIEWED)
 
@@ -990,6 +995,7 @@ model ImportBatch {
 
   @@index([status, createdAt])
   @@index([createdAt])
+  @@index([kind, createdAt])
   @@map("import_batches")
 }
 
@@ -1005,6 +1011,8 @@ model ImportRowIssue {
 
   rowNumber Int     @map("row_number") // 1-based sheet row, so HR can find it
   odooId    String? @map("odoo_id") // absent when the ID itself was the problem
+  /// The row's own key for kinds without an Odoo id (a case reference, a name).
+  reference String?
   field     String?
   rule      String // machine-readable rule key, e.g. "role_track_invalid"
   message   String

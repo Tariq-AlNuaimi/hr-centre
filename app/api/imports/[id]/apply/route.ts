@@ -51,8 +51,9 @@ export const POST = withRateLimit(
     const actor = await resolveActor(session);
     if (!actor.capabilities.applyImport) return forbidden();
 
-    const batch = await prisma.importBatch.findUnique({
-      where: { id },
+    const batch = await prisma.importBatch.findFirst({
+      // ADR-096: the import record is shared; another kind's batch is not found here.
+      where: { id, kind: "people" },
       select: { id: true, status: true, filename: true },
     });
     if (!batch) return notFound("Import batch");
