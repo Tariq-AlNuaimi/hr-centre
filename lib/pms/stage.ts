@@ -1,4 +1,10 @@
 import type { CycleStageKind, RoleTrack } from "@/generated/prisma/client";
+import {
+  DEFAULT_CALENDAR,
+  addWorkingDays,
+  utcDate,
+  type WorkingCalendar,
+} from "@/lib/working-time/calendar";
 
 /**
  * §2's cadence and §5.4's locks — the PURE half, with no database import.
@@ -85,14 +91,31 @@ export function canActOnStage(stage: StageWindow, now: Date): boolean {
  * and HR are notified the moment the deadline passes (rung two), and this is how
  * long the ladder waits before HR is expected to extend, intervene, or mark a
  * formal non-compliance event.
+ *
+ * P2-9 / ADR-077 — grace is counted in WORKING days on the one core calendar
+ * (`lib/working-time`: the working week and public holidays), so three days of
+ * grace over a weekend or Eid is three days HR can actually act on. The
+ * deadline's time of day is kept: a 23:59:59 deadline ends its grace at 23:59:59.
+ * Callers that run in production pass the loaded calendar; the default is the
+ * Sun–Thu Asia/Muscat schedule with no holidays.
  */
-export function graceEndsAt(stage: StageWindow): Date {
-  return new Date(stage.deadline.getTime() + stage.graceDays * 24 * 60 * 60 * 1000);
+export function graceEndsAt(
+  stage: StageWindow,
+  calendar: WorkingCalendar = DEFAULT_CALENDAR,
+): Date {
+  if (stage.graceDays <= 0) return stage.deadline;
+  const day = utcDate(stage.deadline);
+  const timeOfDay = stage.deadline.getTime() - day.getTime();
+  return new Date(addWorkingDays(day, stage.graceDays, calendar).getTime() + timeOfDay);
 }
 
 /** True once HR's formal intervention is due (§5.5 rung three). */
-export function isPastGrace(stage: StageWindow, now: Date): boolean {
-  return now > graceEndsAt(stage);
+export function isPastGrace(
+  stage: StageWindow,
+  now: Date,
+  calendar: WorkingCalendar = DEFAULT_CALENDAR,
+): boolean {
+  return now > graceEndsAt(stage, calendar);
 }
 
 /**

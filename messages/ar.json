@@ -943,7 +943,10 @@
       "divergedHelp": "اقرأ سببهم أدناه قبل التوقيع — هذه هي التقييمات التي توقّع عليها.",
       "yourSelfAssessment": "تقييمك الذاتي",
       "yourReview": "مراجعتك",
-      "divergedHelpManager": "يظهر سببك للموظف قبل أن يوقّع."
+      "divergedHelpManager": "يظهر سببك للموظف قبل أن يوقّع.",
+      "autosaving": "Saving…",
+      "autosaved": "Saved",
+      "autosaveFailed": "Not saved. Use Save rating to see why."
     },
     "band": {
       "OUTSTANDING": "متميّز",
@@ -1933,6 +1936,52 @@
       "more": "and {count} more",
       "footnote": "Rows use the calibrated band; columns use the 360 level on the 5-point scale.",
       "withoutFeedback": "{count, plural, one {# person has} other {# people have}} no 360 level and are not placed."
+    },
+    "myYear": {
+      "timeline": "Dates",
+      "timelineHelp": "The three stages of this year's cycle.",
+      "stage": {
+        "GOAL_SETTING": "Goal setting",
+        "MID_YEAR": "Mid-year review",
+        "YEAR_END": "Year-end review"
+      },
+      "state": {
+        "NOT_YET_OPEN": "Upcoming",
+        "OPEN": "Open now",
+        "LOCKED": "Closed"
+      },
+      "window": "{opens} to {deadline}",
+      "kpis": "Your goals",
+      "kpisApproved": "Agreed and approved by HR on {when}.",
+      "kpisNotApproved": "Not approved by HR yet; these may still change.",
+      "noKpis": "No goals have been set for you in this cycle yet.",
+      "kpi": "Goal",
+      "weight": "Weight",
+      "total": "Total",
+      "midYear": "Mid-year changes",
+      "midYearHelp": "Changes your manager proposed to your goals at mid-year.",
+      "noMidYear": "No changes to your goals were proposed this year.",
+      "requestStatus": {
+        "PENDING": "Pending",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn",
+        "NOT_ACKNOWLEDGED": "Not acknowledged"
+      },
+      "decision": "Decision: {reason}",
+      "notEnrolled": "You are not part of the {year} cycle",
+      "notEnrolledHelp": "HR enrols employees in each cycle. If you expected to be included, ask HR.",
+      "loadFailed": "Could not load your year",
+      "loadFailedHelp": "Something went wrong fetching your goals and dates.",
+      "retry": "Try again"
+    },
+    "ratingContext": {
+      "label": "Rating context",
+      "midYear": "Agreed at mid-year",
+      "noMidYear": "No change to this goal was agreed at mid-year.",
+      "decision": "Decision: {reason}",
+      "approvedOn": "Approved {when}",
+      "evidence": "Evidence ({count})"
     }
   },
   "access": {

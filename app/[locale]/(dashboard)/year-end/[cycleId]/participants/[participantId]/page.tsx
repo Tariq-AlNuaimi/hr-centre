@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { YearEndAssessment, type YearEndKpi } from "@/components/pms/YearEndAssessment";
+import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
 import { isStorageConfigured } from "@/lib/storage";
 import {
   YEAR_END_KPI_ORDER,
@@ -173,6 +174,13 @@ export default async function YearEndParticipantPage({
       </div>
 
       <YearEndAssessment
+        // P2-3 — the consolidated 360 as rating context, for HR only: §9.8 keeps
+        // individual 360 reports on HR's side, so a manager rating does not see it.
+        context={
+          actor.capabilities.orgWide ? (
+            <ThreeSixtyResultCard employeeId={participant.employee.id} />
+          ) : null
+        }
         storageConfigured={isStorageConfigured()}
         participantId={participant.id}
         stage={

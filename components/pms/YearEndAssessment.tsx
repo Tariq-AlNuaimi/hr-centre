@@ -14,6 +14,9 @@ import { StageBanner, type GoalStage } from "@/components/pms/StageBanner";
 import { TEXTAREA_CLASS } from "@/components/pms/change-request-draft";
 import { formatDateTime } from "@/lib/format";
 import { KpiEvidence, type EvidenceItem } from "./KpiEvidence";
+import { RatingContextPanel } from "./RatingContextPanel";
+import { useRatingAutosave } from "./use-rating-autosave";
+import type { MidYearNote } from "@/lib/pms/year-end-select";
 
 /**
  * §7.1 — the year-end assessment, from both sides of it.
@@ -52,6 +55,8 @@ export interface YearEndKpi {
   managerRating: { level: number; comment: string | null; ratedAt: string } | null;
   /** §7.1 evidence. Required before the employee may sign. */
   evidence?: EvidenceItem[];
+  /** P2-3 — the latest approved mid-year change, shown beside the rating. */
+  midYearNote?: MidYearNote | null;
 }
 
 export interface YearEndSetState {
@@ -175,6 +180,7 @@ export function YearEndAssessment({
   goalSettingExempt,
   blockedReason,
   storageConfigured = false,
+  context,
 }: {
   participantId: string;
   stage: GoalStage | null;
@@ -186,6 +192,8 @@ export function YearEndAssessment({
   blockedReason: string | null;
   /** §7.1 — files need a Blob store; links never do. */
   storageConfigured?: boolean;
+  /** P2-3 — extra context above the KPIs (the 360 summary, for HR viewers only). */
+  context?: React.ReactNode;
 }) {
   const t = useTranslations("pms.yearEnd");
   const router = useRouter();
@@ -194,19 +202,6 @@ export function YearEndAssessment({
   const [busy, setBusy] = useState<string | null>(null);
   const [serverBlocked, setServerBlocked] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { level: number; comment: string }>>({});
-
-  // §8.3 — C-Level skip self-assessment entirely; their score passes through
-  // from the entity. Categorical, so it is answered before anything else.
-  if (goalSettingExempt) {
-    return (
-      <div className="space-y-6">
-        <StageBanner stage={stage} namespace="pms.yearEnd.stage" />
-        <SectionCard title={t("exemptTitle")}>
-          <EmptyState description={t("exemptBody")} />
-        </SectionCard>
-      </div>
-    );
-  }
 
   const blocked = serverBlocked ?? blockedReason;
   const canAct = actingAs !== null && blocked === null && !signedParties.includes(actingAs);
@@ -233,18 +228,22 @@ export function YearEndAssessment({
     return message;
   }
 
-  async function saveRating(kpi: YearEndKpi) {
+  async function postRating(kpi: YearEndKpi) {
     const draft = draftFor(kpi);
+    await apiClient.post("/api/kpi-ratings", {
+      kpiId: kpi.id,
+      party: actingAs,
+      level: draft.level,
+      ...(draft.comment.trim() === "" ? {} : { comment: draft.comment.trim() }),
+    });
+    router.refresh();
+  }
+
+  async function saveRating(kpi: YearEndKpi) {
     setBusy(kpi.id);
     try {
-      await apiClient.post("/api/kpi-ratings", {
-        kpiId: kpi.id,
-        party: actingAs,
-        level: draft.level,
-        ...(draft.comment.trim() === "" ? {} : { comment: draft.comment.trim() }),
-      });
+      await postRating(kpi);
       success(t("ratingSaved"));
-      router.refresh();
     } catch (e) {
       showError(absorb(e, t("ratingFailed")));
     } finally {
@@ -265,6 +264,48 @@ export function YearEndAssessment({
     }
   }
 
+  // P2-3 — autosave: a complete draft (level chosen, divergence reason given)
+  // saves itself after a pause, through the same route as the Save button.
+  const kpiById = new Map(kpis.map((k) => [k.id, k]));
+  const autosave = useRatingAutosave({
+    drafts,
+    enabled: canAct,
+    stored: (id) => {
+      const kpi = kpiById.get(id);
+      const rating = kpi ? ratingOf(kpi) : null;
+      return { level: rating?.level ?? 0, comment: rating?.comment ?? "" };
+    },
+    ready: (id) => {
+      const kpi = kpiById.get(id);
+      if (!kpi) return false;
+      const draft = draftFor(kpi);
+      return draft.level !== 0 && !(divergesFrom(kpi, draft.level) && draft.comment.trim() === "");
+    },
+    save: async (id) => {
+      const kpi = kpiById.get(id);
+      if (!kpi) return;
+      try {
+        await postRating(kpi);
+      } catch (e) {
+        absorb(e, t("ratingFailed"));
+        throw e;
+      }
+    },
+  });
+
+  // §8.3 — C-Level skip self-assessment entirely; their score passes through
+  // from the entity. Categorical, so it is answered before anything else.
+  if (goalSettingExempt) {
+    return (
+      <div className="space-y-6">
+        <StageBanner stage={stage} namespace="pms.yearEnd.stage" />
+        <SectionCard title={t("exemptTitle")}>
+          <EmptyState description={t("exemptBody")} />
+        </SectionCard>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <StageBanner stage={stage} namespace="pms.yearEnd.stage" />
@@ -274,6 +315,8 @@ export function YearEndAssessment({
           {blocked}
         </p>
       ) : null}
+
+      {context}
 
       <SectionCard title={t("progressTitle")} subtitle={t("progressSubtitle")}>
         <div className="flex flex-wrap items-center gap-2">
@@ -318,87 +361,110 @@ export function YearEndAssessment({
                 asks her to ratify a set of final ratings she has never been
                 shown. Read-only on both sides — the inputs below are the only
                 way either party changes anything. */}
-            <RatingComparison
-              kpi={kpi}
-              diverged={initialState.divergentKpiIds.includes(kpi.id)}
-              actingAs={actingAs}
-            />
-
-            {/* §7.1 — the five descriptors the manager authored, not a bare 1–5. */}
-            <fieldset disabled={!canAct} className="space-y-2">
-              <legend className="sr-only">{t("chooseLevel")}</legend>
-              {kpi.levels.map(({ level, text }) => (
-                <label
-                  key={level}
-                  htmlFor={`level-${kpi.id}-${level}`}
-                  className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 has-[:checked]:border-primary has-[:disabled]:cursor-not-allowed"
-                >
-                  <input
-                    id={`level-${kpi.id}-${level}`}
-                    type="radio"
-                    name={`level-${kpi.id}`}
-                    value={level}
-                    // The level NAME plus the sentence the manager wrote, so a
-                    // screen reader announces the choice being made rather than
-                    // an unlabelled radio in a group of five.
-                    aria-label={`${t(`levelName.${level}`)}: ${text}`}
-                    checked={draft.level === level}
-                    onChange={() => setDrafts((d) => ({ ...d, [kpi.id]: { ...draft, level } }))}
-                    className="mt-1"
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-sm text-foreground">{text}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {t(`levelName.${level}`)}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-
-            {actingAs !== null ? (
-              <div className="mt-4 space-y-1.5">
-                <Label htmlFor={`c-${kpi.id}`}>
-                  {diverges ? t("reasonRequired") : t("commentOptional")}
-                </Label>
-                <textarea
-                  id={`c-${kpi.id}`}
-                  className={TEXTAREA_CLASS}
-                  value={draft.comment}
-                  disabled={!canAct}
-                  onChange={(e) =>
-                    setDrafts((d) => ({ ...d, [kpi.id]: { ...draft, comment: e.target.value } }))
-                  }
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="min-w-0">
+                <RatingComparison
+                  kpi={kpi}
+                  diverged={initialState.divergentKpiIds.includes(kpi.id)}
+                  actingAs={actingAs}
                 />
-                {diverges ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    {t("divergenceHelp", { employeeLevel: kpi.employeeRating?.level ?? 0 })}
-                  </p>
+
+                {/* §7.1 — the five descriptors the manager authored, not a bare 1–5. */}
+                <fieldset disabled={!canAct} className="space-y-2">
+                  <legend className="sr-only">{t("chooseLevel")}</legend>
+                  {kpi.levels.map(({ level, text }) => (
+                    <label
+                      key={level}
+                      htmlFor={`level-${kpi.id}-${level}`}
+                      className="flex cursor-pointer items-start gap-3 rounded-md border border-border p-3 has-[:checked]:border-primary has-[:disabled]:cursor-not-allowed"
+                    >
+                      <input
+                        id={`level-${kpi.id}-${level}`}
+                        type="radio"
+                        name={`level-${kpi.id}`}
+                        value={level}
+                        // The level NAME plus the sentence the manager wrote, so a
+                        // screen reader announces the choice being made rather than
+                        // an unlabelled radio in a group of five.
+                        aria-label={`${t(`levelName.${level}`)}: ${text}`}
+                        checked={draft.level === level}
+                        onChange={() => setDrafts((d) => ({ ...d, [kpi.id]: { ...draft, level } }))}
+                        className="mt-1"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm text-foreground">{text}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {t(`levelName.${level}`)}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                {actingAs !== null ? (
+                  <div className="mt-4 space-y-1.5">
+                    <Label htmlFor={`c-${kpi.id}`}>
+                      {diverges ? t("reasonRequired") : t("commentOptional")}
+                    </Label>
+                    <textarea
+                      id={`c-${kpi.id}`}
+                      className={TEXTAREA_CLASS}
+                      value={draft.comment}
+                      disabled={!canAct}
+                      onChange={(e) =>
+                        setDrafts((d) => ({
+                          ...d,
+                          [kpi.id]: { ...draft, comment: e.target.value },
+                        }))
+                      }
+                    />
+                    {diverges ? (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        {t("divergenceHelp", { employeeLevel: kpi.employeeRating?.level ?? 0 })}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {canAct ? (
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <Button
+                      disabled={draft.level === 0 || needsComment || busy === kpi.id}
+                      onClick={() => saveRating(kpi)}
+                    >
+                      {busy === kpi.id ? t("saving") : t("saveRating")}
+                    </Button>
+                    {/* P2-3 — autosave status, stated next to the field it describes. */}
+                    <span role="status" className="text-xs text-muted-foreground">
+                      {autosave[kpi.id] === "saving"
+                        ? t("autosaving")
+                        : autosave[kpi.id] === "saved"
+                          ? t("autosaved")
+                          : autosave[kpi.id] === "error"
+                            ? t("autosaveFailed")
+                            : null}
+                    </span>
+                  </div>
                 ) : null}
               </div>
-            ) : null}
 
-            {canAct ? (
-              <div className="mt-4">
-                <Button
-                  disabled={draft.level === 0 || needsComment || busy === kpi.id}
-                  onClick={() => saveRating(kpi)}
-                >
-                  {busy === kpi.id ? t("saving") : t("saveRating")}
-                </Button>
-              </div>
-            ) : null}
-
-            {/* §7.1 evidence. Shown to everyone who can see the assessment —
-                the employee, their direct manager and HR — and editable only by
-                the owner, only until they sign. */}
-            <KpiEvidence
-              kpiId={kpi.id}
-              items={kpi.evidence ?? []}
-              canEdit={actingAs === "EMPLOYEE" && !signedParties.includes("EMPLOYEE")}
-              canComment={actingAs === "MANAGER"}
-              storageConfigured={storageConfigured}
-            />
+              {/* P2-3 — context on the right: mid-year agreement and evidence. */}
+              <RatingContextPanel
+                midYearNote={kpi.midYearNote}
+                evidenceCount={(kpi.evidence ?? []).length}
+              >
+                {/* §7.1 evidence. Shown to everyone who can see the assessment —
+                  the employee, their direct manager and HR — and editable only by
+                  the owner, only until they sign. */}
+                <KpiEvidence
+                  kpiId={kpi.id}
+                  items={kpi.evidence ?? []}
+                  canEdit={actingAs === "EMPLOYEE" && !signedParties.includes("EMPLOYEE")}
+                  canComment={actingAs === "MANAGER"}
+                  storageConfigured={storageConfigured}
+                />
+              </RatingContextPanel>
+            </div>
           </SectionCard>
         );
       })}

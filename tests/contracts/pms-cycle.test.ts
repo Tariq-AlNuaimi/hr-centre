@@ -111,10 +111,11 @@ test("§5.4 the lock does not soften with time, and grace does not reopen it", (
 
 // --- §5.5 grace window ------------------------------------------------------
 
-test("§5.5 the grace window runs from the deadline, not from the escalation", () => {
-  assert.deepEqual(graceEndsAt(GOAL_SETTING), new Date("2027-01-03T23:59:59Z"));
-  assert.equal(isPastGrace(GOAL_SETTING, new Date("2027-01-03T23:59:58Z")), false);
-  assert.equal(isPastGrace(GOAL_SETTING, new Date("2027-01-04T00:00:00Z")), true);
+test("§5.5 the grace window runs from the deadline, in working days (P2-9, ADR-077)", () => {
+  // Deadline Fri 31 Dec 2026 23:59:59; Sun–Thu week: Sun 3, Mon 4, Tue 5 Jan.
+  assert.deepEqual(graceEndsAt(GOAL_SETTING), new Date("2027-01-05T23:59:59Z"));
+  assert.equal(isPastGrace(GOAL_SETTING, new Date("2027-01-05T23:59:58Z")), false);
+  assert.equal(isPastGrace(GOAL_SETTING, new Date("2027-01-06T00:00:00Z")), true);
 });
 
 test("§5.5 a 45-day grace window is refused — on a December deadline it lands past the cycle", () => {

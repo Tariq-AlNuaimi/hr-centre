@@ -7,6 +7,7 @@ import {
   type StageWindow,
 } from "./cycle";
 import { EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT } from "./signoff";
+import type { WorkingCalendar } from "@/lib/working-time/calendar";
 
 /**
  * §5.5's escalation ladder and §5.6's compliance record, as a PURE decision.
@@ -255,9 +256,10 @@ export function hrInterventionDue(
   state: ParticipantComplianceState,
   stage: StageWindow,
   now: Date,
+  calendar?: WorkingCalendar,
 ): boolean {
   if (isLadderExempt(state) || isResolved(state)) return false;
-  return isPastGrace(stage, now);
+  return isPastGrace(stage, now, calendar);
 }
 
 /** A one-line summary of an unresolved file, for HR's intervention queue. */
