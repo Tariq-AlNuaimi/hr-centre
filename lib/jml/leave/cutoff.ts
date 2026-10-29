@@ -40,6 +40,9 @@ export function localInputToInstant(value: string, timeZone: string): Date | nul
   if (!m) return null;
   const [y, mo, d, h, mi] = m.slice(1).map(Number);
   if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+  // QA2 N-09 — a REAL day: "2026-02-30" used to roll silently to 2 March (a
+  // past instant, so the next sweep would have revoked the login at once).
+  if (new Date(Date.UTC(y, mo - 1, d)).getUTCDate() !== d) return null;
   return zonedTimeToUtc(y, mo, d, h, mi, timeZone);
 }
 

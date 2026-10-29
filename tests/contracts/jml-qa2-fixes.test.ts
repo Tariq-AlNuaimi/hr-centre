@@ -76,3 +76,35 @@ test("N-04 an ordinary refresh that does not complete the case closes nothing", 
   assert.equal(r.completedNow, false);
   assert.equal(taskUpdates.length, 0);
 });
+
+// --- N-08 / N-09 — date sanity ---------------------------------------------------
+
+import { createMoveSchema } from "../../lib/validations/jml/move";
+import { accessCutoffSchema } from "../../lib/validations/jml/leave";
+import { localInputToInstant } from "../../lib/jml/leave/cutoff";
+
+const ymd = (offsetDays: number) =>
+  new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+const move = (effectiveDate: string) =>
+  createMoveSchema.safeParse({
+    employeeId: "e1",
+    changeType: "DEPARTMENT_TRANSFER",
+    effectiveDate,
+    newDetails: { jobTitle: "Engineer" },
+  });
+
+test("N-08 a mover effective date years in the past (2020) or far ahead is refused", () => {
+  assert.equal(move("2020-01-01").success, false);
+  assert.equal(move(ymd(-120)).success, false);
+  assert.equal(move(ymd(400)).success, false);
+  assert.equal(move(ymd(-30)).success, true, "a recent backdate is a normal catch-up");
+  assert.equal(move(ymd(14)).success, true);
+});
+
+test("N-09 an impossible access cut-off (2026-02-30T10:00) is refused, never rolled to March", () => {
+  assert.equal(accessCutoffSchema.safeParse({ at: "2026-02-30T10:00" }).success, false);
+  assert.equal(accessCutoffSchema.safeParse({ at: "2026-02-28T24:00" }).success, false);
+  assert.equal(accessCutoffSchema.safeParse({ at: "2026-02-28T10:00" }).success, true);
+  assert.equal(localInputToInstant("2026-02-30T10:00", "Asia/Muscat"), null);
+  assert.ok(localInputToInstant("2026-02-28T10:00", "Asia/Muscat"));
+});
