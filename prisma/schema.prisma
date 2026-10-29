@@ -89,47 +89,44 @@ model User {
   hiveEscalationsRaised    Escalation[]         @relation("EscalationRaisedBy")
   hiveSavedReplies         HiveSavedReply[]     @relation("HiveSavedReplyAuthor")
   hiveEscalationEvents     EscalationEvent[]    @relation("EscalationEventActor")
-  hiveTemplatesUpdated     HiveEmailTemplate[]  @relation("HiveEmailTemplateUpdatedBy")
-  hiveSettingsUpdated      HiveTicketSettings[] @relation("HiveTicketSettingsUpdatedBy")
 
   // JML S2 — the case engine (docs/blueprints/jml.md).
-  jmlCasesOwned            JmlCase[]                  @relation("JmlCaseOwner")
-  jmlCasesSupervised       JmlCase[]                  @relation("JmlCaseSenior")
-  jmlCasesUpdated          JmlCase[]                  @relation("JmlCaseLastUpdatedBy")
-  jmlCasesHeld             JmlCase[]                  @relation("JmlCaseLegalHold")
-  jmlCasesArchived         JmlCase[]                  @relation("JmlCaseArchivedBy")
-  jmlTasksOwned            JmlTask[]                  @relation("JmlTaskOwner")
-  jmlTasksCompleted        JmlTask[]                  @relation("JmlTaskCompletedBy")
-  jmlDeskMemberships       JmlDeskMember[]            @relation("JmlDeskMember")
-  jmlTaskComments          JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
-  jmlRulesAsOwner          JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
-  jmlRulesAsSenior         JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
-  jmlEmailsSent            EmailLog[]                 @relation("JmlEmailSentBy")
-  jmlEmailTemplateEdits    JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
-  jmlItReadinessConfirmed  JmlJoinDetail[]            @relation("JmlItReadinessBy")
-  jmlApprovalsDecided      JmlApproval[]              @relation("JmlApprovalDecidedBy")
-  jmlAssetsVerified        JmlAsset[]                 @relation("JmlAssetVerifiedBy")
-  jmlAccessConfirmed       JmlAccessItem[]            @relation("JmlAccessConfirmedBy")
-  leaveInterviewsHeld      LeaveExitInterview[]       @relation("LeaveInterviewer")
-  leaveInterviewsAssessed  LeaveExitInterview[]       @relation("LeaveAssessor")
-  leaveSettlementsCalc     LeaveSettlement[]          @relation("LeaveSettlementCalculatedBy")
-  leaveSettlementsApproved LeaveSettlement[]          @relation("LeaveSettlementApprovedBy")
-  leaveSettlementsPaid     LeaveSettlement[]          @relation("LeaveSettlementPaymentBy")
-  leaveLinesAuthorised     LeaveSettlementLine[]      @relation("LeaveLineAuthorisedBy")
-  jmlDocTemplatesUploaded  JmlDocumentTemplate[]      @relation("JmlDocTemplateUploadedBy")
-  jmlDocTemplatesApproved  JmlDocumentTemplate[]      @relation("JmlDocTemplateApprovedBy")
-  jmlDocumentsGenerated    JmlGeneratedDocument[]     @relation("JmlDocumentGeneratedBy")
-  leaveGatesSatisfied      LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
-  leaveGatesOverridden     LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
-  moduleSettingsUpdated    ModuleSetting[]            @relation("ModuleSettingUpdatedBy")
-  approvalsSubmitted       ApprovalRequest[]          @relation("ApprovalSubmittedBy")
-  approvalDecisions        ApprovalDecision[]         @relation("ApprovalDecider")
-  approvalsOnBehalfOf      ApprovalDecision[]         @relation("ApprovalOnBehalfOf")
-  approvalDelegations      ApprovalDelegation[]       @relation("ApprovalDelegator")
-  approvalDelegatedTo      ApprovalDelegation[]       @relation("ApprovalDelegate")
-  emailTemplatesUpdated    EmailTemplate[]            @relation("EmailTemplateUpdatedBy")
-  notificationPreferences  NotificationPreference[]   @relation("NotificationPreferences")
-  documentsUploaded        Document[]                 @relation("DocumentUploadedBy")
+  jmlCasesOwned            JmlCase[]                @relation("JmlCaseOwner")
+  jmlCasesSupervised       JmlCase[]                @relation("JmlCaseSenior")
+  jmlCasesUpdated          JmlCase[]                @relation("JmlCaseLastUpdatedBy")
+  jmlCasesHeld             JmlCase[]                @relation("JmlCaseLegalHold")
+  jmlCasesArchived         JmlCase[]                @relation("JmlCaseArchivedBy")
+  jmlTasksOwned            JmlTask[]                @relation("JmlTaskOwner")
+  jmlTasksCompleted        JmlTask[]                @relation("JmlTaskCompletedBy")
+  jmlDeskMemberships       JmlDeskMember[]          @relation("JmlDeskMember")
+  jmlTaskComments          JmlTaskComment[]         @relation("JmlTaskCommentAuthor")
+  jmlRulesAsOwner          JmlHrAssignmentRule[]    @relation("JmlRuleOwner")
+  jmlRulesAsSenior         JmlHrAssignmentRule[]    @relation("JmlRuleSenior")
+  jmlEmailsSent            EmailLog[]               @relation("JmlEmailSentBy")
+  jmlItReadinessConfirmed  JmlJoinDetail[]          @relation("JmlItReadinessBy")
+  jmlApprovalsDecided      JmlApproval[]            @relation("JmlApprovalDecidedBy")
+  jmlAssetsVerified        JmlAsset[]               @relation("JmlAssetVerifiedBy")
+  jmlAccessConfirmed       JmlAccessItem[]          @relation("JmlAccessConfirmedBy")
+  leaveInterviewsHeld      LeaveExitInterview[]     @relation("LeaveInterviewer")
+  leaveInterviewsAssessed  LeaveExitInterview[]     @relation("LeaveAssessor")
+  leaveSettlementsCalc     LeaveSettlement[]        @relation("LeaveSettlementCalculatedBy")
+  leaveSettlementsApproved LeaveSettlement[]        @relation("LeaveSettlementApprovedBy")
+  leaveSettlementsPaid     LeaveSettlement[]        @relation("LeaveSettlementPaymentBy")
+  leaveLinesAuthorised     LeaveSettlementLine[]    @relation("LeaveLineAuthorisedBy")
+  jmlDocTemplatesUploaded  JmlDocumentTemplate[]    @relation("JmlDocTemplateUploadedBy")
+  jmlDocTemplatesApproved  JmlDocumentTemplate[]    @relation("JmlDocTemplateApprovedBy")
+  jmlDocumentsGenerated    JmlGeneratedDocument[]   @relation("JmlDocumentGeneratedBy")
+  leaveGatesSatisfied      LeaveGateRecord[]        @relation("LeaveGateSatisfiedBy")
+  leaveGatesOverridden     LeaveGateRecord[]        @relation("LeaveGateOverriddenBy")
+  moduleSettingsUpdated    ModuleSetting[]          @relation("ModuleSettingUpdatedBy")
+  approvalsSubmitted       ApprovalRequest[]        @relation("ApprovalSubmittedBy")
+  approvalDecisions        ApprovalDecision[]       @relation("ApprovalDecider")
+  approvalsOnBehalfOf      ApprovalDecision[]       @relation("ApprovalOnBehalfOf")
+  approvalDelegations      ApprovalDelegation[]     @relation("ApprovalDelegator")
+  approvalDelegatedTo      ApprovalDelegation[]     @relation("ApprovalDelegate")
+  emailTemplatesUpdated    EmailTemplate[]          @relation("EmailTemplateUpdatedBy")
+  notificationPreferences  NotificationPreference[] @relation("NotificationPreferences")
+  documentsUploaded        Document[]               @relation("DocumentUploadedBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -2610,17 +2607,16 @@ model Escalation {
   approvedBy  User?     @relation("EscalationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
 
   /// UX P1 (tickets P1-2): who in the pair owns answering this ticket. Internal only.
-  assigneeId      String?                @map("assignee_id")
-  assignee        User?                  @relation("EscalationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId      String?             @map("assignee_id")
+  assignee        User?               @relation("EscalationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   /// Source HR: the Drafter who raised it for the employee. Routing and approval are unchanged.
-  raisedById      String?                @map("raised_by_id")
-  raisedBy        User?                  @relation("EscalationRaisedBy", fields: [raisedById], references: [id], onDelete: SetNull)
+  raisedById      String?             @map("raised_by_id")
+  raisedBy        User?               @relation("EscalationRaisedBy", fields: [raisedById], references: [id], onDelete: SetNull)
   /// The internal answer-by time, in WORKING hours on the core calendar (never shown to employees).
-  dueAt           DateTime?              @map("due_at")
+  dueAt           DateTime?           @map("due_at")
   /// When the first answer was sent.
-  firstResponseAt DateTime?              @map("first_response_at")
+  firstResponseAt DateTime?           @map("first_response_at")
   messages        EscalationMessage[]
-  replyTokens     EscalationReplyToken[]
   events          EscalationEvent[]
 
   @@index([status, createdAt])
@@ -2667,24 +2663,6 @@ model EscalationMessage {
 
   @@index([escalationId, at])
   @@map("hive_escalation_messages")
-}
-
-/// HIVE ADR-070 reply link. `tokenHash` is the SHA-256 DIGEST of a 32-byte
-/// CSPRNG token, never the token. Not soft-deleted, audited.
-model EscalationReplyToken {
-  id           String    @id @default(cuid())
-  tokenHash    String    @unique
-  escalationId String
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  lastUsedAt   DateTime?
-
-  createdAt DateTime @default(now())
-
-  escalation Escalation @relation(fields: [escalationId], references: [id], onDelete: Cascade)
-
-  @@index([escalationId, expiresAt])
-  @@map("hive_escalation_reply_tokens")
 }
 
 /// An HR Tag pair — the two HR people a ticket is routed to. `name` is not
@@ -2864,27 +2842,6 @@ model NetworkProvider {
   @@map("hive_network_providers")
 }
 
-/// The editable answer email (key "escalation-answer"). Reset rewrites the
-/// default text; it never deletes (a tombstone would hold the unique key).
-model HiveEmailTemplate {
-  id          String  @id @default(cuid())
-  key         String  @unique
-  subject     String
-  body        String  @db.Text
-  updatedById String?
-
-  deletedAt DateTime?
-  deletedBy String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  updatedBy User? @relation("HiveEmailTemplateUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-
-  @@index([updatedById])
-  @@index([deletedAt, createdAt])
-  @@map("hive_email_templates")
-}
-
 /// UX P1 (tickets P1-4): a reusable answer HR inserts into a draft. A pair's own
 /// reply when `hrPairId` is set; everyone's otherwise. Edited by Edit content.
 model HiveSavedReply {
@@ -2901,24 +2858,6 @@ model HiveSavedReply {
   @@index([hrPairId])
   @@index([createdById])
   @@map("hive_saved_replies")
-}
-
-/// Singleton: ticket prefix + status label overrides. Missing row = defaults.
-model HiveTicketSettings {
-  id            String  @id @default("singleton")
-  ticketPrefix  String  @default("HR")
-  /// UX P1 (tickets P1-2): working hours to answer a new ticket (internal clock).
-  responseHours Int     @default(16) @map("response_hours")
-  statusLabels  Json    @default("{}")
-  updatedById   String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  updatedBy User? @relation("HiveTicketSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-
-  @@index([updatedById])
-  @@map("hive_ticket_settings")
 }
 
 /// Org-chart details the `hive_org_structure` tool tells Siraaj that core org
@@ -3150,16 +3089,6 @@ enum HiringNeedStatus {
   SUBMITTED
   CHALLENGE_AGREED
   NO_NEED
-}
-
-/// Module configuration — Interview Hub's AppSetting keys, unchanged.
-model HiringSetting {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     Json
-  updatedAt DateTime @updatedAt
-
-  @@map("hiring_settings")
 }
 
 /// The requisition (Interview Hub `Position`). Scope key: entityId (+ departmentId).
@@ -3542,7 +3471,6 @@ model HiringOffer {
   submittedById      String?
   approvalChain      Json?
 
-  approvals        HiringOfferApproval[]
   versions         HiringOfferVersion[]
   negotiationNotes HiringNegotiationNote[]
 
@@ -3556,23 +3484,6 @@ model HiringOffer {
   @@index([requisitionId])
   @@index([status])
   @@map("hiring_offers")
-}
-
-model HiringOfferApproval {
-  id           String                @id @default(cuid())
-  offerId      String
-  offer        HiringOffer           @relation(fields: [offerId], references: [id], onDelete: Cascade)
-  approverId   String
-  sequence     Int?
-  requiredRole HiringApprovalRole?
-  action       HiringApprovalAction?
-  comment      String?
-  decidedAt    DateTime?
-  createdAt    DateTime              @default(now())
-
-  @@unique([offerId, sequence])
-  @@index([approverId])
-  @@map("hiring_offer_approvals")
 }
 
 model HiringOfferVersion {
@@ -3685,45 +3596,6 @@ model HiringCandidateDocument {
   @@map("hiring_candidate_documents")
 }
 
-model HiringCompetency {
-  id         String  @id @default(cuid())
-  name       String
-  definition String?
-  category   String?
-  roleFamily String?
-  entityId   String?
-  /// BARS anchors { "1": "...", …, "5": "..." }.
-  anchors    Json?
-
-  deletedAt DateTime?
-  deletedBy String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@index([deletedAt, createdAt])
-  @@index([name])
-  @@map("hiring_competencies")
-}
-
-model HiringGrade {
-  id        String   @id @default(cuid())
-  code      String
-  name      String
-  minSalary Decimal? @db.Decimal(12, 3)
-  maxSalary Decimal? @db.Decimal(12, 3)
-  order     Int      @default(0)
-  entityId  String?
-
-  deletedAt DateTime?
-  deletedBy String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@index([deletedAt, createdAt])
-  @@index([code])
-  @@map("hiring_grades")
-}
-
 model HiringJdTemplate {
   id           String   @id @default(cuid())
   title        String
@@ -3771,22 +3643,6 @@ model HiringAiUsage {
   @@index([createdAt])
   @@index([feature, createdAt])
   @@map("hiring_ai_usage")
-}
-
-model HiringImportBatch {
-  id          String          @id @default(cuid())
-  kind        String
-  status      HiringJobStatus @default(PENDING)
-  total       Int             @default(0)
-  processed   Int             @default(0)
-  failed      Int             @default(0)
-  log         Json?
-  createdById String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  @@index([createdAt])
-  @@map("hiring_import_batches")
 }
 
 model HiringBulkJob {
@@ -4359,21 +4215,6 @@ model EmailLog {
   @@index([module, createdAt])
   @@index([subjectType, subjectId])
   @@map("core_email_logs")
-}
-
-/// Admin edits shadowing the approved email copy (Onboarding §11 override layer).
-model JmlEmailTemplateOverride {
-  id           String   @id @default(cuid())
-  type         String   @unique
-  subject      String?
-  body         String?
-  ccRecipients String[] @default([]) @map("cc_recipients")
-  updatedById  String?  @map("updated_by_id")
-  updatedBy    User?    @relation("JmlEmailTemplateEditor", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  @@map("jml_email_template_overrides")
 }
 
 /// JML S3 — what a JOIN case knows that the core employee record does not

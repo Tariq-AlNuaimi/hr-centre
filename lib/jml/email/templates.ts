@@ -4,7 +4,7 @@ import { EMAIL_TYPES } from "./types";
 /**
  * Joiner email copy — HR Onboarding §11.2 (US7, AC-7.2), ported VERBATIM from
  * `lib/services/onboarding/email-templates.ts`, with its administrator override
- * layer (`JmlEmailTemplateOverride`). English only, by the artifact's rule.
+ * layer (core `EmailTemplate`, module "jml", ADR-095). English only, by the artifact's rule.
  * Variables come from a flat, explicit context — a template can never reach
  * salary or any other Restricted value. `{{caseNumber}}` is the case reference.
  */
