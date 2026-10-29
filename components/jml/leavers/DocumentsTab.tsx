@@ -10,7 +10,7 @@ import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
 import { ActionDialog } from "../ActionDialog";
 import { downloadFile } from "../download";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock } from "../States";
 
 type Listing = {

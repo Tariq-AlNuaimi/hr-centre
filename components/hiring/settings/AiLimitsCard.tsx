@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { useHiringMe, useHiringMutation, useHiringQuery } from "../ui/api";
-import { Check, Field } from "../ui/fields";
+import { Check, Field } from "@/components/shared/FormControls";
 import { QueryState } from "../ui/states";
 import type { AiUsageView } from "./types";
 

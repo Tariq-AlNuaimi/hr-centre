@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 
 /** One task row of the template editor (Onboarding TemplateTaskRowEditor + conditions; Offboarding fields). */
 

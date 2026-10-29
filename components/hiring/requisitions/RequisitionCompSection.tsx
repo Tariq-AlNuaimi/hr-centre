@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { CURRENCY_CODES } from "@/lib/hiring/money";
-import { Check, Field } from "../ui/fields";
+import { Check, Field } from "@/components/shared/FormControls";
 
 type CompFields = {
   salaryCurrency: string;

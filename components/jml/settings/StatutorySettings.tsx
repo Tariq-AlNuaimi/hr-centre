@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { apiClient } from "@/lib/api-client";
 import { STATUTORY_KEYS } from "@/lib/statutory/parameters";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
 

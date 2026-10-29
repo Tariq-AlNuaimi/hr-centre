@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { resolveBriefForRound, type RoundPlanEntry } from "@/lib/hiring/interview-rules";
 import { qs, useHiringMutation, useHiringQuery } from "../ui/api";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 import { Notice, QueryState } from "../ui/states";
 import { useRoundLabel } from "../interviews/bits";
 import { whenLabel } from "../interviews/time";

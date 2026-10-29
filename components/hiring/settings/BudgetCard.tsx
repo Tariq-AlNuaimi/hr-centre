@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { useHiringMutation } from "../ui/api";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 import { QueryState } from "../ui/states";
 import { GENERAL, useGeneral } from "./ScoringCards";
 import type { BudgetEntry, GeneralView } from "./types";

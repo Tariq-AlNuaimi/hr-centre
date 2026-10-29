@@ -18,7 +18,7 @@ import { formatDate } from "@/lib/format";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useHiringMutation } from "../ui/api";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 import { muscatDay } from "./bits";
 import type { OfferDetail, VersionView } from "./types";
 

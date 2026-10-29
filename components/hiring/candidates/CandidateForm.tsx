@@ -8,7 +8,7 @@ import { NativeSelect } from "@/components/org/NativeSelect";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { NATIONALITIES } from "@/lib/hiring/nationalities";
 import { CANDIDATE_SOURCES } from "@/lib/validations/hiring/candidate";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 import { PersonPicker, type Person } from "../ui/person-picker";
 import { useRequisitionOptions } from "../ui/requisition-options";
 

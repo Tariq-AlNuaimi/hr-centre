@@ -11,7 +11,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { JdFileButtons } from "../ai/JdFileButtons";
 import { CompetencyPicker } from "../ui/competency-picker";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { useOrgOptions } from "../ui/org";
 import { PersonPicker, type Person } from "../ui/person-picker";
 import { Notice, QueryState } from "../ui/states";

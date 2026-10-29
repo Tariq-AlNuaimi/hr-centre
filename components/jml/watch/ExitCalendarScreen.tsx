@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess } from "../use-jml";
 

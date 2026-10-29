@@ -10,7 +10,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { CANONICAL_ROUND_ORDER } from "@/lib/hiring/interview-rules";
 import { INTERVIEW_STATUSES } from "@/lib/validations/hiring/interview";
 import { qs, useHiringQuery } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { PersonPicker, type Person } from "../ui/person-picker";
 
 /**

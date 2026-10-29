@@ -14,7 +14,7 @@ import {
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { useHiringMutation } from "../ui/api";
 import { CompetencyPicker } from "../ui/competency-picker";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 import { LIBRARY_FIELDS, type FieldDef } from "./config";
 import type { LibraryRow } from "./LibraryView";

@@ -3,10 +3,15 @@
 import type { ReactNode, TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-/** Label + control + hint/error, the one field layout every hiring form uses. */
+/**
+ * Label + control + hint/error — the one field layout every form uses (Hiring,
+ * Joiners & leavers, core screens; P2 platform, promoted from Hiring's kit).
+ * `id` is an alias of `htmlFor` (the JML kit's prop name).
+ */
 export function Field({
   label,
   htmlFor,
+  id,
   hint,
   error,
   required,
@@ -15,6 +20,7 @@ export function Field({
 }: {
   label: ReactNode;
   htmlFor?: string;
+  id?: string;
   hint?: ReactNode;
   error?: ReactNode;
   required?: boolean;
@@ -23,7 +29,7 @@ export function Field({
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">
+      <label htmlFor={htmlFor ?? id} className="text-sm font-medium text-foreground">
         {label}
         {required ? <span className="ms-0.5 text-destructive-emphasis">*</span> : null}
       </label>

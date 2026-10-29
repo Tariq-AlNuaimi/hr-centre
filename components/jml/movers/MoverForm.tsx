@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { EmployeePicker } from "@/components/pms/EmployeePicker";
 import { apiClient } from "@/lib/api-client";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { EMPLOYMENT_TYPES } from "../joiners/JoinerFields";
 import { LoadFailed, LoadingBlock } from "../States";
 import { useJmlAction, useJmlLookups } from "../use-jml";

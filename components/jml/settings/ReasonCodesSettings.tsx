@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
 

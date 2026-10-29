@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { useHiringMutation } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 import type { Comparison } from "./comparison-types";
 

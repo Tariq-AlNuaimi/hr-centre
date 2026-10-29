@@ -23,7 +23,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDate } from "@/lib/format";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
-import { Field } from "../ui/fields";
+import { Field } from "@/components/shared/FormControls";
 import { useRequisitionOptions } from "../ui/requisition-options";
 import { Notice, QueryState } from "../ui/states";
 

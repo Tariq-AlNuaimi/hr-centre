@@ -8,7 +8,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDate } from "@/lib/format";
 import { STALL_CAUSES } from "@/lib/validations/hiring/candidate";
 import { useHiringMutation } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import type { CandidateDetail } from "./types";
 
 /**

@@ -22,7 +22,7 @@ import {
 } from "@/lib/hiring/requisition-rules";
 import { useHiringMe, useHiringMutation, useHiringQuery } from "../ui/api";
 import { StatusBadge } from "../ui/badges";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice, QueryState } from "../ui/states";
 import type { RequisitionDetail } from "./types";
 

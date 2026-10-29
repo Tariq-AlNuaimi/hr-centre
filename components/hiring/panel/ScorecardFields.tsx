@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { HIRE_VOTES, type HireVote } from "@/lib/hiring/scorecard-math";
 import { cn } from "@/lib/utils";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { ScoreDots } from "../interviews/bits";
 import type { AnchorMap } from "./types";
 

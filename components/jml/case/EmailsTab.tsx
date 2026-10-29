@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { apiClient } from "@/lib/api-client";
 import { ActionDialog } from "../ActionDialog";
-import { Field } from "../Field";
+import { Field } from "@/components/shared/FormControls";
 import { LoadFailed, LoadingBlock } from "../States";
 import { useJmlAction } from "../use-jml";
 import type { CaseDetail } from "./types";

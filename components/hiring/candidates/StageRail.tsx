@@ -20,7 +20,7 @@ import {
   type Stage,
 } from "@/lib/hiring/stage-rules";
 import { cn } from "@/lib/utils";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { Notice } from "../ui/states";
 import { useStageMove } from "./useStageMove";
 

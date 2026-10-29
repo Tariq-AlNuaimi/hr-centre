@@ -9,7 +9,7 @@ import { NativeSelect } from "@/components/org/NativeSelect";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { ALLOWANCE_KEYS } from "@/lib/hiring/offer-package";
 import { qs, useHiringQuery } from "../ui/api";
-import { Field, Textarea } from "../ui/fields";
+import { Field, Textarea } from "@/components/shared/FormControls";
 import { StageBadge } from "../ui/stage";
 import { ChainPreview } from "./ChainPreview";
 import { useAllowanceLabel } from "./bits";
