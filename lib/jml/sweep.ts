@@ -7,6 +7,7 @@ import { runRetention } from "./join/retention";
 import { preboardingReminders } from "./preboarding/reminders";
 import { itReadinessReminders, overdueDigests } from "./join/sweep-steps";
 import { applyDueMoves } from "./move/apply";
+import { applyDueOrgChanges } from "@/lib/org/changes";
 import { reconcileLineManagerTasks } from "./routing/assign";
 import { leaveDailyNotices, leaveDepartures, leaveHealthRefresh } from "./leave/sweep-steps";
 import { isLocalHour } from "@/lib/working-time/calendar";
@@ -65,6 +66,9 @@ const SWEEP_STEPS: SweepStep[] = [
   },
   { name: "overdueDigests", run: overdueDigests },
   { name: "moveEffective", run: applyDueMoves },
+  // P2 (UX R19) — effective-dated org unit renames/moves, before the line-manager
+  // reconciliation below so routed tasks follow the new structure.
+  { name: "orgChangesDue", run: applyDueOrgChanges },
   // Task routing D6: after any writer moved a reporting line (import, roll-up,
   // transfer, a move that just applied), open LINE_MANAGER tasks follow it.
   { name: "lineManagerTasks", run: () => reconcileLineManagerTasks() },

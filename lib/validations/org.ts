@@ -76,3 +76,28 @@ export type CreateOrgDepartmentInput = z.infer<typeof createOrgDepartmentSchema>
 export type UpdateOrgDepartmentInput = z.infer<typeof updateOrgDepartmentSchema>;
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 export type UpdateTeamInput = z.infer<typeof updateTeamSchema>;
+
+/**
+ * P2 (UX R19) — schedule an effective-dated reorganisation step: a rename, a
+ * move under a new parent, or both, from `effectiveDate` (YYYY-MM-DD).
+ */
+export const scheduleOrgChangeSchema = z
+  .object({
+    unitKind: z.enum(["DIRECTORATE", "DEPARTMENT", "TEAM"]),
+    unitId: z.string().min(1).max(40),
+    effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date (YYYY-MM-DD)."),
+    newName: unitName.optional(),
+    /** Present = the parent changes; null = no directorate (departments only). */
+    newParentId: z.string().min(1).max(40).nullable().optional(),
+    note: z.string().trim().max(300).optional(),
+  })
+  .strict()
+  .refine((v) => v.newName !== undefined || v.newParentId !== undefined, {
+    message: "Change the name, the parent, or both.",
+  })
+  .refine((v) => !(v.unitKind === "DIRECTORATE" && v.newParentId !== undefined), {
+    message: "newParentId: a directorate belongs to its company and cannot move.",
+  })
+  .refine((v) => !(v.unitKind === "TEAM" && v.newParentId === null), {
+    message: "newParentId: a team always belongs to a department.",
+  });

@@ -9,7 +9,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { OrgChart } from "@/components/pms/OrgChart";
-import { buildOrgChart, type OrgNode } from "@/lib/pms/org-chart";
+import { buildOrgChart, type OrgCardPerson, type OrgNode } from "@/lib/pms/org-chart";
+import { OrgCards } from "@/components/org/OrgCards";
+import { Link } from "@/i18n/navigation";
 
 /**
  * The reporting tree — spec §4.2.
@@ -34,12 +36,20 @@ export default async function OrgPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{
+    q?: string | string[];
+    view?: string | string[];
+    person?: string | string[];
+  }>;
 }) {
   const { locale } = await params;
   // "View in org chart" from a record (UX P1 R10) opens the chart searched for that person.
-  const q = (await searchParams).q;
+  const sp = await searchParams;
+  const q = sp.q;
   const initialQuery = typeof q === "string" ? q.slice(0, 100) : "";
+  // P2 (R19): card mode is the default; `?view=list` keeps the searchable tree.
+  const view = sp.view === "list" || initialQuery ? "list" : "cards";
+  const initialPersonId = typeof sp.person === "string" ? sp.person.slice(0, 40) : null;
   const session = await auth();
   if (!session) redirect(`/${locale}/login`);
 
@@ -66,6 +76,15 @@ export default async function OrgPage({
         });
 
   const entities = buildOrgChart(nodes);
+  const people: OrgCardPerson[] = nodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    managerId: n.managerId,
+    departmentName: n.department?.name ?? null,
+  }));
+  // Open roles from requisitions — HR and executives only: a requisition can be
+  // a confidential replacement, and a department's count would reveal it.
+  const openRoles = actor.capabilities.orgWide ? await openRolesByDepartment() : null;
 
   return (
     <div className="space-y-6">
@@ -78,14 +97,59 @@ export default async function OrgPage({
         {entities.length === 0 ? (
           <EmptyState description={t("org.empty")} />
         ) : (
-          <OrgChart
-            entities={entities}
-            locale={locale}
-            totalCount={nodes.length}
-            initialQuery={initialQuery}
-          />
+          <div className="space-y-4">
+            <nav aria-label={t("org.viewLabel")} className="flex gap-3 text-sm">
+              <Link
+                href={{ pathname: "/org", query: { view: "cards" } }}
+                aria-current={view === "cards" ? "page" : undefined}
+                className={
+                  view === "cards"
+                    ? "font-semibold text-foreground"
+                    : "text-primary hover:underline"
+                }
+              >
+                {t("org.viewCards")}
+              </Link>
+              <Link
+                href={{ pathname: "/org", query: { view: "list" } }}
+                aria-current={view === "list" ? "page" : undefined}
+                className={
+                  view === "list" ? "font-semibold text-foreground" : "text-primary hover:underline"
+                }
+              >
+                {t("org.viewList")}
+              </Link>
+            </nav>
+            {view === "cards" ? (
+              <OrgCards
+                entities={entities}
+                people={people}
+                openRoles={openRoles}
+                initialPersonId={initialPersonId}
+              />
+            ) : (
+              <OrgChart
+                entities={entities}
+                locale={locale}
+                totalCount={nodes.length}
+                initialQuery={initialQuery}
+              />
+            )}
+          </div>
         )}
       </SectionCard>
     </div>
+  );
+}
+
+/** Open roles per department: openings on OPEN or REOPENED requisitions. */
+async function openRolesByDepartment(): Promise<Record<string, number>> {
+  const rows = await prisma.hiringRequisition.groupBy({
+    by: ["departmentId"],
+    where: { status: { in: ["OPEN", "REOPENED"] }, departmentId: { not: null } },
+    _sum: { openings: true },
+  });
+  return Object.fromEntries(
+    rows.filter((r) => r.departmentId).map((r) => [r.departmentId!, r._sum.openings ?? 0]),
   );
 }

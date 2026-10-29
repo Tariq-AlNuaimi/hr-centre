@@ -392,6 +392,8 @@
 - app/api/notifications/read/route.ts  [POST]
 - app/api/notifications/route.ts  [GET]
 - app/api/openapi/route.ts  [GET]
+- app/api/org/changes/[id]/route.ts  [DELETE]
+- app/api/org/changes/route.ts  [GET,POST]
 - app/api/org/departments/[id]/route.ts  [PATCH,DELETE]
 - app/api/org/departments/route.ts  [GET,POST]
 - app/api/org/directorates/[id]/route.ts  [PATCH,DELETE]
@@ -463,6 +465,7 @@
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, headEmployeeId, head, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
 - Directorate: id, name, entityId, entity, headEmployeeId, head, departments, departmentsAgree, deletedAt, deletedBy, createdAt, updatedAt
+- OrgUnitChange: id, unitKind, unitId, effectiveDate, newName, moveParent, newParentId, note, status, beforeName, beforeParentId, appliedAt, failureReason, createdById, createdAt, updatedAt
 - Team: id, name, departmentId, department, headEmployeeId, head, employees, employeesAgree, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, headEmployeeId, head, directorateId, directorate, directorateAgree, teams, employees, employeesAgree, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
 - Employee: id, odooId, name, email, departmentId, department, departmentEntityAgree, entityId, entity, teamId, team, teamDepartmentAgree, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, headOfEntities, headOfDirectorates, headOfDepartments, headOfTeams, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt
@@ -860,6 +863,7 @@
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
 - lib/openapi/registry.ts: RegisteredMethod, RegisteredResponse, RegisteredRoute, registeredRoutes, BEARER_SCHEME_NAME, buildPaths
+- lib/org/changes.ts: ScheduleOrgChangeInput, scheduleOrgChange, cancelOrgChange, applyDueOrgChanges, listOrgChanges
 - lib/org/heads.ts: UnitHead, setUnitHead
 - lib/org/http.ts: validationError, ruleErrorResponse
 - lib/org/rules.ts: OrgRuleError, departmentPlacementProblem, retireRefusal
@@ -908,7 +912,7 @@
 - lib/pms/notifications.ts: notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey
 - lib/pms/offboarding.ts: revokeLoginOnOffboard
 - lib/pms/org-chart-search.ts: matchOrgChart
-- lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartEntity, buildOrgChart
+- lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartDepartment, OrgChartEntity, buildOrgChart, OrgCardPerson, personContext
 - lib/pms/org-tree.ts: descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
@@ -987,7 +991,7 @@
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema
 - lib/validations/login.ts: issueLoginSchema, changePasswordSchema
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema
-- lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, setUnitHeadSchema, SetUnitHeadInput, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
+- lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, setUnitHeadSchema, SetUnitHeadInput, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput, scheduleOrgChangeSchema
 - lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, recordFromBody
 - lib/validations/rating.ts: upsertRatingSchema, yearEndSignOffSchema
 - lib/validations/rbac.ts: roleBodySchema, SCOPE_TYPES, ScopeTypeCode, UNITLESS_SCOPES, assignmentBodySchema, RoleBody, AssignmentBody, assignmentFilterSchema, effectiveAccessQuerySchema
@@ -1231,7 +1235,9 @@
 - components/org/DirectoratesSection.tsx
 - components/org/HeadControl.tsx
 - components/org/NativeSelect.tsx
+- components/org/OrgCards.tsx
 - components/org/OrgSetup.tsx
+- components/org/ReorgSection.tsx
 - components/org/TeamsSection.tsx
 - components/org/UnitRow.tsx
 - components/people/AddEmployeeForm.tsx

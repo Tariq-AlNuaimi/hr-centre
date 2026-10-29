@@ -391,7 +391,10 @@
       "reportsTo": "reports to {name}",
       "toggleReports": "Show or hide {count, plural, =1 {the # person} other {the # people}} reporting to {name}",
       "expandAll": "Expand all",
-      "collapseAll": "Collapse all"
+      "collapseAll": "Collapse all",
+      "viewLabel": "Org chart view",
+      "viewCards": "Cards",
+      "viewList": "List"
     },
     "import": {
       "title": "Employee import",
@@ -2073,6 +2076,59 @@
       "saved": "{name} is now the head",
       "cleared": "Head cleared",
       "saveFailed": "Couldn't save the unit head"
+    },
+    "reorg": {
+      "title": "Scheduled changes",
+      "subtitle": "Rename or move a unit from a date. The change applies on that date, with the same rules as an edit here, and stays in the history.",
+      "kind": "Unit type",
+      "kindValue": {
+        "DIRECTORATE": "Directorate",
+        "DEPARTMENT": "Department",
+        "TEAM": "Team"
+      },
+      "unit": "Unit",
+      "choose": "Choose a unit",
+      "newName": "New name (optional)",
+      "newParent": "Move to",
+      "keepParent": "Keep where it is",
+      "noParent": "No directorate",
+      "from": "From",
+      "schedule": "Schedule change",
+      "scheduled": "Change scheduled",
+      "cancelled": "Change cancelled",
+      "failed": "The change could not be saved.",
+      "loading": "Loading scheduled changes…",
+      "loadFailed": "Scheduled changes could not be loaded.",
+      "upcoming": "Upcoming",
+      "noneScheduled": "No changes are scheduled",
+      "history": "History",
+      "noHistory": "No reorganisation has been applied yet.",
+      "renameTo": "Rename to {name}",
+      "moveTo": "Move under {name}",
+      "fromDate": "from {date}",
+      "wasUnder": "was under {name}",
+      "unknownUnit": "A retired unit",
+      "cancel": "Cancel",
+      "status": {
+        "SCHEDULED": "Scheduled",
+        "APPLIED": "Applied",
+        "FAILED": "Refused",
+        "CANCELLED": "Cancelled"
+      }
+    },
+    "cards": {
+      "centreOn": "Centre on a person",
+      "centrePlaceholder": "Type a name",
+      "centredOn": "Centred on {name}",
+      "backToUnits": "Back to all units",
+      "manager": "Manager",
+      "noManager": "No manager in view",
+      "noReports": "No direct reports",
+      "people": "{count, plural, one {# person} other {# people}}",
+      "head": "Head: {name}",
+      "noHead": "No head set",
+      "leadership": "Leadership",
+      "openRoles": "{count, plural, one {# open role} other {# open roles}}"
     }
   },
   "people": {

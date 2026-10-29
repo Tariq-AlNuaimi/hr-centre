@@ -1095,3 +1095,17 @@ SMTP is the deployment's transport and HR-edited wording must be audited here).
 **Novu / Knock preference centres** (rejected — an external record of who was told what).
 Decision: build — generalise the JML log in place, one template table, a registry and a
 preferences table.
+
+### 2026-10-29 — P2 effective-dated reorganisation
+
+Scope: lib/org/changes.ts
+Considered:
+
+- **Org-design tools (ChartHop, Workday effective-dated supervisory orgs, HiBob org planning).**
+  Rejected: HR Centre is the system of record for the org structure; scheduling a rename or move
+  is one table and the existing org services applied on a date.
+- **An org-chart library (react-organizational-chart, d3-org-chart).** Rejected: the card view is
+  a grid of units and a three-tier person view on the existing primitives; a tree-drawing
+  dependency is not justified at this size.
+
+Decision: build.

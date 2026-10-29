@@ -615,6 +615,58 @@ model Directorate {
 /// an optional refinement of `Employee.departmentId`; the composite FK
 /// `employees_team_department_agree_fkey` makes a team from another department
 /// unrepresentable.
+/// P2 (UX R19) — an effective-dated reorganisation step: rename an org unit
+/// and/or move it under a new parent from a given date ("from 1 January").
+/// The JML hourly sweep applies due rows through the same org services the
+/// setup screen uses (so every placement rule still holds), and records what
+/// it changed. Rows are never deleted: the table IS the reorganisation history.
+enum OrgUnitKind {
+  DIRECTORATE
+  DEPARTMENT
+  TEAM
+}
+
+enum OrgChangeStatus {
+  SCHEDULED
+  APPLIED
+  FAILED
+  CANCELLED
+}
+
+model OrgUnitChange {
+  id       String      @id @default(cuid())
+  unitKind OrgUnitKind @map("unit_kind")
+  unitId   String      @map("unit_id")
+
+  /// The calendar date (organisation zone) the change takes effect.
+  effectiveDate DateTime @map("effective_date") @db.Date
+
+  /// New name, or null to keep it.
+  newName     String? @map("new_name")
+  /// Whether the parent changes, and to what: a directorate for a department
+  /// (null = no directorate), a department for a team. Directorates have none.
+  moveParent  Boolean @default(false) @map("move_parent")
+  newParentId String? @map("new_parent_id")
+
+  note String?
+
+  status         OrgChangeStatus @default(SCHEDULED)
+  /// What the unit was called and sat under when the change applied.
+  beforeName     String?         @map("before_name")
+  beforeParentId String?         @map("before_parent_id")
+  appliedAt      DateTime?       @map("applied_at")
+  failureReason  String?         @map("failure_reason")
+
+  /// The user who scheduled it (a plain id: no relation added to the core User model).
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([status, effectiveDate])
+  @@index([unitKind, unitId])
+  @@map("org_unit_changes")
+}
+
 model Team {
   id           String     @id @default(cuid())
   name         String
