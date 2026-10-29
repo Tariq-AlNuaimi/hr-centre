@@ -43,6 +43,14 @@ export const EMPLOYEE_PATHS = ["/reply"] as const;
  */
 export const CANDIDATE_PATHS = ["/careers", "/agency"] as const;
 
+/**
+ * JML preboarding (P2-4, ADR-093, operator-approved): the page a JOINER opens
+ * before day one, without an account — `/preboarding/<token>`. The page
+ * resolves the token server-side (one open joiner case, ADR-090 magic link) and
+ * shows the same "not valid" for every failure. Not bounced when signed in.
+ */
+export const JOINER_PATHS = ["/preboarding"] as const;
+
 function matchesPrefix(stripped: string, prefixes: readonly string[]): boolean {
   return prefixes.some((p) => stripped === p || stripped.startsWith(p + "/"));
 }
@@ -62,7 +70,8 @@ export function isPublicPath(pathname: string): boolean {
   return (
     matchesPrefix(stripped, PUBLIC_PATHS) ||
     matchesPrefix(stripped, EMPLOYEE_PATHS) ||
-    matchesPrefix(stripped, CANDIDATE_PATHS)
+    matchesPrefix(stripped, CANDIDATE_PATHS) ||
+    matchesPrefix(stripped, JOINER_PATHS)
   );
 }
 
@@ -90,6 +99,9 @@ export const PUBLIC_API_PATTERNS: readonly RegExp[] = [
   /^\/api\/hive\/reply\/[^/]+$/,
   // Hiring: an agency's invite submission. The token in the path is the authorisation.
   /^\/api\/agency\/[^/]+\/submit$/,
+  // JML preboarding (P2-4, ADR-093): the joiner's form and picture. Token-authorised.
+  /^\/api\/preboarding\/[^/]+$/,
+  /^\/api\/preboarding\/[^/]+\/photo$/,
 ];
 
 /** Is this an API route that authorises its own caller (no session needed)? */

@@ -3782,6 +3782,7 @@ model JmlCase {
   emailLogs      JmlEmailLog[]
   /// JML S3 — the joiner details of a JOIN case.
   joinDetail     JmlJoinDetail?
+  preboarding    JmlPreboarding?
   /// JML S4 — the change of a MOVE case.
   moveDetail     JmlMoveDetail?
   /// JML S5 — the leaver side.
@@ -4113,6 +4114,46 @@ model JmlJoinDetail {
 /// The new details are APPLIED to the employee when the case completes (D9),
 /// not when it opens — so cancelling needs no revert. Salary is never part of a
 /// change (R10).
+/// P2-4 — a joiner's preboarding form, reached through a magic link (purpose
+/// "jml-preboarding", subject = case id; `core_magic_links`, ADR-090). One row
+/// per JOIN case. The introduction and hobbies the joiner writes land on
+/// `JmlJoinDetail` (the fields HR used to type in); this row holds the rest.
+///
+/// ADR-078 data minimisation holds: no ID numbers and no ID document files —
+/// the documents checklist records only what the joiner SAYS about each item
+/// (sent to HR / bringing on day one / does not apply). HR still marks the
+/// "Receive …" tasks when the document actually arrives.
+model JmlPreboarding {
+  caseId String  @id @map("case_id")
+  case   JmlCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  /// When the latest link was issued and when it stops working (the token
+  /// itself lives only in the link; its digest is in core_magic_links).
+  linkIssuedAt  DateTime? @map("link_issued_at")
+  linkExpiresAt DateTime? @map("link_expires_at")
+
+  submittedAt DateTime? @map("submitted_at")
+
+  /// The passport-size picture (T08), in private Blob storage. Null when not
+  /// uploaded or when storage is not configured.
+  photoPathname    String?   @map("photo_pathname")
+  photoContentType String?   @map("photo_content_type")
+  photoUploadedAt  DateTime? @map("photo_uploaded_at")
+
+  /// { CIVIL_ID | PASSPORT | QUALIFICATION | ROP_CLEARANCE: SENT | WILL_BRING | NOT_APPLICABLE }
+  documents Json @default("{}")
+
+  /// Reminder cadence (10 / 5 / 2 working days before the planned start).
+  lastReminderAt DateTime? @map("last_reminder_at")
+  remindersSent  Int       @default(0) @map("reminders_sent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([submittedAt, linkExpiresAt])
+  @@map("jml_preboarding")
+}
+
 model JmlMoveDetail {
   caseId String  @id @map("case_id")
   case   JmlCase @relation(fields: [caseId], references: [id], onDelete: Cascade)

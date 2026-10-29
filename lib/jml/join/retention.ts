@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { placeholderEmail } from "@/lib/people/provisional-id";
 import { retentionConfig } from "./retention-config";
+import { erasePreboardingPhoto } from "../preboarding/reminders";
 
 /**
  * Joiner retention — HR Onboarding `retention.ts` + `anonymise.ts` (§17.3,
@@ -169,7 +170,15 @@ async function anonymiseJoinCase(caseId: string, now = new Date()) {
     select: { employeeId: true, employee: { select: { status: true } } },
   });
   if (!kase) return;
+  // P2-4 — the preboarding row (answers and the picture's path) goes with the case.
+  const preboarding = await prisma.jmlPreboarding.findUnique({
+    where: { caseId },
+    select: { photoPathname: true },
+  });
   await auditedTransaction(async (tx) => {
+    if (preboarding) {
+      await tx.jmlPreboarding.delete({ where: { caseId }, select: { caseId: true } });
+    }
     await eraseCaseText(tx, caseId);
     await tx.jmlJoinDetail.update({
       where: { caseId },
@@ -196,6 +205,7 @@ async function anonymiseJoinCase(caseId: string, now = new Date()) {
     await redactAudit(tx, "JmlJoinDetail", [caseId]);
     if (kase.employee.status === "PRE_JOINER") await eraseNeverJoined(tx, kase.employeeId);
   });
+  await erasePreboardingPhoto(preboarding?.photoPathname ?? null);
 }
 
 /**

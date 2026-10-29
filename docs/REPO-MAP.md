@@ -140,6 +140,7 @@
 - app/[locale]/(dashboard)/year-end/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/year-end/page.tsx
 - app/[locale]/(hive)/reply/[token]/page.tsx
+- app/[locale]/(joiner)/preboarding/[token]/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
 - app/api/agency/[token]/submit/route.ts  [POST]
@@ -292,6 +293,8 @@
 - app/api/jml/cases/[id]/legal-hold/route.ts  [POST]
 - app/api/jml/cases/[id]/odoo-id/route.ts  [POST]
 - app/api/jml/cases/[id]/owner/route.ts  [PUT]
+- app/api/jml/cases/[id]/preboarding/photo/route.ts  [GET]
+- app/api/jml/cases/[id]/preboarding/route.ts  [GET,POST,DELETE]
 - app/api/jml/cases/[id]/route.ts  [GET]
 - app/api/jml/cases/[id]/start-date/route.ts  [POST]
 - app/api/jml/cases/[id]/tasks/route.ts  [GET,POST]
@@ -395,6 +398,8 @@
 - app/api/org/teams/route.ts  [GET,POST]
 - app/api/pms/me/route.ts  [GET]
 - app/api/pms/my-year/route.ts  [GET]
+- app/api/preboarding/[token]/photo/route.ts  [POST]
+- app/api/preboarding/[token]/route.ts  [POST]
 - app/api/projects/route.ts  [GET,POST]
 - app/api/publish/route.ts  [GET,POST]
 - app/api/rbac/assignments/[id]/route.ts  [DELETE]
@@ -534,7 +539,7 @@
 - HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
 - HiringDepartmentNeed: id, roundId, round, departmentId, ownerId, status, rolesRequested, agreedRoles, askedAt, chasedAt, submittedAt, discussedAt, notes, requisitions, createdAt, updatedAt
 - HiringNeedNote: id, needId, need, authorId, authorName, authorRole, body, createdAt
-- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, leaveDetail, interview, documents, settlement, approvals, assetsIssued, assetsReturned, accessItems, gateRecords, incidents, deletedAt, deletedBy, createdAt, updatedAt
+- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, preboarding, moveDetail, leaveDetail, interview, documents, settlement, approvals, assetsIssued, assetsReturned, accessItems, gateRecords, incidents, deletedAt, deletedBy, createdAt, updatedAt
 - JmlTaskTemplate: id, name, version, active, caseType, changeType, criteria
 - JmlTemplateTask: id, templateId, template, code, name, stage, sortOrder, dateBasis, offsetDays, offsetUnit, mandatory, blocking, confirmationRequired, defaultConfirmingParty, reversalFlag, dependsOnCodes, statutory, complianceCategory
 - JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, assigneeRole, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
@@ -546,6 +551,7 @@
 - JmlEmailLog: id, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
 - JmlEmailTemplateOverride: id, type, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - JmlJoinDetail: caseId, case, contractTypeId, contractType, plannedStartDate, actualStartDate, contractStartDate, contractEndDate, probationMonths, payrollApplicable, clientAssignedRole, introSentence, hobbies, msAccountRequired, laptopRequired, accessCardRequired, itReadinessConfirmed, itReadinessAt, itReadinessById, itReadinessBy, itIntakeSubmittedAt, itIntakeReference, itIntakeError, sourceRef, createdAt, updatedAt
+- JmlPreboarding: caseId, case, linkIssuedAt, linkExpiresAt, submittedAt, photoPathname, photoContentType, photoUploadedAt
 - JmlMoveDetail: caseId, case, changeType, effectiveDate
 - LeaveCaseDetail: caseId, case, exitType, exitSubtype, employmentTypeAtExit, nationality, noticeStartDate, noticePeriodDays, noticePeriodOverrideReason, lastPhysicalWorkingDay, lastDayOfService, departureDate, earlyReleaseApproved, settlementApplicable, visaSupportApplicable, docRefPerformanceHistory, docRefWrittenGrounds, docRefLegalReview, backfillDecision, backfillApprovalRef, rehireEligible, migrated, manuallyCreated, employeeNameAtExit, jobTitleAtExit, gradeAtExit, positionClassificationName, entityIdAtExit, directorateIdAtExit, departmentIdAtExit, teamIdAtExit, lineManagerEmployeeId, lineManager, rekeyedAt, rekeyReason, loginRevokedAt, departureAppliedAt, departureNote, createdAt, updatedAt
 - JmlApproval: id, caseId, case, approvalType, holderRoleKey, status, requestedAt, decisionDate, reference, comments, holderEmployeeId, holderEmployee, decidedById, decidedBy, delegateUsed, secondLevelUsed, createdAt, updatedAt
@@ -791,6 +797,12 @@
 - lib/jml/move/create.ts: createMove
 - lib/jml/move/profile.ts: MoveEmployee, detailsOf, loadMoveEmployee, Snapshot, snapshots, moveProfile
 - lib/jml/move/rules.ts: CHANGE_FIELDS, ChangeField, EmployeeDetails, ChangeDetailsInput, overlayDetails, changeRefusal, applyChangeRules, changedFields
+- lib/jml/preboarding/hr.ts: preboardingStatus, issuePreboardingLink, revokePreboardingLinks, preboardingPhotoUrl
+- lib/jml/preboarding/http.ts: withPrivateHeaders, tokenScopedRequest
+- lib/jml/preboarding/joiner.ts: resolvePreboarding, preboardingView, submitPreboarding, uploadPreboardingPhoto
+- lib/jml/preboarding/reminders.ts: preboardingReminders, erasePreboardingPhoto
+- lib/jml/preboarding/rules.ts: PREBOARDING_PURPOSE, PREBOARDING_DOCUMENTS, PreboardingDocument, DOCUMENT_ANSWERS, DocumentAnswer, DOCUMENT_TASK_CODE, PHOTO_TASK_CODE, INTRO_TASK_CODE, MAX_PHOTO_BYTES, PHOTO_TYPES, linkExpiry, preboardingBlockedReason, reminderDue, readDocuments, photoPathname
+- lib/jml/preboarding/store.ts: Tx, savePreboarding, sendPreboardingEmail
 - lib/jml/register/access-items.ts: listAccessItems, addAccessItem, confirmAccessItem
 - lib/jml/register/assets.ts: activeAssetTypes, listCaseAssets, addAsset, recordAssetReturn, writeOffAsset
 - lib/jml/register/rules.ts: unsettledAssets, AccessConfirmation, accessConfirmationProblem, rotationFor
@@ -945,6 +957,7 @@
 - lib/validations/jml/joiner.ts: draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, startJoinerFromEmployeeSchema, OpenJoinCaseInput
 - lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
+- lib/validations/jml/preboarding.ts: preboardingTokenSchema, preboardingSubmitSchema, PreboardingSubmit
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
 - lib/validations/jml/routing.ts: deskSettingsSchema, DeskSettingsInput
 - lib/validations/jml/task.ts: updateTaskSchema, manualTaskSchema, commentSchema
@@ -1113,6 +1126,7 @@
 - components/jml/case/ChecklistTab.tsx
 - components/jml/case/EmailsTab.tsx
 - components/jml/case/OverviewTab.tsx
+- components/jml/case/PreboardingCard.tsx
 - components/jml/case/RegisterTab.tsx
 - components/jml/case/RoutingWarnings.tsx
 - components/jml/case/TaskActions.tsx
@@ -1146,6 +1160,8 @@
 - components/jml/movers/MoverForm.tsx
 - components/jml/movers/MoverList.tsx
 - components/jml/movers/MoverStart.tsx
+- components/jml/preboarding/PreboardingForm.tsx
+- components/jml/preboarding/PreboardingInvalid.tsx
 - components/jml/reports/LeaveReportScreen.tsx
 - components/jml/reports/OverridesScreen.tsx
 - components/jml/reports/ReportScreen.tsx

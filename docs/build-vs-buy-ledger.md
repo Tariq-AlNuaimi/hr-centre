@@ -1053,3 +1053,15 @@ Config)** (rejected — these are HR business settings with an audit requirement
 flags; an external store would split the audit trail). **`@vercel/edge-config`**
 (rejected — writes go through the Vercel API, not the audited Prisma client).
 Decision: build — one audited key/value table, consolidating three in-house stores.
+
+### 2026-10-29 — P2 joiner preboarding (token link, form, reminders)
+
+Scope: lib/jml/preboarding/**, lib/validations/jml/preboarding.ts
+Considered:
+
+- **BambooHR / HiBob preboarding portals.** Rejected: JML is the system of record for joiners;
+  the form has to complete JML's own tasks, and a second HRIS for one page is out of proportion.
+- **Microsoft Forms / Typeform** with a link per joiner. Rejected: answers would still be copied
+  in by hand and personal data would leave the system.
+
+Decision: build — on the core magic-link service (ADR-090) and the JML task engine (ADR-093).
