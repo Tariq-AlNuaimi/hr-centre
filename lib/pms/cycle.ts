@@ -97,6 +97,11 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
+/** The employee row vanished between the snapshot and the create (QA2 N-18). */
+function isMissingEmployee(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2003";
+}
+
 export async function enrolParticipants(
   cycleId: string,
   options?: { limit?: number },
@@ -137,7 +142,10 @@ export async function enrolParticipants(
       // the second write — which is the right outcome, and not an error. The
       // person is enrolled; that is all anyone asked for. Only a unique
       // violation is swallowed, so a real failure still surfaces.
-      if (!isUniqueViolation(error)) throw error;
+      // QA2 N-18 — likewise an employee deleted after the snapshot was read: the
+      // FK refuses the row, and there is nobody left to enrol. Skipping them
+      // keeps one deletion from aborting everyone else's enrolment.
+      if (!isUniqueViolation(error) && !isMissingEmployee(error)) throw error;
     }
   }
   return { added, remaining: missing.length - batch.length };
