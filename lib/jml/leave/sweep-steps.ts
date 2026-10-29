@@ -222,7 +222,7 @@ async function approvalReminders(
  * and C7 (visa cancellation after the departure date). Resolution never deletes.
  */
 async function incidentScan(now: Date) {
-  const rows = await prisma.leaveCaseDetail.findMany({
+  const rows = await prisma.jmlExitDetail.findMany({
     where: {
       migrated: false,
       case: { status: { notIn: ["DRAFT", "ARCHIVED"] } },
@@ -280,13 +280,13 @@ async function incidentScan(now: Date) {
 }
 
 async function logIncident(caseId: string, i: DetectedIncident, now: Date): Promise<number> {
-  const existing = await prisma.leaveComplianceIncident.findUnique({
+  const existing = await prisma.jmlExitComplianceIncident.findUnique({
     where: { caseId_kind_deadlineAt: { caseId, kind: i.kind, deadlineAt: i.deadlineAt } },
     select: { id: true, daysLate: true },
   });
   if (existing) {
     if (existing.daysLate !== i.daysLate) {
-      await prisma.leaveComplianceIncident.update({
+      await prisma.jmlExitComplianceIncident.update({
         where: { id: existing.id },
         data: { daysLate: i.daysLate },
         select: { id: true },
@@ -294,7 +294,7 @@ async function logIncident(caseId: string, i: DetectedIncident, now: Date): Prom
     }
     return 0;
   }
-  await prisma.leaveComplianceIncident.create({
+  await prisma.jmlExitComplianceIncident.create({
     data: {
       caseId,
       kind: i.kind,

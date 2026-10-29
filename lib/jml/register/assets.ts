@@ -97,7 +97,7 @@ export async function addAsset(
   if (!type?.active) throw new JmlError("Choose an active asset type.", 422);
   let returnDueDate = input.returnDueDate;
   if (kase.caseType === "LEAVE" && !returnDueDate) {
-    const d = await prisma.leaveCaseDetail.findUnique({
+    const d = await prisma.jmlExitDetail.findUnique({
       where: { caseId },
       select: { lastPhysicalWorkingDay: true, exitType: true, noticeStartDate: true },
     });

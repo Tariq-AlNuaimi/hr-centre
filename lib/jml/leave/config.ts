@@ -74,7 +74,7 @@ export async function saveAccessChecklistItem(input: {
 
 /** The exit-reason taxonomy (F9: the rows ARE the truth the interview validates against). */
 export function listReasonCodes() {
-  return prisma.leaveReasonCategory.findMany({
+  return prisma.jmlExitReasonCategory.findMany({
     orderBy: { sortOrder: "asc" },
     select: {
       id: true,
@@ -99,13 +99,13 @@ export async function saveReasonCode(input: {
   active: boolean;
   sortOrder: number;
 }) {
-  const category = await prisma.leaveReasonCategory.findUnique({
+  const category = await prisma.jmlExitReasonCategory.findUnique({
     where: { level1: input.level1 as never },
     select: { id: true },
   });
   if (!category) throw new JmlError("Unknown reason category.", 422);
   if (input.id) {
-    const existing = await prisma.leaveReasonCode.findUnique({
+    const existing = await prisma.jmlExitReasonCode.findUnique({
       where: { id: input.id },
       select: { code: true, categoryId: true },
     });
@@ -117,20 +117,20 @@ export async function saveReasonCode(input: {
       );
     }
     return auditedTransaction((tx) =>
-      tx.leaveReasonCode.update({
+      tx.jmlExitReasonCode.update({
         where: { id: input.id },
         data: { label: input.label, active: input.active, sortOrder: input.sortOrder },
         select: { id: true },
       }),
     );
   }
-  const clash = await prisma.leaveReasonCode.findUnique({
+  const clash = await prisma.jmlExitReasonCode.findUnique({
     where: { code: input.code },
     select: { id: true },
   });
   if (clash) throw new JmlError(`${input.code} already exists.`, 409);
   return auditedTransaction((tx) =>
-    tx.leaveReasonCode.create({
+    tx.jmlExitReasonCode.create({
       data: {
         categoryId: category.id,
         code: input.code,

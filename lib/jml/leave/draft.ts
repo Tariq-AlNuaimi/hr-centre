@@ -94,7 +94,7 @@ export async function createExitDraft(actor: JmlActor, input: CreateExitInput) {
         },
         select: { id: true, caseRef: true },
       });
-      await tx.leaveCaseDetail.create({
+      await tx.jmlExitDetail.create({
         data: {
           caseId: kase.id,
           exitType: input.exitType,
@@ -131,7 +131,7 @@ export async function refreshSnapshots(
     where: { id: employeeId },
     select: EMPLOYEE_SELECT,
   });
-  await tx.leaveCaseDetail.update({
+  await tx.jmlExitDetail.update({
     where: { caseId },
     data: snapshotOf(e),
     select: { caseId: true },
@@ -148,7 +148,7 @@ export async function updateExit(actor: JmlActor, caseId: string, input: UpdateE
     throw new JmlError("Someone else changed this case. Reload and try again.", 409);
   }
   const { expectedVersion: _v, positionClassificationId, ...fields } = input;
-  const data: Prisma.LeaveCaseDetailUpdateInput = { ...fields };
+  const data: Prisma.JmlExitDetailUpdateInput = { ...fields };
   if (positionClassificationId !== undefined) {
     const pc = positionClassificationId
       ? await prisma.positionClassification.findUnique({
@@ -161,7 +161,7 @@ export async function updateExit(actor: JmlActor, caseId: string, input: UpdateE
     data.positionClassificationName = pc?.label ?? null;
   }
   await auditedTransaction(async (tx) => {
-    await tx.leaveCaseDetail.update({ where: { caseId }, data, select: { caseId: true } });
+    await tx.jmlExitDetail.update({ where: { caseId }, data, select: { caseId: true } });
     await tx.jmlCase.update({
       where: { id: caseId, version: kase.version },
       data: { version: { increment: 1 }, lastUpdatedById: actor.userId },

@@ -1,4 +1,4 @@
-import type { JmlNationalityScope, LeaveExitType } from "@/generated/prisma/client";
+import type { JmlNationalityScope, JmlExitType } from "@/generated/prisma/client";
 
 /**
  * LEAVE task applicability — HR Offboarding `task-generation.ts`
@@ -7,13 +7,13 @@ import type { JmlNationalityScope, LeaveExitType } from "@/generated/prisma/clie
  */
 
 export type LeaveApplicability = {
-  appliesToExitTypes: readonly LeaveExitType[];
+  appliesToExitTypes: readonly JmlExitType[];
   appliesToNationality: JmlNationalityScope;
   appliesToSettlement: boolean | null;
 };
 
 export type LeaveProfile = {
-  exitType: LeaveExitType;
+  exitType: JmlExitType;
   nationality: "OMANI" | "EXPATRIATE";
   settlementApplicable: boolean;
 };

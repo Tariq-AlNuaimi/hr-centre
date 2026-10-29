@@ -145,7 +145,7 @@ async function createOne({ row, employeeId }: Planned) {
       },
       select: { id: true },
     });
-    await tx.leaveCaseDetail.create({
+    await tx.jmlExitDetail.create({
       data: {
         caseId: kase.id,
         exitType: row.exitType as never,
@@ -170,7 +170,7 @@ async function createOne({ row, employeeId }: Planned) {
       select: { caseId: true },
     });
     if (row.primaryL1 && row.primaryL2Code) {
-      await tx.leaveExitInterview.create({
+      await tx.jmlExitInterview.create({
         data: {
           caseId: kase.id,
           conducted: "IMPORTED",

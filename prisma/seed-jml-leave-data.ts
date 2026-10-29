@@ -3,7 +3,7 @@ import type {
   JmlDateBasis,
   JmlNationalityScope,
   JmlStage,
-  LeaveExitType,
+  JmlExitType,
 } from "../generated/prisma/client";
 
 /**
@@ -27,7 +27,7 @@ export type LeaveSeedTask = {
   defaultConfirmingParty?: string;
   reversalFlag?: boolean;
   dependsOnCodes?: string[];
-  appliesToExitTypes?: LeaveExitType[];
+  appliesToExitTypes?: JmlExitType[];
   appliesToNationality?: JmlNationalityScope;
   appliesToSettlement?: boolean;
   fullOnly?: boolean;

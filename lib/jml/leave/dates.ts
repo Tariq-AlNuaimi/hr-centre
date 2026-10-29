@@ -68,7 +68,7 @@ export async function changeExitDates(actor: JmlActor, caseId: string, input: Ex
   const newRevoke = revocationAnchor({ ...input });
   const revokeMoved = live && newRevoke && !same(oldRevoke, newRevoke);
   await auditedTransaction(async (tx) => {
-    await tx.leaveCaseDetail.update({
+    await tx.jmlExitDetail.update({
       where: { caseId },
       data: {
         exitType: input.exitType,

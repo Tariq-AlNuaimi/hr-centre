@@ -129,7 +129,7 @@ export async function generateDocument(
   const kase = await loadCaseFor(actor, caseId, "jml.manageLeavers", "LEAVE");
   if (kase.status === "DRAFT")
     throw new JmlError("Documents are generated once the exit is active.", 409);
-  const detail = await prisma.leaveCaseDetail.findUniqueOrThrow({
+  const detail = await prisma.jmlExitDetail.findUniqueOrThrow({
     where: { caseId },
     select: { exitType: true },
   });

@@ -115,7 +115,7 @@ export async function applyRekey(
           select: { id: true },
         });
       }
-      await tx.leaveCaseDetail.update({
+      await tx.jmlExitDetail.update({
         where: { caseId },
         data: { rekeyedAt: row.leaveDetail.rekeyedAt ?? now, rekeyReason: input.reason },
         select: { caseId: true },

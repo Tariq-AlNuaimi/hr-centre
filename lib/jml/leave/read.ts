@@ -8,7 +8,7 @@ const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
 export async function getExit(actor: JmlActor, caseId: string) {
   const kase = await loadCaseFor(actor, caseId, "jml.view", "LEAVE");
-  const d = await prisma.leaveCaseDetail.findUniqueOrThrow({
+  const d = await prisma.jmlExitDetail.findUniqueOrThrow({
     where: { caseId },
     include: { lineManager: { select: { id: true, name: true } } },
   });

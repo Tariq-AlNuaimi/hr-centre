@@ -52,25 +52,25 @@ async function seedStatutoryParameters(prisma: PrismaClient): Promise<void> {
 
 async function seedReasonTaxonomy(prisma: PrismaClient): Promise<void> {
   for (const [i, level1] of EXIT_REASON_LEVEL_1.entries()) {
-    const found = await prisma.leaveReasonCategory.findUnique({
+    const found = await prisma.jmlExitReasonCategory.findUnique({
       where: { level1 },
       select: { id: true },
     });
     const categoryId =
       found?.id ??
       (
-        await prisma.leaveReasonCategory.create({
+        await prisma.jmlExitReasonCategory.create({
           data: { level1, label: LEVEL_1_LABELS[level1], sortOrder: (i + 1) * 10 },
           select: { id: true },
         })
       ).id;
     for (const [j, code] of EXIT_REASON_TAXONOMY[level1].entries()) {
-      const exists = await prisma.leaveReasonCode.findUnique({
+      const exists = await prisma.jmlExitReasonCode.findUnique({
         where: { code: code.code },
         select: { id: true },
       });
       if (exists) continue;
-      await prisma.leaveReasonCode.create({
+      await prisma.jmlExitReasonCode.create({
         data: { categoryId, code: code.code, label: code.label, sortOrder: (j + 1) * 10 },
         select: { id: true },
       });

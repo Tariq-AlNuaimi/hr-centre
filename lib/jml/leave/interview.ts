@@ -18,7 +18,7 @@ import {
  */
 
 export async function activeTaxonomy(): Promise<TaxonomyCode[]> {
-  const rows = await prisma.leaveReasonCode.findMany({
+  const rows = await prisma.jmlExitReasonCode.findMany({
     select: {
       code: true,
       label: true,
@@ -54,11 +54,11 @@ const SELECT = {
   assessedAt: true,
   interviewer: { select: { name: true } },
   assessor: { select: { name: true } },
-} as const satisfies Prisma.LeaveExitInterviewSelect;
+} as const satisfies Prisma.JmlExitInterviewSelect;
 
 export async function getInterview(actor: JmlActor, caseId: string) {
   const kase = await loadCaseFor(actor, caseId, "jml.view", "LEAVE");
-  const row = await prisma.leaveExitInterview.findUnique({ where: { caseId }, select: SELECT });
+  const row = await prisma.jmlExitInterview.findUnique({ where: { caseId }, select: SELECT });
   const { narrativeEnc, ...rest } = row ?? { narrativeEnc: null };
   return {
     interview: row
@@ -92,7 +92,7 @@ export async function saveInterview(actor: JmlActor, caseId: string, input: Inte
     throw new JmlError("Activate the exit before recording the interview.", 409);
   if (["CANCELLED", "ARCHIVED"].includes(kase.status))
     throw new JmlError("This exit case is closed.", 409);
-  const detail = await prisma.leaveCaseDetail.findUniqueOrThrow({
+  const detail = await prisma.jmlExitDetail.findUniqueOrThrow({
     where: { caseId },
     select: { exitType: true },
   });
@@ -101,7 +101,7 @@ export async function saveInterview(actor: JmlActor, caseId: string, input: Inte
     taxonomy: await activeTaxonomy(),
   });
   if (problems.length) throw new JmlError(problems.map((p) => p.message).join(" "), 422);
-  const existing = await prisma.leaveExitInterview.findUnique({
+  const existing = await prisma.jmlExitInterview.findUnique({
     where: { caseId },
     select: { primaryL1: true, primaryL2Code: true, secondaryL2Code: true, assessedAt: true },
   });
@@ -130,8 +130,8 @@ export async function saveInterview(actor: JmlActor, caseId: string, input: Inte
   };
   await auditedTransaction((tx) =>
     existing
-      ? tx.leaveExitInterview.update({ where: { caseId }, data, select: { caseId: true } })
-      : tx.leaveExitInterview.create({
+      ? tx.jmlExitInterview.update({ where: { caseId }, data, select: { caseId: true } })
+      : tx.jmlExitInterview.create({
           data: { caseId, interviewerId: actor.userId, ...data },
           select: { caseId: true },
         }),
@@ -149,7 +149,7 @@ export async function assessInterview(
   },
 ) {
   await loadCaseFor(actor, caseId, "jml.assessExits", "LEAVE");
-  const existing = await prisma.leaveExitInterview.findUnique({
+  const existing = await prisma.jmlExitInterview.findUnique({
     where: { caseId },
     select: { caseId: true },
   });
@@ -157,7 +157,7 @@ export async function assessInterview(
   const problems = checkAssessment(input);
   if (problems.length) throw new JmlError(problems.map((p) => p.message).join(" "), 422);
   await auditedTransaction((tx) =>
-    tx.leaveExitInterview.update({
+    tx.jmlExitInterview.update({
       where: { caseId },
       data: {
         regrettable: input.regrettable as never,

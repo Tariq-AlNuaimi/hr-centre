@@ -11,7 +11,7 @@ const tally = (keys: readonly (string | null | undefined)[]) => {
 };
 
 async function codeLabels() {
-  const rows = await prisma.leaveReasonCode.findMany({
+  const rows = await prisma.jmlExitReasonCode.findMany({
     select: { code: true, label: true },
     take: 300,
   });

@@ -74,7 +74,7 @@ export async function addAccessItem(
   const leave = kase.caseType === "LEAVE";
   let due = input.dueDate;
   if (!due && leave) {
-    const d = await prisma.leaveCaseDetail.findUnique({
+    const d = await prisma.jmlExitDetail.findUnique({
       where: { caseId },
       select: { lastPhysicalWorkingDay: true, exitType: true, noticeStartDate: true },
     });
@@ -139,7 +139,7 @@ export async function confirmAccessItem(
 }
 
 async function cutoffFor(caseId: string, timeZone: string) {
-  const d = await prisma.leaveCaseDetail.findUnique({
+  const d = await prisma.jmlExitDetail.findUnique({
     where: { caseId },
     select: { accessCutoffAt: true, lastPhysicalWorkingDay: true, loginRevokedAt: true },
   });
@@ -162,7 +162,7 @@ export async function setAccessCutoff(actor: JmlActor, caseId: string, at: strin
   if (["CLOSED", "CANCELLED", "ARCHIVED"].includes(kase.status)) {
     throw new JmlError("The access cut-off is set on an open exit.", 409);
   }
-  const d = await prisma.leaveCaseDetail.findUnique({
+  const d = await prisma.jmlExitDetail.findUnique({
     where: { caseId },
     select: { loginRevokedAt: true },
   });
@@ -171,7 +171,7 @@ export async function setAccessCutoff(actor: JmlActor, caseId: string, at: strin
   const { timeZone } = await loadSchedule();
   const instant = at === null ? null : localInputToInstant(at, timeZone);
   if (at !== null && !instant) throw new JmlError("at: use a date and time.", 422);
-  await prisma.leaveCaseDetail.update({
+  await prisma.jmlExitDetail.update({
     where: { caseId },
     data: { accessCutoffAt: instant },
     select: { caseId: true },

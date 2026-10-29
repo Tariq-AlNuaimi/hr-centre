@@ -164,7 +164,7 @@ export async function decideApproval(
         select: { approvalType: true, holderRoleKey: true, status: true },
       });
       if (checkHolders("EARLY_RELEASE_VIA_LEAVE", all).granted) {
-        await tx.leaveCaseDetail.update({
+        await tx.jmlExitDetail.update({
           where: { caseId },
           data: { earlyReleaseApproved: true },
           select: { caseId: true },
