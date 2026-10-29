@@ -1,6 +1,6 @@
 # Blueprint — Sign-in limits, access-filtered notices, real HTTP status codes
 
-Scope: lib/core/notify/audience.ts, lib/core/notify/store.ts, lib/hive/services/ticket-notify.ts, lib/hive/services/permissions.ts, lib/jml/access.ts, lib/hiring/work-items.ts, lib/jml/work-items.ts, tests/contracts/notice-access.test.ts, tests/integration/notice-access.test.ts, lib/rate-limit.ts, app/api/auth/**, app/api/logins/change-password/route.ts, app/api/users/[id]/password/route.ts, tests/contracts/auth-rate-limits.test.ts, docs/decisions/ADR-100-sign-in-and-password-rate-limits.md, SECURITY.md
+Scope: lib/nav/page-gate.ts, lib/nav/record-gate.ts, lib/nav/server-context.ts, lib/jml/reports/registry.ts, lib/jml/reports/leave/registry.ts, app/[locale]/(dashboard)/**, tests/contracts/page-status.test.ts, lib/core/notify/audience.ts, lib/core/notify/store.ts, lib/hive/services/ticket-notify.ts, lib/hive/services/permissions.ts, lib/jml/access.ts, lib/hiring/work-items.ts, lib/jml/work-items.ts, tests/contracts/notice-access.test.ts, tests/integration/notice-access.test.ts, lib/rate-limit.ts, app/api/auth/**, app/api/logins/change-password/route.ts, app/api/users/[id]/password/route.ts, tests/contracts/auth-rate-limits.test.ts, docs/decisions/ADR-100-sign-in-and-password-rate-limits.md, SECURITY.md
 
 Operator-approved hardening batch (2026-10-29). Three slices, each its own PR.
 
@@ -63,3 +63,40 @@ scorecards, JML approvals to record).
 **Worst paths.** Access check throws → that link's recipients are refused (fail closed), warned
 without detail; the business action has already committed. Recipient logins unreadable → gated
 notices held back (the sweep retries); preferences unreadable → fail open (unchanged).
+
+## Slice 3 — Real HTTP status codes (ADR-101)
+
+**Story.** As anyone (a person, a crawler, an uptime monitor), when I open a screen I may not
+use or a record that does not exist for me, the response is a real 404, not a 200 that draws
+"You do not have access" or "Not found".
+
+**Inventory (found by the sweep, `tests/contracts/page-status.test.ts`).**
+
+- Client refusals, section-gated on the server (`SECTION_GATES`):
+  - admin: access, cycles, edge cases, import, imports, org setup, strategy scores, AI settings;
+  - audit log, recycling bin, calibration, executive, reports, the 360 console, goal setting;
+  - hiring: home, insights, library, settings;
+  - every JML screen: home, cases, joiners (+ new / edit), movers (+ new), leavers (+ new /
+    calendar), calendar, statutory, my tasks, reports, settings (hub + 18 screens).
+- Detail screens, record-gated by the module loader:
+  - hiring: requisition (+ 9 sub-screens), candidate (+ preboarding), offer, interview,
+    evaluation, panel (brief / score / compare);
+  - JML: case, joiner, report and leaver report slugs;
+  - ticket, performance cycle, 360 assignment (rater only), access login.
+- Server `notFound()` that sat under a loading boundary, fixed by moving the boundary down:
+  - the admin settings hub and its email-templates and performance pages;
+  - the tickets new-ticket screen and setup hub (the hub's empty "no access" state is now a 404);
+  - the hiring library kind; `team/hiring`; `people/new`;
+  - goal-setting, mid-year and year-end participants;
+  - the legacy `users/*` and `settings` redirects (now real 307s).
+
+**ACs**
+
+- AC-L3.1 Each of the screens above answers 404 to a viewer its own condition refuses, and 200 to
+  one it admits (the gate is the screen's own condition, not a stricter one).
+- AC-L3.2 Detail screens answer 404 for a missing or out-of-scope record.
+- AC-L3.3 The sweep fails on a gate under a loading boundary, an ungated refusal, or an ungated
+  detail page.
+
+**Worst paths.** A gate's loader throws → 404 (fail closed). Permissions change mid-session →
+the next navigation is re-decided on the server.

@@ -1,6 +1,8 @@
 import { ExitCalendarScreen } from "@/components/jml/watch/ExitCalendarScreen";
+import { requireSection } from "@/lib/nav/page-gate";
 
 /** Exit dates by month. */
-export default function Page() {
+export default async function Page() {
+  await requireSection("/jml/leavers/calendar");
   return <ExitCalendarScreen />;
 }

@@ -1,5 +1,5 @@
 import type { Session } from "next-auth";
-import { resolveActor } from "@/lib/core/actor";
+import { resolveActor, type ResolvedActor } from "@/lib/core/actor";
 import { grantsOf } from "@/lib/core/permissions";
 import { has } from "@/lib/rbac/grants";
 import { permissionsFrom } from "@/lib/hive/services/permissions";
@@ -14,6 +14,13 @@ import { personaOf, type NavContext } from "./config";
  * what the sidebar shows this viewer.
  */
 export async function navContextFor(session: Session): Promise<NavContext> {
+  return (await navContextAndActor(session)).ctx;
+}
+
+/** `navContextFor` plus the actor it was built from (page gates need its grants). */
+export async function navContextAndActor(
+  session: Session,
+): Promise<{ ctx: NavContext; actor: ResolvedActor }> {
   const actor = await resolveActor(session);
   const grants = grantsOf(actor);
   const hive = permissionsFrom(grants);
@@ -42,5 +49,5 @@ export async function navContextFor(session: Session): Promise<NavContext> {
     hiring: (p) => has(grants, p),
   };
   // P2 (R22) — the persona flag, derived from the same capabilities.
-  return { ...ctx, persona: personaOf(ctx) };
+  return { ctx: { ...ctx, persona: personaOf(ctx) }, actor };
 }

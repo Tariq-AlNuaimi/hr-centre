@@ -344,7 +344,7 @@ test("the screen refuses exactly what the routes refuse", () => {
 });
 
 test("the window editor is no longer hidden on a live cycle", () => {
-  const page = read("app/[locale]/(dashboard)/three-sixty/page.tsx");
+  const page = read("app/[locale]/(dashboard)/three-sixty/(console)/page.tsx");
   assert.doesNotMatch(
     page,
     /threeSixty\.status === "DRAFT" && cycleId && capabilities\.hr/,

@@ -13,8 +13,10 @@ test("N-17 a plain employee on /admin/roles gets a real 404: no loading boundary
   assert.equal(existsSync("app/[locale]/(dashboard)/admin/roles/loading.tsx"), false);
   const src = readFileSync("app/[locale]/(dashboard)/admin/roles/page.tsx", "utf8");
   assert.match(src, /if \(session\.user\.role !== "ADMIN"\) notFound\(\);/);
-  // The other admin screens keep their skeleton, one level down.
-  assert.equal(existsSync("app/[locale]/(dashboard)/admin/settings/loading.tsx"), true);
+  // The other admin screens keep their skeleton, one level down — except the
+  // settings hub, whose sub-pages answer 404 themselves (ADR-101).
+  assert.equal(existsSync("app/[locale]/(dashboard)/admin/cycles/(list)/loading.tsx"), true);
+  assert.equal(existsSync("app/[locale]/(dashboard)/admin/settings/loading.tsx"), false);
 });
 
 test("N-17 /tickets is gated OUTSIDE its loading boundary", () => {
