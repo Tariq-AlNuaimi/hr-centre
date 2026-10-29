@@ -1,4 +1,5 @@
 import { auditedTransaction, prisma } from "@/lib/prisma";
+import { recordImport } from "@/lib/core/imports/record";
 import { zonedToday } from "@/lib/working-time/calendar";
 import { loadSchedule } from "@/lib/working-time/load";
 import { activeTaxonomy } from "./interview";
@@ -79,7 +80,11 @@ async function plan(text: string) {
   return { fatal: null, planned: out, problems: more.sort((a, b) => a.line - b.line) };
 }
 
-export async function importHistoricalExits(text: string, commit: boolean) {
+export async function importHistoricalExits(
+  text: string,
+  commit: boolean,
+  by: { userId: string; email?: string | null } | null = null,
+) {
   const p = await plan(text);
   const summary = {
     fatal: p.fatal,
@@ -88,9 +93,38 @@ export async function importHistoricalExits(text: string, commit: boolean) {
     problems: p.problems.slice(0, 200),
     committed: false,
   };
-  if (!commit || p.fatal || p.problems.length) return summary;
-  for (const x of p.planned.filter((y) => y.action === "CREATE")) await createOne(x);
-  return { ...summary, committed: true };
+  const applies = commit && !p.fatal && p.problems.length === 0;
+  if (applies) for (const x of p.planned.filter((y) => y.action === "CREATE")) await createOne(x);
+  if (by) await recordRun(summary, applies, p.planned.length + p.problems.length, by);
+  return applies ? { ...summary, committed: true } : summary;
+}
+
+/** Every run (dry run or commit) on the core import record (ADR-096), for Admin › Imports. */
+async function recordRun(
+  summary: { fatal: string | null; toCreate: number; problems: RowProblem[] },
+  applied: boolean,
+  rows: number,
+  by: { userId: string; email?: string | null },
+) {
+  await recordImport({
+    kind: "jml.exits",
+    filename: "historical-exits.csv",
+    status: summary.fatal ? "FAILED" : applied ? "APPLIED" : "PREVIEWED",
+    uploadedById: by.userId,
+    uploadedByEmail: by.email ?? null,
+    rowsTotal: rows,
+    rowsCreated: applied ? summary.toCreate : 0,
+    rowsRejected: summary.problems.length,
+    issues: summary.problems.map((x) => ({
+      rowNumber: x.line,
+      reference: x.caseRef ?? null,
+      rule: "row_invalid",
+      message: x.message,
+    })),
+  }).catch(() => {
+    // The import itself stands; only its listing is missing. Not detailed.
+    console.warn("[imports] a historical exits run could not be recorded");
+  });
 }
 
 async function createOne({ row, employeeId }: Planned) {

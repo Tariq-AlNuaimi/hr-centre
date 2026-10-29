@@ -18,7 +18,7 @@ export const POST = withRateLimit(
       if (!(file instanceof File)) return err("Choose an Excel file to import.");
       const l = await loadRequisition(actor, parsed.data.requisitionId, "hiring.manage");
       if (!l) return notFound("Requisition");
-      return ok(await importCandidates(actor, l, Buffer.from(await file.arrayBuffer())));
+      return ok(await importCandidates(actor, l, Buffer.from(await file.arrayBuffer()), file.name));
     }),
   ),
   { id: "hiring-upload", limit: 20, windowMs: 60_000 },

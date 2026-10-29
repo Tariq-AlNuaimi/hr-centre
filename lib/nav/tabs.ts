@@ -158,10 +158,13 @@ export const SETTING_AREAS: readonly NavLink[] = [
     show: (c) => [c.jml("jml.configure"), c.hive.editContent].some(Boolean),
   },
   {
+    // ADR-096: one Imports hub (people, historical exits, candidates).
     key: "import",
     label: "settingsImports",
-    href: "/admin/import",
-    show: (c) => c.pms.previewImport,
+    href: "/admin/imports",
+    show: (c) =>
+      [c.pms.previewImport, c.jml("jml.configure"), c.hiring("hiring.manage")].some(Boolean),
+    match: ["/admin/import"],
   },
   {
     key: "performance-settings",

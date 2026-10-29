@@ -7364,7 +7364,7 @@
     "areas": {
       "org-setup": "Companies, directorates, departments and teams.",
       "email-templates": "The emails joiners, leavers and employees receive.",
-      "import": "Load or update employee records from a spreadsheet.",
+      "import": "Import people, historical exits and candidates, and see every run.",
       "performance-settings": "Cycle windows and policy, corporate scores and 360 setup.",
       "jml-settings": "Checklists, rules, approvals, documents, statutory values and calendars for joiners, movers and leavers.",
       "hiring-settings": "Approval chains, assessment policy, AI assists and budgets for hiring.",
@@ -7479,6 +7479,40 @@
       "end": "End now",
       "ended": "Delegation ended",
       "failed": "The delegation couldn't be saved."
+    }
+  },
+  "imports": {
+    "title": "Imports",
+    "subtitle": "Every importer and every run, with who ran it and what it changed.",
+    "importers": "Importers",
+    "open": "Open the importer",
+    "history": "Runs",
+    "historyNote": "Newest first. A dry run changes nothing; only an applied run wrote records.",
+    "none": "Nothing has been imported yet.",
+    "notPermitted": "You don't have access to any importer.",
+    "loadFailed": "The import history couldn't be loaded. Refresh to try again.",
+    "unknown": "someone",
+    "by": "{who}, {date}",
+    "counts": "{total} rows: {created} created, {updated} updated, {rejected} rejected",
+    "status": {
+      "PREVIEWED": "Dry run",
+      "APPLIED": "Applied",
+      "DISCARDED": "Discarded",
+      "FAILED": "Failed"
+    },
+    "kind": {
+      "people": {
+        "title": "People",
+        "note": "The employee workbook from Odoo: a dry run, then apply."
+      },
+      "exits": {
+        "title": "Historical exits",
+        "note": "Past leavers from a CSV, kept as history only."
+      },
+      "candidates": {
+        "title": "Candidates",
+        "note": "A requisition's candidate list, imported from the requisition."
+      }
     }
   }
 }

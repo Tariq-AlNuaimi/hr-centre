@@ -1,5 +1,6 @@
 import type { HiringStage, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recordImport } from "@/lib/core/imports/record";
 import { cellText, ImportFileError, readWorkbook } from "@/lib/pms/import/loaders/xlsx";
 import type { HiringActor } from "./access";
 import { applyStageChange, stageHistoryFor } from "./candidate-stage";
@@ -161,7 +162,12 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * name is skipped; a malformed email or a name over 255 characters is reported
  * against its spreadsheet row and the rest still import.
  */
-export async function importCandidates(actor: HiringActor, l: LoadedRequisition, buffer: Buffer) {
+export async function importCandidates(
+  actor: HiringActor,
+  l: LoadedRequisition,
+  buffer: Buffer,
+  fileName = "candidates.xlsx",
+) {
   let sheet: unknown[][];
   try {
     sheet = (await readWorkbook(buffer))[0]?.data ?? [];
@@ -183,15 +189,6 @@ export async function importCandidates(actor: HiringActor, l: LoadedRequisition,
     const i = columns.get(f);
     return i === undefined ? null : cellText(row[i]);
   };
-  const batch = await prisma.hiringImportBatch.create({
-    data: {
-      kind: "candidates",
-      status: "IN_PROGRESS",
-      total: body.length,
-      createdById: actor.userId,
-    },
-    select: { id: true },
-  });
   const errors: { row: number; name: string; error: string }[] = [];
   let created = 0;
   for (const [i, row] of body.entries()) {
@@ -219,15 +216,21 @@ export async function importCandidates(actor: HiringActor, l: LoadedRequisition,
     });
     created += 1;
   }
-  await prisma.hiringImportBatch.update({
-    where: { id: batch.id },
-    data: {
-      status: "COMPLETED",
-      processed: created,
-      failed: errors.length,
-      log: errors.length ? { errors: errors.slice(0, 50) } : undefined,
-    },
-    select: { id: true },
+  // The core import record (ADR-096), listed under Admin › Imports.
+  const batchId = await recordImport({
+    kind: "hiring.candidates",
+    filename: fileName,
+    status: "APPLIED",
+    uploadedById: actor.userId,
+    rowsTotal: body.length,
+    rowsCreated: created,
+    rowsRejected: errors.length,
+    issues: errors.slice(0, 50).map((e) => ({
+      rowNumber: e.row,
+      reference: e.name,
+      rule: "row_invalid",
+      message: e.error,
+    })),
   });
-  return { created, failed: errors.length, batchId: batch.id, errors: errors.slice(0, 20) };
+  return { created, failed: errors.length, batchId, errors: errors.slice(0, 20) };
 }
