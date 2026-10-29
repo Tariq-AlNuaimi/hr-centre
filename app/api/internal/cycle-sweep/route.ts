@@ -23,6 +23,8 @@ import {
   type LadderEvent,
   type ParticipantComplianceState,
 } from "@/lib/pms/compliance";
+import { loadWorkingCalendar } from "@/lib/working-time/load";
+import type { WorkingCalendar } from "@/lib/working-time/calendar";
 
 /**
  * The daily escalation sweep — spec §5.5 (the ladder) and §5.6 (the record).
@@ -233,8 +235,10 @@ async function processParticipant(params: {
   written: WrittenEvent[];
   interventions: Intervention[];
   tally: Tally;
+  calendar: WorkingCalendar;
 }): Promise<void> {
-  const { cycleId, stage, now, row, kpiCount, counts, written, interventions, tally } = params;
+  const { cycleId, stage, now, row, kpiCount, counts, written, interventions, tally, calendar } =
+    params;
   const state = stateFor(row, kpiCount);
 
   // §8.3 C-Level and §12.1 leavers are counted as skipped, not scanned: "how
@@ -258,7 +262,8 @@ async function processParticipant(params: {
     written.push(event);
   }
 
-  if (!hrInterventionDue(state, stage, now)) return;
+  // P2-9 — grace is counted in working days on the core calendar (ADR-077).
+  if (!hrInterventionDue(state, stage, now, calendar)) return;
   tally.interventionCount += 1;
   if (interventions.length >= MAX_SURFACED) return;
   interventions.push({
@@ -278,6 +283,7 @@ async function sweepStage(
   counts: Counts,
   written: WrittenEvent[],
   interventions: Intervention[],
+  calendar: WorkingCalendar,
 ): Promise<Tally> {
   const tally: Tally = { scanned: 0, skipped: 0, duplicates: 0, interventionCount: 0 };
   let cursor: string | undefined;
@@ -300,6 +306,7 @@ async function sweepStage(
         written,
         interventions,
         tally,
+        calendar,
       });
     }
 
@@ -397,6 +404,7 @@ async function lockUnacknowledgedRequests(now: Date): Promise<number> {
 
 async function sweep() {
   const now = new Date();
+  const calendar = await loadWorkingCalendar(now);
 
   // §2 is one cycle per year and only one is normally OPEN; the cap guards
   // against a fork that opens several, and is not a page.
@@ -426,7 +434,7 @@ async function sweep() {
     const stage = cycle.stages[0];
     if (!stage) continue;
     stagesSwept += 1;
-    const result = await sweepStage(cycle.id, stage, now, counts, written, interventions);
+    const result = await sweepStage(cycle.id, stage, now, counts, written, interventions, calendar);
     scanned += result.scanned;
     skipped += result.skipped;
     duplicates += result.duplicates;

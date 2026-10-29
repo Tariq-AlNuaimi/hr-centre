@@ -107,3 +107,57 @@ test("AC-1.6 the distribution chart appears on calibration, the distribution rep
     assert.match(readFileSync(f, "utf8"), /<BandDistributionChart/, f);
   }
 });
+
+// --- Slice B: My year, rating context, working-day grace -------------------
+
+test("AC-2.4 PMS grace is counted in working days and skips public holidays (P2-9)", async () => {
+  const { graceEndsAt, isPastGrace } = await import("../../lib/pms/stage");
+  const { DEFAULT_SCHEDULE } = await import("../../lib/working-time/calendar");
+  // Wed 2 Jun 2027 17:00 deadline, 2 grace days, Thu 3 Jun a holiday:
+  // Thu (holiday) skipped, Fri/Sat weekend, Sun 6 = 1, Mon 7 = 2.
+  const stage = {
+    kind: "MID_YEAR" as const,
+    opensAt: new Date("2027-05-01T00:00:00Z"),
+    deadline: new Date("2027-06-02T17:00:00Z"),
+    graceDays: 2,
+  };
+  const calendar = { schedule: DEFAULT_SCHEDULE, holidays: new Set(["2027-06-03"]) };
+  assert.deepEqual(graceEndsAt(stage, calendar), new Date("2027-06-07T17:00:00Z"));
+  assert.equal(isPastGrace(stage, new Date("2027-06-07T16:59:59Z"), calendar), false);
+  assert.equal(isPastGrace(stage, new Date("2027-06-07T17:00:01Z"), calendar), true);
+  // Zero grace ends at the deadline itself.
+  assert.deepEqual(graceEndsAt({ ...stage, graceDays: 0 }, calendar), stage.deadline);
+});
+
+test("AC-2.4 the cycle sweep loads the core working calendar for the grace check", () => {
+  const src = readFileSync("app/api/internal/cycle-sweep/route.ts", "utf8");
+  assert.match(src, /loadWorkingCalendar\(now\)/);
+  assert.match(src, /hrInterventionDue\(state, stage, now, calendar\)/);
+});
+
+test("AC-2.1 My year is strictly self: no employee id is accepted from the caller", () => {
+  const src = readFileSync("app/api/pms/my-year/route.ts", "utf8");
+  assert.match(src, /employeeId: actor\.employeeId/);
+  assert.doesNotMatch(src, /searchParams\.get\("employeeId"\)/);
+  assert.match(src, /withRateLimit\(\s*withAuth\(/);
+  // Scores and bands stay behind the publish gate on /api/scorecard.
+  assert.doesNotMatch(src, /rawScore|calibratedBand|threeSixtyScore/);
+});
+
+test("AC-2.2 the scorecard page renders My year above the results", () => {
+  const src = readFileSync("app/[locale]/(dashboard)/scorecard/page.tsx", "utf8");
+  assert.match(src, /<MyYear cycleId=/);
+});
+
+test("AC-2.3 the rating context carries only APPROVED mid-year changes; 360 only for HR", () => {
+  const select = readFileSync("lib/pms/year-end-select.ts", "utf8");
+  assert.match(select, /changeEdits: \{\s*where: \{ request: \{ status: "APPROVED" \} \}/);
+  const page = readFileSync(
+    "app/[locale]/(dashboard)/year-end/[cycleId]/participants/[participantId]/page.tsx",
+    "utf8",
+  );
+  assert.match(page, /actor\.capabilities\.orgWide \? \(\s*<ThreeSixtyResultCard/);
+  const form = readFileSync("components/pms/YearEndAssessment.tsx", "utf8");
+  assert.match(form, /useRatingAutosave\(/);
+  assert.match(form, /<RatingContextPanel/);
+});

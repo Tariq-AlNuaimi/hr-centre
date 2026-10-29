@@ -392,6 +392,7 @@
 - app/api/org/teams/[id]/route.ts  [PATCH,DELETE]
 - app/api/org/teams/route.ts  [GET,POST]
 - app/api/pms/me/route.ts  [GET]
+- app/api/pms/my-year/route.ts  [GET]
 - app/api/projects/route.ts  [GET,POST]
 - app/api/publish/route.ts  [GET,POST]
 - app/api/rbac/assignments/[id]/route.ts  [DELETE]
@@ -890,7 +891,7 @@
 - lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer-apply.ts: TransferSplitInput, splitAndMove, TransferPlan, transferPlan
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
-- lib/pms/year-end-select.ts: YEAR_END_KPI_SELECT, YEAR_END_KPI_ORDER, SerializedYearEndKpi, serializeYearEndKpis
+- lib/pms/year-end-select.ts: YEAR_END_KPI_SELECT, YEAR_END_KPI_ORDER, MidYearNote, SerializedYearEndKpi, serializeYearEndKpis
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, projectUpdate, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
@@ -1231,6 +1232,7 @@
 - components/pms/MidYearRoster.tsx
 - components/pms/MyMidYear.tsx
 - components/pms/MyTasksOversight.tsx
+- components/pms/MyYear.tsx
 - components/pms/MyYearEnd.tsx
 - components/pms/NineBox.tsx
 - components/pms/NotificationList.tsx
@@ -1240,6 +1242,7 @@
 - components/pms/PublishGate.tsx
 - components/pms/RaterCoverage.tsx
 - components/pms/RaterEditor.tsx
+- components/pms/RatingContextPanel.tsx
 - components/pms/RecordDepartureDialog.tsx
 - components/pms/ScoreRunPanel.tsx
 - components/pms/SignOffPanel.tsx

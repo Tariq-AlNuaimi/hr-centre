@@ -161,7 +161,8 @@ test("§5.5 the grace window does not gate the first two rungs", () => {
 });
 
 test("§5.5 past the grace window the same three rungs stand, and HR intervention is due", () => {
-  const pastGrace = at(4 * DAY);
+  // Grace is 3 WORKING days (P2-9): Thu 31 Dec → Sun 3, Mon 4, Tue 5 Jan; Wed 6 is past it.
+  const pastGrace = at(6 * DAY);
   const unresolved = state({ kpiCount: 0, employeeSigned: false, managerSigned: false });
 
   assert.deepEqual(
@@ -187,7 +188,7 @@ test("§5.4 a fully signed set awaiting HR approval is nobody's non-compliance, 
   const awaiting = state();
   assert.deepEqual(ladderEventsFor(awaiting, STAGE, at(HOUR)), [], "both parties did their part");
   assert.equal(
-    hrInterventionDue(awaiting, STAGE, at(4 * DAY)),
+    hrInterventionDue(awaiting, STAGE, at(6 * DAY)),
     true,
     "§5.4 moved it to HR review; past grace the outstanding action is HR's own",
   );

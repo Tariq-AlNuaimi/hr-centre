@@ -2,6 +2,8 @@
 
 Scope: lib/pms/distribution.ts, lib/pms/calibration.ts, app/api/calibration/route.ts, app/[locale]/(dashboard)/calibration/page.tsx, app/[locale]/(dashboard)/executive/page.tsx, components/pms/**, components/shared/Chart.impl.tsx, messages/**, tests/contracts/p2-performance.test.ts
 
+Slice B (My year, rating context, working-day grace): `p2-performance-my-year.md`.
+
 Status: operator-approved P2 roadmap (2026-10-29). Source: UX audit `performance-jml.md` P2-1, P2-2,
 P2-3, P2-9. Benchmarks: Culture Amp ratings matrix and past-cycle comparison, Lattice calibration,
 Culture Amp's questions-left / context-right review form.

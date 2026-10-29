@@ -56,6 +56,17 @@ export const YEAR_END_KPI_SELECT = {
       managerCommentAt: true,
     },
   },
+  // P2-3 — the rating context panel: what was agreed about THIS KPI at mid-year.
+  // Only APPROVED requests changed the KPI; the latest one is the context. The
+  // rationale and decision are text both parties already saw on mid-year.
+  changeEdits: {
+    where: { request: { status: "APPROVED" } },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      request: { select: { rationale: true, decisionReason: true, decidedAt: true } },
+    },
+  },
 } satisfies Prisma.KpiSelect;
 
 /** The ordering §5.2 reads the set in; shared so both screens agree. */
@@ -93,6 +104,16 @@ type KpiRow = {
   descriptorUnsatisfactory: string;
   ratings: RatingRow[];
   evidence: EvidenceRow[];
+  changeEdits: {
+    request: { rationale: string; decisionReason: string | null; decidedAt: Date | null };
+  }[];
+};
+
+/** P2-3 — the latest approved mid-year change to a KPI. */
+export type MidYearNote = {
+  rationale: string;
+  decisionReason: string | null;
+  decidedAt: string | null;
 };
 
 /** One KPI as the assessment screen consumes it. Mirrors `YearEndKpi`. */
@@ -115,6 +136,7 @@ export type SerializedYearEndKpi = {
     managerComment: string | null;
     managerCommentAt: string | null;
   }[];
+  midYearNote: MidYearNote | null;
 };
 
 /**
@@ -161,6 +183,18 @@ export function serializeYearEndKpis(
         managerComment: e.managerComment,
         managerCommentAt: e.managerCommentAt?.toISOString() ?? null,
       })),
+      midYearNote: midYearNoteOf(kpi),
     };
   });
+}
+
+/** P2-3 — the latest approved mid-year change to a KPI, as context for rating it. */
+function midYearNoteOf(kpi: KpiRow): MidYearNote | null {
+  const request = kpi.changeEdits[0]?.request;
+  if (!request) return null;
+  return {
+    rationale: request.rationale,
+    decisionReason: request.decisionReason,
+    decidedAt: request.decidedAt?.toISOString() ?? null,
+  };
 }

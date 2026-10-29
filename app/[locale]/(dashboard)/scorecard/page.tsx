@@ -9,6 +9,7 @@ import { PageSkeleton } from "@/components/shared/Skeletons";
 import { StatCard } from "@/components/shared/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { CyclePicker } from "@/components/pms/CyclePicker";
+import { MyYear } from "@/components/pms/MyYear";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
@@ -107,9 +108,12 @@ export default function ScorecardPage() {
         </SectionCard>
       )}
 
+      {/* P2-2 — "My year": KPIs, mid-year and dates, all year round. */}
+      {cycleId && <MyYear cycleId={cycleId} />}
+
       {data && !data.published && (
         <SectionCard title={t("notPublished")}>
-          <EmptyState description={t("notPublishedHelp")} />
+          <p className="text-sm text-muted-foreground">{t("notPublishedHelp")}</p>
         </SectionCard>
       )}
 
