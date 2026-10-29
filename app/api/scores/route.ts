@@ -260,7 +260,10 @@ export const POST = withRateLimit(
       );
     } catch (error) {
       // Nothing was written. Say so in words HR can act on, not an empty 500.
-      console.error("[pms-score-run] write failed", error instanceof Error ? error.name : "unknown");
+      console.error(
+        "[pms-score-run] write failed",
+        error instanceof Error ? error.name : "unknown",
+      );
       return err(
         "The score run could not be saved, so nothing was changed. Try again; if it keeps failing, contact the platform administrator.",
         500,
