@@ -134,3 +134,30 @@ test("N-11 'No' to laptop and access card generates neither task; 'Yes' or unans
     assert.equal(taskApplies(task(code).conditions, unknown), true, `${code} unanswered`);
   }
 });
+
+// --- N-12 — day one ------------------------------------------------------------
+
+import { dayOneProblem } from "../../lib/jml/join/actions";
+
+test("N-12 a start weeks before the planned start, or with no work email, is refused", () => {
+  const planned = new Date("2026-11-20T00:00:00Z");
+  const email = "a.person@rihal.om";
+  assert.equal(
+    dayOneProblem({ actualStart: new Date("2026-10-29T00:00:00Z"), plannedStart: planned, email })
+      ?.status,
+    400,
+  );
+  assert.equal(
+    dayOneProblem({ actualStart: new Date("2026-11-16T00:00:00Z"), plannedStart: planned, email }),
+    null,
+    "a few days early is normal",
+  );
+  assert.equal(
+    dayOneProblem({
+      actualStart: planned,
+      plannedStart: planned,
+      email: "pending-abc@pre-joiner.invalid",
+    })?.status,
+    409,
+  );
+});
