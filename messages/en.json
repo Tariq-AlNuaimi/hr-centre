@@ -7320,7 +7320,9 @@
       "ON_SITE": "On-site",
       "HYBRID": "Hybrid",
       "REMOTE": "Remote"
-    }
+    },
+    "trackStatus": "Track your application",
+    "trackStatusHelp": "Keep this link; it is personal to you."
   },
   "agency": {
     "metaTitle": "Agency submission",
@@ -7551,5 +7553,46 @@
         "note": "A requisition's candidate list, imported from the requisition."
       }
     }
+  },
+  "careersStatus": {
+    "metaTitle": "Your application",
+    "invalidTitle": "This link is no longer valid",
+    "invalidBody": "It may have expired. If you applied recently, contact the recruiting team for an update.",
+    "hello": "Hello {name}",
+    "yourApplication": "Your application",
+    "appliedOn": "Applied {date}",
+    "progress": "Application progress",
+    "done": "Done",
+    "current": "Now",
+    "upcoming": "Next",
+    "step": {
+      "RECEIVED": {
+        "title": "Application received",
+        "body": "We have your application and will look at it soon."
+      },
+      "REVIEW": {
+        "title": "Under review",
+        "body": "The team is reviewing your application. This can take a couple of weeks."
+      },
+      "INTERVIEWS": {
+        "title": "Interviews",
+        "body": "You are in the interview stage. The recruiting team will contact you about each interview."
+      },
+      "FINAL": {
+        "title": "Final checks",
+        "body": "We are completing the final steps, such as references, before a decision."
+      },
+      "OFFER": {
+        "title": "Offer",
+        "body": "An offer has been made. The recruiting team will guide you through it."
+      }
+    },
+    "outcome": {
+      "HIRED": "Congratulations, and welcome. The team will be in touch about your first day.",
+      "NOT_PROGRESSING": "Thank you for your interest. We have decided not to progress your application for this role.",
+      "WITHDRAWN": "This application has been withdrawn."
+    },
+    "updatedOn": "Last updated {date} ·",
+    "privacy": "This page shows only the stage of your application. Contact the recruiting team with any question."
   }
 }
