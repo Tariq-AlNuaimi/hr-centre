@@ -11,6 +11,7 @@ import {
   tally,
   type Distribution,
 } from "@/lib/pms/calibration";
+import { completedRunWhere } from "@/lib/pms/score-run";
 
 /**
  * §13.5 — "Results distribution report — band breakdown per department / entity /
@@ -56,7 +57,7 @@ export const GET = withRateLimit(
     if (!cycle) return notFound("Cycle");
 
     const runs = await prisma.scoreRun.findMany({
-      where: { cycleId },
+      where: completedRunWhere(cycleId),
       take: 1,
       orderBy: { startedAt: "desc" },
       select: { id: true, startedAt: true, scoredCount: true, skippedCount: true },

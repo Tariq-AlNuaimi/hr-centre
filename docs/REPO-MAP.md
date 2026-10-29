@@ -930,7 +930,7 @@
 - lib/pms/org-tree.ts: descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
-- lib/pms/score-run.ts: ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
+- lib/pms/score-run.ts: ScoreInputs, ScoreOutcome, completedRunWhere, scoreRangeProblem, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
 - lib/pms/scoring.ts: Band, TRACK_WEIGHTS, ScoredKpi, individualScore, threeSixtyAsLevel, Components, finalScore, bandFor, BAND_COEFFICIENT, BAND_RANGE, displayScore
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/stage.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue

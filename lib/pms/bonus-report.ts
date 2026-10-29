@@ -4,6 +4,7 @@ import { computeBonus } from "./bonus";
 import { decryptSalary } from "@/lib/core/employee-select";
 import { BAND_COEFFICIENT } from "./scoring";
 import type { SheetColumn } from "@/lib/core/export/xlsx";
+import { completedRunWhere } from "./score-run";
 
 /**
  * §11.7's payroll dataset, built once and served two ways.
@@ -43,7 +44,7 @@ export async function bonusRows(params: {
   const { cycleId, year } = params;
 
   const runs = await prisma.scoreRun.findMany({
-    where: { cycleId },
+    where: completedRunWhere(cycleId),
     take: 1,
     orderBy: { startedAt: "desc" },
     select: { id: true },

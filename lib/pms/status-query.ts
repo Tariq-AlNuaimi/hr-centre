@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { rosterWeightageTotal } from "./kpi";
 import { displayScore } from "./scoring";
 import { deriveStatus, type ParticipantStatus, type ParticipantStatusInput } from "./status";
+import { completedRunWhere } from "./score-run";
 
 /**
  * The one read behind §13.3, §13.5's cycle-progress and §13.6.
@@ -161,7 +162,7 @@ async function latestScores(
   if (employeeIds.length === 0) return out;
 
   const runs = await prisma.scoreRun.findMany({
-    where: { cycleId },
+    where: completedRunWhere(cycleId),
     take: 1,
     orderBy: { startedAt: "desc" },
     select: { id: true },

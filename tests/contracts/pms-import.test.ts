@@ -166,7 +166,7 @@ test("§3.1 the generated template parses back through the loader, all 12 §3.3 
   );
   assert.equal(rows[0].dateOfJoining, "2021-03-15", "§3.3's Date of Joining round-trips");
   assert.equal(rows.length, 2, "template ships two example rows");
-  assert.equal(rows[0].managerOdooId, "1000", "the Manager (Employee ID) column must map");
+  assert.equal(rows[0].managerOdooId, "EXAMPLE-2", "the Manager (Employee ID) column must map");
   assert.equal(rows[1].roleTrack, "C-Level");
   assert.equal(rows[1].department, null, "the C-Level example must carry no department");
 });
@@ -683,4 +683,36 @@ test("every apply conflict is an ImportConflictError the route can map to 409", 
     !/\bError:|at .*\.ts:\d+/.test(alreadyApplied.message),
     "conflict messages are shown to the operator — no stack or internal path",
   );
+});
+
+// --- QA2 N-02 — the template's example rows can never touch a real employee ----
+
+test("N-02 the template's example ids are clearly fake and cannot collide with a real Employee ID", async () => {
+  const { rows } = await loadEmployeesFromXlsx(await buildImportTemplate());
+  for (const r of rows) {
+    assert.match(String(r.odooId), /^EXAMPLE-/, "an example id must be unmistakably an example");
+    assert.doesNotMatch(String(r.email), /@rihal\.om$/, "nor a real-looking company address");
+  }
+});
+
+test("N-02 an unedited template is REJECTED row by row, even when the ids exist in the database", async () => {
+  const { rows } = await loadEmployeesFromXlsx(await buildImportTemplate());
+  const ids = rows.map((r) => String(r.odooId));
+  const { validRows, issues } = validateRows(rows, ctx({ existingOdooIds: new Set(ids) }));
+  assert.equal(validRows.length, 0, "no example row may ever reach the plan");
+  for (const id of ids) {
+    assert.ok(
+      issues.some((i) => i.odooId === id && i.rule === "example_row"),
+      `${id} must be refused as an example row`,
+    );
+  }
+});
+
+test("N-02 a row still carrying the example's 'delete this row' name is refused whatever its id", () => {
+  const { validRows, issues } = validateRows(
+    [row({ odooId: "1001", name: "Example — delete this row" })],
+    ctx(),
+  );
+  assert.equal(validRows.length, 0);
+  assert.ok(issues.some((i) => i.rule === "example_row"));
 });

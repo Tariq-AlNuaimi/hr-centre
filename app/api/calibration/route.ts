@@ -16,6 +16,7 @@ import {
 } from "@/lib/pms/calibration";
 import { nineBox } from "@/lib/pms/distribution";
 import { adjustSchema, setTargetSchema } from "@/lib/validations/calibration";
+import { completedRunWhere } from "@/lib/pms/score-run";
 
 /**
  * §10 — the calibration layer.
@@ -199,7 +200,7 @@ export const GET = withRateLimit(
         },
       }),
       prisma.scoreRun.findMany({
-        where: { cycleId },
+        where: completedRunWhere(cycleId),
         take: 1,
         orderBy: { startedAt: "desc" },
         select: { id: true },

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/core/actor";
 import { displayScore } from "@/lib/pms/scoring";
 import { consolidateThreeSixty } from "@/lib/pms/three-sixty";
+import { completedRunWhere } from "@/lib/pms/score-run";
 
 /**
  * §13.1 — the employee scorecard.
@@ -64,7 +65,7 @@ export const GET = withRateLimit(
     }
 
     const runs = await prisma.scoreRun.findMany({
-      where: { cycleId },
+      where: completedRunWhere(cycleId),
       take: 1,
       orderBy: { startedAt: "desc" },
       select: { id: true },

@@ -28,6 +28,22 @@ export function checkEmployeeId(
       ],
     };
   }
+  // QA2 N-02 — the template's example rows. Refused by id AND by the
+  // "delete this row" label, so an example whose id someone edited (into a
+  // real one) still cannot rename or re-salary an existing employee.
+  if (isExampleRow(odooId, row.name)) {
+    return {
+      value: odooId,
+      issues: [
+        issue(
+          row,
+          "odooId",
+          "example_row",
+          `Row ${row.rowNumber} is an example row from the template. Delete it before importing.`,
+        ),
+      ],
+    };
+  }
   if (duplicateIds.has(odooId)) {
     const where = (idCounts.get(odooId) ?? []).join(", ");
     return {
@@ -117,4 +133,9 @@ export function checkStatus(row: EmployeeSourceRow): Check<EmployeeStatus> {
       ),
     ],
   };
+}
+
+/** The template's example rows: `EXAMPLE-…` ids, or a name still saying "delete this row". */
+function isExampleRow(odooId: string, name: string | null | undefined): boolean {
+  return /^example-/i.test(odooId) || /delete this row/i.test(name ?? "");
 }
