@@ -1,6 +1,9 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Band } from "@/generated/prisma/client";
 import { isHrSuperAdmin, type PmsActor } from "./permissions";
+import { BANDS, type Distribution } from "./distribution";
+
+export { BANDS, emptyDistribution, tally, type Distribution } from "./distribution";
 
 /**
  * §10 — the calibration layer.
@@ -13,35 +16,6 @@ import { isHrSuperAdmin, type PmsActor } from "./permissions";
  * function that changes a raw score — there isn't one, and that absence is the
  * §10.1 guarantee made structural rather than promised in a comment.
  */
-
-/** §8.7's bands, best to worst — the order a distribution is read in. */
-export const BANDS: readonly Band[] = [
-  "OUTSTANDING",
-  "EXCELLENT",
-  "TARGET",
-  "ALMOST_ACHIEVED",
-  "UNSATISFACTORY",
-];
-
-export type Distribution = Record<Band, number>;
-
-/** An empty tally, so every band appears even at zero — a band with nobody in
- *  it is a fact HR needs to see, not a row to omit. */
-export function emptyDistribution(): Distribution {
-  return {
-    OUTSTANDING: 0,
-    EXCELLENT: 0,
-    TARGET: 0,
-    ALMOST_ACHIEVED: 0,
-    UNSATISFACTORY: 0,
-  };
-}
-
-export function tally(bands: readonly Band[]): Distribution {
-  const out = emptyDistribution();
-  for (const b of bands) out[b] += 1;
-  return out;
-}
 
 /**
  * §10.4 — "the system shows HR the target distribution vs. actual raw

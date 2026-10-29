@@ -69,6 +69,13 @@ export interface ChartProps<T extends Record<string, unknown>> {
   colors?: string[];
   /** For line/bar/area: whole-number ticks only — counts have no 1.5. */
   integer?: boolean;
+  /**
+   * For bar: several named series side by side (grouped bars), e.g. actual vs
+   * target. Overrides `yKey`. Each series takes the next palette colour.
+   */
+  series?: { key: string; label: string }[];
+  /** For line/bar/area: a suffix on axis ticks and tooltip values, e.g. "%". */
+  unit?: string;
 }
 
 const DEFAULT_COLORS = chartPalette;
@@ -83,6 +90,8 @@ export function Chart<T extends Record<string, unknown>>({
   valueKey = "value",
   colors = DEFAULT_COLORS,
   integer = false,
+  series,
+  unit,
 }: ChartProps<T>) {
   const { isDark } = useTheme();
   // Read grid contrast from the active theme so the grid is visible on the dark
@@ -110,10 +119,16 @@ export function Chart<T extends Record<string, unknown>>({
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
-          <YAxis allowDecimals={!integer} />
-          <Tooltip />
+          <YAxis allowDecimals={!integer} unit={unit} />
+          <Tooltip formatter={unit ? (v) => `${String(v)}${unit}` : undefined} />
           <Legend />
-          <Bar dataKey={yKey} fill={colors[0]} />
+          {series && series.length > 0 ? (
+            series.map((s, i) => (
+              <Bar key={s.key} dataKey={s.key} name={s.label} fill={colors[i % colors.length]} />
+            ))
+          ) : (
+            <Bar dataKey={yKey} fill={colors[0]} />
+          )}
         </BarChart>
       </ResponsiveContainer>
     );

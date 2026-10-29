@@ -1217,7 +1217,11 @@
       "retry": "أعد المحاولة",
       "thinThreeSixty": "احتُسب التقييم الدائري من {count} مُقيّم بدل الثلاثة الذين ينص عليهم §9.4 — عيّنة أضيق من بقية هذه الإدارة.",
       "raterCount": "تم حساب متوسط التقييم الدائري من {count} مُقيّمين",
-      "raterCountUnknown": "لم يُسجَّل عدد المُقيّمين لهذه الدورة"
+      "raterCountUnknown": "لم يُسجَّل عدد المُقيّمين لهذه الدورة",
+      "nineBoxTitle": "Performance and 360 feedback",
+      "nineBoxHelp": "Calibrated band against the 360 level. A reading aid for the conversation; it moves nobody.",
+      "priorBand": "Last cycle: {band}",
+      "noPriorBand": "Last cycle: not scored"
     },
     "calibrationTarget": {
       "title": "التوزيع المستهدف",
@@ -1905,6 +1909,30 @@
       "setupGo": "Set up",
       "loadFailed": "Couldn't load this cycle",
       "loadFailedHelp": "You may not run performance cycles, or the cycle no longer exists."
+    },
+    "distributionChart": {
+      "actual": "Actual",
+      "target": "Target",
+      "prior": "{year} cycle",
+      "caption": "Share of {count, plural, one {# person} other {# people}} in each band.",
+      "captionWithTarget": "Share of {count, plural, one {# person} other {# people}} in each band, against the target share."
+    },
+    "nineBox": {
+      "caption": "Number of people by calibrated performance and 360 feedback level",
+      "performanceAxis": "Performance",
+      "feedback": {
+        "LOW": "360 below 3",
+        "MID": "360 from 3 to 4",
+        "HIGH": "360 of 4 or more"
+      },
+      "performance": {
+        "HIGH": "Outstanding or excellent",
+        "MID": "Target",
+        "LOW": "Below target"
+      },
+      "more": "and {count} more",
+      "footnote": "Rows use the calibrated band; columns use the 360 level on the 5-point scale.",
+      "withoutFeedback": "{count, plural, one {# person has} other {# people have}} no 360 level and are not placed."
     }
   },
   "access": {

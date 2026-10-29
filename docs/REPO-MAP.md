@@ -840,7 +840,7 @@
 - lib/pms/actor.ts: ResolvedActor, resolveActor
 - lib/pms/bonus-report.ts: BonusRow, bonusRows, BonusTotals, bonusTotals, BONUS_EXPORT_COLUMNS
 - lib/pms/bonus.ts: DAYS_IN_YEAR, ELIGIBILITY_MONTHS, inclusiveDays, WorkDaysInput, workDays, effectiveServiceMonths, isBonusEligible, BonusResult, computeBonus
-- lib/pms/calibration.ts: BANDS, Distribution, emptyDistribution, tally, distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
+- lib/pms/calibration.ts: distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
 - lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, acknowledgeBlockedReason, effectiveChangeRequestStatus, approvalAcknowledgmentReason, withdrawBlockedReason, changeRequestAccessRefusal, stageReopensUnacknowledged
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, enrolledAfterDeadline, ladderEventsFor, hrInterventionDue, interventionSummary
@@ -849,6 +849,7 @@
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
 - lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture, ReverseDepartureOutcome, reverseDeparture
+- lib/pms/distribution.ts: BANDS, Distribution, emptyDistribution, tally, bandShareRows, PerformanceTier, FeedbackTier, performanceTier, feedbackTier, NineBoxCell, nineBox
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
@@ -1198,6 +1199,7 @@
 - components/people/RecordTabs.tsx
 - components/people/TeamOverview.tsx
 - components/people/record-view.tsx
+- components/pms/BandDistributionChart.tsx
 - components/pms/BonusReport.tsx
 - components/pms/BypassReasonField.tsx
 - components/pms/CalibrationTargetEditor.tsx
@@ -1229,6 +1231,7 @@
 - components/pms/MyMidYear.tsx
 - components/pms/MyTasksOversight.tsx
 - components/pms/MyYearEnd.tsx
+- components/pms/NineBox.tsx
 - components/pms/NotificationList.tsx
 - components/pms/OrgChart.tsx
 - components/pms/ParticipantList.tsx
