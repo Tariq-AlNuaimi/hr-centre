@@ -1,6 +1,6 @@
 # ADR-043 — pgvector RAG substrate + pluggable embeddings seam
 
-**Status:** Accepted (enterprise pivot, WS-5 AI layer, operator-directed 2026-07-11)
+**Status:** Superseded in part by ADR-089 (table dropped 2026-10-29). Originally accepted (enterprise pivot, WS-5 AI layer, operator-directed 2026-07-11)
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

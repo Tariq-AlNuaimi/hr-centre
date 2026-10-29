@@ -998,35 +998,10 @@ async function checkMigrationsInSync() {
   ]);
   if (r.ok) return { sync: "ok" };
 
-  // Tables that migrations create but `schema.prisma` deliberately does NOT model,
-  // so `migrate diff` always reports them as "[-] Removed tables". These are raw-SQL
-  // managed on purpose:
-  //   document_embedding -- pgvector store (20260711120000_pgvector_rag). Prisma has
-  //     no native `vector` type; modelling it would mean Unsupported() columns that
-  //     no Prisma query can read anyway, and lib/ai/rag.ts talks to it through
-  //     parameterized $queryRaw by design (ADR-043).
-  // Without this allowlist the (c) sub-check reports drift that no migration can
-  // ever resolve. It went unnoticed because (c) requires SHADOW_DATABASE_URL, which
-  // nothing in the repo sets — so the FIRST time it actually ran (2026-07-25) it
-  // failed on a deliberate design decision rather than on real drift.
-  const RAW_SQL_TABLES = ["document_embedding"];
-  const driftLines = r.out
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => /^[-+[]/.test(l) || /^\s*- /.test(l));
-  const onlyRawSqlTables =
-    driftLines.length > 0 &&
-    driftLines.every(
-      (l) =>
-        /^\[[-+]\]/.test(l) || // the "[-] Removed tables" header itself
-        RAW_SQL_TABLES.some((t) => l.includes(t)),
-    );
-  if (onlyRawSqlTables) {
-    return {
-      sync: "ok",
-      note: `migrations match the schema (ignoring raw-SQL-managed ${RAW_SQL_TABLES.join(", ")})`,
-    };
-  }
+  // No allowlist any more: the pgvector `document_embedding` table this used to
+  // excuse was dropped (20261029100000_tidy_db_structure), and the composite keys,
+  // trigram index and legacy constraint names are now modelled in schema.prisma,
+  // so ANY reported difference is real drift.
 
   // --exit-code: 0 = no difference, 2 = difference, 1 = error. `run` only
   // exposes ok/out, so tell drift from an unreachable/broken shadow DB by the
