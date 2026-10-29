@@ -54,6 +54,8 @@ export interface QueueFilter {
   /** UX P1: Mine / Unassigned / Overdue, for `userId`. */
   view?: QueueView;
   userId?: string;
+  /** P2-10 — one person's tickets (the reports' per-person click-through). */
+  assigneeId?: string;
 }
 
 /**
@@ -84,6 +86,7 @@ export function queueWhere(f: QueueFilter): Prisma.EscalationWhereInput {
         : { in: [...f.pairIds] };
   } else if (f.pairId) where.hrPairId = f.pairId;
   if (f.source) where.source = f.source;
+  if (f.assigneeId) where.assigneeId = f.assigneeId;
   if (f.view) Object.assign(where, viewWhere(f.view, f.userId ?? ""));
   if (f.gte || f.lt) where.createdAt = { ...(f.gte && { gte: f.gte }), ...(f.lt && { lt: f.lt }) };
   if (f.q) {

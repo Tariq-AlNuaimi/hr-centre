@@ -33,6 +33,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     to: param("to"),
     q: param("q"),
     view: param("view"),
+    assigneeId: param("assigneeId"),
   });
   if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Invalid filter.", 400);
 

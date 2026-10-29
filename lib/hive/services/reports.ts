@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ReportRange } from "@/lib/validations/hive/reports";
+import { ageing, backlogTrend, perPerson, slaFigures, type SlaFigures } from "./report-sla";
 
 /**
  * HIVE's reporting screen (spec V2 §5.5/§8.8, blueprint US-T7).
@@ -58,6 +59,14 @@ export interface TicketReport {
   byPair: { pairId: string; name: string; count: number }[];
   /** Oldest first, every bucket present (zero-filled). */
   volume: { bucket: string; count: number }[];
+  /** P2-10 — first response vs resolution vs target, and approval turnaround. */
+  sla: SlaFigures;
+  /** P2-10 — open backlog at the end of each bucket. */
+  backlog: { bucket: string; open: number }[];
+  /** P2-10 — today's open tickets by age in days. */
+  ageing: { band: string; count: number }[];
+  /** P2-10 — per person: open now, overdue now, answered in range. */
+  people: { userId: string; name: string; open: number; overdue: number; answered: number }[];
 }
 
 /**
@@ -120,6 +129,10 @@ export async function getTicketReport(range: ReportRange): Promise<TicketReport>
     bySource,
     byPair,
     series,
+    sla,
+    backlog,
+    ages,
+    people,
   ] = await Promise.all([
     prisma.escalation.count({ where: opened }),
     prisma.escalation.count({ where: { status: { in: [...WAITING_ON_HR] } } }),
@@ -150,6 +163,10 @@ export async function getTicketReport(range: ReportRange): Promise<TicketReport>
       take: 100,
     }),
     volume(range, bucket),
+    slaFigures(range),
+    backlogTrend(bucketStarts(range.from, range.to, bucket), bucket),
+    ageing(new Date()),
+    perPerson(range, new Date()),
   ]);
 
   // Pair names in one query, not one per bar.
@@ -182,5 +199,9 @@ export async function getTicketReport(range: ReportRange): Promise<TicketReport>
       }))
       .sort((a, b) => b.count - a.count),
     volume: series,
+    sla,
+    backlog,
+    ageing: ages,
+    people,
   };
 }

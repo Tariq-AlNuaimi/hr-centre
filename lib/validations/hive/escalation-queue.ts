@@ -57,6 +57,8 @@ export const escalationQuerySchema = z
     q: z.string().trim().max(100).optional(),
     /** UX P1 (tickets P1-2): Mine / Unassigned / Overdue. */
     view: z.enum(["mine", "unassigned", "overdue"]).optional(),
+    /** P2-10 — the reports' per-person click-through. */
+    assigneeId: z.string().trim().min(1).max(64).optional(),
   })
   .transform(({ from, to, q, ...rest }) => ({
     ...rest,

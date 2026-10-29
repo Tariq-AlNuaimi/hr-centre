@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -78,13 +79,46 @@ interface QueuePage {
 
 interface Filters {
   pairId: string | null;
+  /** P2-10 — set only by a click-through from Reports (no control of its own). */
+  assigneeId: string | null;
   source: string | null;
   from: string;
   to: string;
   q: string;
 }
 
-const NO_FILTERS: Filters = { pairId: null, source: null, from: "", to: "", q: "" };
+const NO_FILTERS: Filters = {
+  pairId: null,
+  assigneeId: null,
+  source: null,
+  from: "",
+  to: "",
+  q: "",
+};
+
+/**
+ * P2-10 — the Reports page links here with its filter in the URL
+ * (`?status=OPEN&pairId=…`, `?view=overdue`, `?assigneeId=…`, `?from=&to=`).
+ * Read once, as the initial state; the controls take over from there.
+ */
+function filtersFromUrl(p: URLSearchParams): {
+  status: string | null;
+  view: string;
+  filters: Filters;
+} {
+  const day = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "");
+  return {
+    status: p.get("status"),
+    view: p.get("view") ?? "",
+    filters: {
+      ...NO_FILTERS,
+      pairId: p.get("pairId"),
+      assigneeId: p.get("assigneeId"),
+      from: day(p.get("from")),
+      to: day(p.get("to")),
+    },
+  };
+}
 
 /** The Select's "any" option. Radix reserves the empty string. */
 
@@ -96,12 +130,14 @@ export default function EscalationQueuePage() {
   const sourceLabel = useSourceLabels();
   const access = useHiveAccess();
   const locale = useLocale();
-  const [status, setStatus] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [initial] = useState(() => filtersFromUrl(new URLSearchParams(searchParams.toString())));
+  const [status, setStatus] = useState<string | null>(initial.status);
   // UX P1 (tickets P1-2): All / Mine / Unassigned / Overdue.
-  const [view, setView] = useState<string>("");
+  const [view, setView] = useState<string>(initial.view);
   const [cursor, setCursor] = useState<string | null>(null);
   const [seen, setSeen] = useState<QueueRow[]>([]);
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [filters, setFilters] = useState<Filters>(initial.filters);
   const [search, setSearch] = useState("");
   // The pair list arrives with the first page; kept so "show older" (which
   // does not resend it) does not empty the control.
@@ -126,6 +162,7 @@ export default function EscalationQueuePage() {
       if (status) params.set("status", status);
       if (cursor) params.set("cursor", cursor);
       if (filters.pairId) params.set("pairId", filters.pairId);
+      if (filters.assigneeId) params.set("assigneeId", filters.assigneeId);
       if (filters.source) params.set("source", filters.source);
       if (filters.from) params.set("from", filters.from);
       if (filters.to) params.set("to", filters.to);
@@ -166,6 +203,7 @@ export default function EscalationQueuePage() {
 
   const filtered =
     filters.pairId !== null ||
+    filters.assigneeId !== null ||
     filters.source !== null ||
     filters.from !== "" ||
     filters.to !== "" ||

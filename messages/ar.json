@@ -2746,7 +2746,36 @@
       "byStatus": "حسب الحالة",
       "byStatusHint": "أين أصبحت تذاكر هذه الفترة الآن",
       "bySource": "حسب المصدر",
-      "tickets": "التذاكر"
+      "tickets": "التذاكر",
+      "exportCsv": "Export CSV",
+      "sla": {
+        "firstResponse": "First response",
+        "resolution": "Answer sent",
+        "medianHint": "Median, for tickets answered in range",
+        "onTime": "Answered by the target",
+        "onTimeHint": "{onTime} on time, {late} late, {none} without a target",
+        "approval": "Approval turnaround",
+        "approvalHint": "Median, submitted to approved",
+        "backlog": "Open backlog",
+        "backlogHint": "Tickets still open at the end of each period",
+        "openTickets": "Open tickets",
+        "ageing": "Age of open tickets",
+        "ageingHint": "Days since they were opened, right now",
+        "age": {
+          "0-2": "0 to 2 days",
+          "3-7": "3 to 7 days",
+          "8-14": "8 to 14 days",
+          "15+": "15 days or more"
+        },
+        "openOverdue": "Open the overdue tickets",
+        "people": "Load by person",
+        "peopleHint": "Open and overdue right now; answers drafted in the range",
+        "noPeople": "No ticket is assigned to anyone yet",
+        "person": "Person",
+        "openNow": "Open",
+        "overdueNow": "Overdue",
+        "answeredInRange": "Answered"
+      }
     },
     "settings": {
       "title": "الإعدادات",
