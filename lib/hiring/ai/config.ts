@@ -1,10 +1,11 @@
 import { cache } from "react";
 import { openSecretSetting } from "../comp-crypto";
-import { asNumber, readSettings, type HiringSettingKey } from "../settings";
+import { readPlatformAiSettings } from "@/lib/core/ai/settings";
+import { asNumber } from "../settings";
 
 /**
- * Where the hiring AI engine points (Interview Hub `getAiConfig`). Settings
- * first (Hiring → Settings → AI), then the env fallback AI_PROVIDER /
+ * Where the AI engine points (Interview Hub `getAiConfig`). Platform settings
+ * first (Admin › Settings › AI, ADR-097), then the env fallback AI_PROVIDER /
  * AI_BASE_URL / AI_MODEL / AI_API_KEY. The stored key is an ADR-067 envelope
  * under the hiring key; one that will not open reads as "no key" — AI is then
  * off, never pointed somewhere with a garbled credential. Nothing here is ever
@@ -26,21 +27,7 @@ const DEFAULTS: Record<AiProvider, { baseUrl: string; model: string }> = {
   openai: { baseUrl: "", model: "" },
 };
 
-const AI_KEYS = [
-  "ai.provider",
-  "ai.baseUrl",
-  "ai.model",
-  "ai.apiKey",
-  "ai.pdfVision",
-  "ai.killSwitch",
-  "ai.dailyTokenCap",
-  "ai.dailySpendCap",
-  "ai.timeoutMs",
-  "ai.pricePer1kIn",
-  "ai.pricePer1kOut",
-] as const satisfies readonly HiringSettingKey[];
-
-const readAiSettings = cache(async () => readSettings(AI_KEYS));
+const readAiSettings = cache(async () => readPlatformAiSettings());
 
 /**
  * The key is stored as `{ apiKey: <envelope> }`: the audit extension scrubs a

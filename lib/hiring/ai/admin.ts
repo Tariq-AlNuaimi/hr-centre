@@ -11,6 +11,7 @@ import { COO_THRESHOLD_OMR } from "../approval-chain";
 import { loadApprovalConfig } from "../approval-config";
 import { asPanelAiMode } from "../interview-rules";
 import { sealSecretSetting } from "../comp-crypto";
+import { writePlatformAiSetting } from "@/lib/core/ai/settings";
 import { readSettings, writeSetting } from "../settings";
 import { startOfUtcDay, estimateSpend } from "./budget";
 import { getAiLimits, publicAiConfig } from "./config";
@@ -24,22 +25,24 @@ import { aiComplete, aiErrorMessage } from "./engine";
  */
 
 export async function saveAiProvider(input: AiProviderInput) {
-  await writeSetting("ai.provider", input.provider);
-  await writeSetting("ai.baseUrl", input.baseUrl);
-  await writeSetting("ai.model", input.model);
-  if (input.pdfVision !== undefined) await writeSetting("ai.pdfVision", input.pdfVision);
-  if (input.clearKey) await writeSetting("ai.apiKey", { apiKey: "" });
+  await writePlatformAiSetting("ai.provider", input.provider);
+  await writePlatformAiSetting("ai.baseUrl", input.baseUrl);
+  await writePlatformAiSetting("ai.model", input.model);
+  if (input.pdfVision !== undefined) await writePlatformAiSetting("ai.pdfVision", input.pdfVision);
+  if (input.clearKey) await writePlatformAiSetting("ai.apiKey", { apiKey: "" });
   else if (input.apiKey)
-    await writeSetting("ai.apiKey", { apiKey: sealSecretSetting("ai.apiKey", input.apiKey) });
+    await writePlatformAiSetting("ai.apiKey", {
+      apiKey: sealSecretSetting("ai.apiKey", input.apiKey),
+    });
 }
 
 export async function saveAiLimits(input: AiLimitsInput) {
-  await writeSetting("ai.killSwitch", input.killSwitch);
-  await writeSetting("ai.dailyTokenCap", input.dailyTokenCap);
-  await writeSetting("ai.dailySpendCap", input.dailySpendCap);
-  await writeSetting("ai.timeoutMs", input.timeoutMs);
-  await writeSetting("ai.pricePer1kIn", input.pricePer1kIn);
-  await writeSetting("ai.pricePer1kOut", input.pricePer1kOut);
+  await writePlatformAiSetting("ai.killSwitch", input.killSwitch);
+  await writePlatformAiSetting("ai.dailyTokenCap", input.dailyTokenCap);
+  await writePlatformAiSetting("ai.dailySpendCap", input.dailySpendCap);
+  await writePlatformAiSetting("ai.timeoutMs", input.timeoutMs);
+  await writePlatformAiSetting("ai.pricePer1kIn", input.pricePer1kIn);
+  await writePlatformAiSetting("ai.pricePer1kOut", input.pricePer1kOut);
 }
 
 const USAGE_DAYS = 14;

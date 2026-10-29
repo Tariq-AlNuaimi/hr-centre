@@ -56,7 +56,7 @@ async function kbCompetencies(
   names: readonly string[],
   family: string | null,
 ): Promise<string> {
-  const comps = await prisma.hiringCompetency.findMany({
+  const comps = await prisma.competency.findMany({
     where: {
       deletedAt: null,
       OR: [{ entityId: null }, { entityId }],
@@ -76,7 +76,7 @@ async function kbCompetencies(
 }
 
 async function kbGrades(entityId: string): Promise<string> {
-  const grades = await prisma.hiringGrade.findMany({
+  const grades = await prisma.grade.findMany({
     where: { deletedAt: null, OR: [{ entityId: null }, { entityId }] },
     orderBy: { order: "asc" },
     take: 20,

@@ -108,7 +108,8 @@
     "settingsEmail": "Email templates",
     "settingsPerformance": "Performance",
     "myHiring": "My hiring",
-    "approvals": "Approvals"
+    "approvals": "Approvals",
+    "settingsAi": "AI"
   },
   "auth": {
     "login": "Login",
@@ -7131,7 +7132,8 @@
       },
       "tawteenTitle": "Tawteen targets",
       "tawteenHint": "The Omanization share each company aims for. Hiring insights compare hires against it",
-      "tawteenField": "Percent of hires, 0 to 100"
+      "tawteenField": "Percent of hires, 0 to 100",
+      "aiMoved": "The AI provider and limits are platform settings now. Change them in <link>Admin, Settings, AI</link>."
     },
     "insights": {
       "title": "Hiring insights",
@@ -7397,7 +7399,8 @@
       "performance-settings": "Cycle windows and policy, corporate scores and 360 setup.",
       "jml-settings": "Checklists, rules, approvals, documents, statutory values and calendars for joiners, movers and leavers.",
       "hiring-settings": "Approval chains, assessment policy, AI assists and budgets for hiring.",
-      "ticket-setup": "HR pairs and coverage, ticket settings, and the information Siraaj answers from."
+      "ticket-setup": "HR pairs and coverage, ticket settings, and the information Siraaj answers from.",
+      "ai-settings": "The AI provider, key and daily limits every module's AI uses."
     },
     "emailTemplates": {
       "title": "Email templates",
@@ -7416,6 +7419,11 @@
       "scoresDescription": "Company and department scores HR keys in for the year.",
       "threeSixtyTitle": "360 setup",
       "threeSixtyDescription": "Rater assignments and 360 cycles."
+    },
+    "ai": {
+      "title": "AI",
+      "subtitle": "The provider, model, key and daily limits used by every module's AI features.",
+      "notPermitted": "Only people who configure AI can change these settings."
     }
   },
   "team": {
