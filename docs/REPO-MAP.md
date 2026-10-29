@@ -255,6 +255,7 @@
 - app/api/hive/admin/providers/import/route.ts  [POST]
 - app/api/hive/admin/ref/[resource]/[id]/route.ts  [PATCH,DELETE]
 - app/api/hive/admin/ref/[resource]/route.ts  [GET,POST]
+- app/api/hive/admin/reports/export/route.ts  [GET]
 - app/api/hive/admin/reports/route.ts  [GET]
 - app/api/hive/admin/rotation-config/route.ts  [GET,PUT]
 - app/api/hive/admin/ticket-settings/route.ts  [GET,PUT]
@@ -723,6 +724,7 @@
 - lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission, opensQueue, ticketReach, pairsFor
 - lib/hive/services/reference.ts: PROVIDER_PAGE, listReference, createReference, updateReference, removeReference
 - lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
+- lib/hive/services/report-sla.ts: SlaFigures, slaFigures, backlogTrend, AGE_BANDS, ageing, ageBand, perPerson, reportCsvRows, csvField, toCsv
 - lib/hive/services/reports.ts: TicketReport, bucketStarts, getTicketReport
 - lib/hive/services/saved-replies.ts: listSavedReplies, referenceSnippets, SavedReplyInput, createSavedReply, updateSavedReply, deleteSavedReply
 - lib/hive/services/setup.ts: saveRotationConfig, listOrgInfo, saveOrgInfo, MAX_PROVIDER_FILE_BYTES, importProviders
@@ -1142,6 +1144,7 @@
 - components/hive/escalations/TicketRail.tsx
 - components/hive/reply/ReplyClient.tsx
 - components/hive/reply/ReplyInvalid.tsx
+- components/hive/reports/ServiceLevels.tsx
 - components/home/MyWork.tsx
 - components/imports/ImportsHub.tsx
 - components/jml/ActionDialog.tsx

@@ -13,6 +13,8 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { StatCard } from "@/components/shared/StatCard";
 import { useSourceLabels, useStatusLabels } from "@/components/hive/escalations/status-labels";
 import { apiClient } from "@/lib/api-client";
+import { Link } from "@/i18n/navigation";
+import { ServiceLevels, type ServiceLevelData } from "@/components/hive/reports/ServiceLevels";
 
 /**
  * Blueprint US-T7: tiles, bars by HR pair / status / source, and volume over
@@ -36,6 +38,10 @@ interface Report {
   bySource: { source: string; count: number }[];
   byPair: { pairId: string; name: string; count: number }[];
   volume: { bucket: string; count: number }[];
+  sla: ServiceLevelData["sla"];
+  backlog: ServiceLevelData["backlog"];
+  ageing: ServiceLevelData["ageing"];
+  people: ServiceLevelData["people"];
   /** HR's label renames (Settings). */
   statusLabels: Record<string, string>;
 }
@@ -59,7 +65,7 @@ function Breakdown({
   rows,
   format,
 }: {
-  rows: { key: string; label: string; count: number }[];
+  rows: { key: string; label: string; count: number; href?: Record<string, string> }[];
   format: (n: number) => string;
 }) {
   const max = Math.max(1, ...rows.map((r) => r.count));
@@ -68,7 +74,17 @@ function Breakdown({
       {rows.map((r) => (
         <li key={r.key} className="flex flex-col gap-1">
           <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="text-foreground">{r.label}</span>
+            {r.href ? (
+              // P2-10 — click-through to the queue, filtered to these tickets.
+              <Link
+                href={{ pathname: "/tickets", query: r.href }}
+                className="text-primary hover:underline"
+              >
+                {r.label}
+              </Link>
+            ) : (
+              <span className="text-foreground">{r.label}</span>
+            )}
             <span className="font-medium tabular-nums text-foreground">{format(r.count)}</span>
           </div>
           <div className="h-2 rounded-full bg-muted" aria-hidden>
@@ -170,6 +186,16 @@ export default function HiveReportsPage() {
             </div>
           </>
         ) : null}
+        {!customInvalid ? (
+          // P2-10 — the same range as CSV (service-level columns only, no names or questions).
+          <a
+            className="ms-auto text-sm text-primary hover:underline"
+            href={`/api/hive/admin/reports/export?${new URLSearchParams({ from: range.from, to: range.to })}`}
+            download
+          >
+            {t("exportCsv")}
+          </a>
+        ) : null}
       </div>
 
       {customInvalid ? (
@@ -229,6 +255,7 @@ export default function HiveReportsPage() {
                   height={260}
                 />
               </SectionCard>
+              <ServiceLevels data={report} duration={duration} day={day} number={number} />
               <div className="grid gap-6 lg:grid-cols-3">
                 <SectionCard title={t("byPair")}>
                   <Breakdown
@@ -236,6 +263,7 @@ export default function HiveReportsPage() {
                       key: p.pairId,
                       label: p.name,
                       count: p.count,
+                      href: { pairId: p.pairId, from: report.range.from, to: report.range.to },
                     }))}
                     format={number.format}
                   />
@@ -246,6 +274,7 @@ export default function HiveReportsPage() {
                       key: s.status,
                       label: statusLabel[s.status] ?? s.status,
                       count: s.count,
+                      href: { status: s.status, from: report.range.from, to: report.range.to },
                     }))}
                     format={number.format}
                   />

@@ -1117,3 +1117,16 @@ Considered: **Flatfile / OneSchema embedded importers** (rejected — personal a
 would leave the database). **A generic import engine with adapters** (deferred — the
 three apply flows differ; see ADR-096).
 Decision: build — a `kind` on the existing record and one hub page.
+
+### 2026-10-29 — P2 ticket reports (service levels, backlog, load, CSV)
+
+Scope: lib/hive/services/report-sla.ts
+Considered:
+
+- **Helpdesk analytics (Zendesk Explore, Freshdesk Analytics) or a BI tool on the database
+  (Metabase).** Rejected: tickets live here and HR wants the figures next to the queue with
+  click-through; a BI tool would read Confidential tables outside the app's permission model.
+- **A CSV library (papaparse, csv-stringify).** Rejected: thirteen fixed columns; a 4-line
+  RFC 4180 writer with formula neutralisation is enough.
+
+Decision: build.

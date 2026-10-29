@@ -27,16 +27,21 @@ before(async () => {
       prisma: {
         escalation: {
           count: async () => 3,
+          // P2-10: the backlog/ageing reads and the per-person groupings.
+          findMany: async () => [],
           groupBy: async ({ by }: { by: string[] }) =>
-            by[0] === "hrPairId"
-              ? [
-                  { hrPairId: "p1", _count: { _all: 1 } },
-                  { hrPairId: "p2", _count: { _all: 2 } },
-                ]
-              : by[0] === "status"
-                ? [{ status: "OPEN", _count: { _all: 3 } }]
-                : [{ source: "SIRAAJ", _count: { _all: 3 } }],
+            by[0] === "assigneeId" || by[0] === "draftedById"
+              ? []
+              : by[0] === "hrPairId"
+                ? [
+                    { hrPairId: "p1", _count: { _all: 1 } },
+                    { hrPairId: "p2", _count: { _all: 2 } },
+                  ]
+                : by[0] === "status"
+                  ? [{ status: "OPEN", _count: { _all: 3 } }]
+                  : [{ source: "SIRAAJ", _count: { _all: 3 } }],
         },
+        user: { findMany: async () => [] },
         hrTagPair: {
           findMany: async () => [
             { id: "p1", name: "Siham & Alaa" },
