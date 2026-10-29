@@ -46,7 +46,9 @@ export function canApproveSettlement(ctx: {
     reasons.push("A line changed after the last calculation — recalculate so the net is current.");
   if (ctx.provisional) {
     reasons.push(
-      `The calculation used statutory values no one has verified (${ctx.unverifiedKeys.join(", ")}). ` +
+      `The calculation used statutory values no one has verified${
+        ctx.unverifiedKeys.length > 0 ? ` (${ctx.unverifiedKeys.join(", ")})` : ""
+      }. ` +
         'It is "Provisional — statutory values unconfirmed" and cannot be approved until they are verified (AC-10.8).',
     );
   }

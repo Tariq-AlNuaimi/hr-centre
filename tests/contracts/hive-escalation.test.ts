@@ -220,7 +220,9 @@ describe("§5.4 — the row is inert, and stays inert", { skip: !canMock }, () =
     assert.equal(written.length, 1);
     const row = written[0];
     assert.equal(row.status, "OPEN", "§5.4 step 5: every answer needs the HR Manager's approval");
-    assert.deepEqual(opened, [{ escalationId: "esc-1", kind: "OPENED", actorId: null }]);
+    assert.deepEqual(opened, [
+      { escalationId: "esc-1", kind: "OPENED", actorId: null, note: null },
+    ]);
     // Nothing in this path may pre-fill any part of the send.
     for (const forbidden of ["sentAt", "approvedAt", "approvedById", "draftAnswer"]) {
       assert.equal(row[forbidden], undefined, `\`${forbidden}\` must be set by a human, later`);

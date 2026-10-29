@@ -105,14 +105,18 @@ export function employeeSelect(actor: PmsActor) {
  * chart has no field to show it in, so there is no capability branch to get
  * wrong.
  */
+/** A unit head on the chart: the name, plus what says whether they are still here. */
+const ORG_HEAD = { name: true, status: true, deletedAt: true } as const;
+
 export const ORG_TREE_NODE_SELECT = {
   id: true,
   name: true,
   roleTrack: true,
   status: true,
   managerId: true,
-  department: { select: { id: true, name: true } },
-  entity: { select: { id: true, code: true } },
+  // Unit heads (overnight item 2) — the name only, shown on the chart.
+  department: { select: { id: true, name: true, head: { select: ORG_HEAD } } },
+  entity: { select: { id: true, code: true, head: { select: ORG_HEAD } } },
 } satisfies Prisma.EmployeeSelect;
 
 /**

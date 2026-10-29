@@ -83,7 +83,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
         // row as though the record were live — on the screen an admin uses to
         // decide what to do with that account.
         employee: { select: { id: true, name: true, deletedAt: true } },
-        // F-c — HR authority now lives on role assignments, not Employee.pmsRoles.
+        // F-c — HR authority now lives on role assignments, not the dropped Employee.pmsRoles.
         roleAssignments: {
           where: { role: { deletedAt: null } },
           select: { role: { select: { name: true } } },

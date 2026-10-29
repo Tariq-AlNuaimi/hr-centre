@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiClient } from "@/lib/api-client";
+import { HeadControl } from "./HeadControl";
 import { UnitRow } from "./UnitRow";
 import { useOrgAction } from "./useOrgAction";
 import type { Company } from "./types";
@@ -25,6 +26,14 @@ export function CompaniesSection({ companies }: { companies: Company[] }) {
               key={company.id}
               name={company.name}
               badge={<Badge variant="brand">{company.code}</Badge>}
+              head={
+                <HeadControl
+                  kind="COMPANY"
+                  unitId={company.id}
+                  unitName={company.name}
+                  head={company.head}
+                />
+              }
               meta={t("companyCounts", {
                 departments: company._count.departments,
                 people: company._count.employees,

@@ -74,7 +74,6 @@ function toUpdateInput(employee: {
     roleTrack: employee.roleTrack as UpdateEmployeeInput["roleTrack"],
     // F-c — the legacy field the PUT schema still carries; the route ignores
     // it (HR authority lives on role assignments now).
-    pmsRoles: [],
     basicSalary: employee.basicSalary,
     status: employee.status as UpdateEmployeeInput["status"],
     lastWorkingDay: employee.lastWorkingDay?.toISOString().slice(0, 10) ?? null,
@@ -251,6 +250,18 @@ export default async function EmployeeDetailPage({
   const shown: RecordTab = allHidden.includes(tab) ? "overview" : tab;
   const view = recordView(t, employee, detail.record.directorate, locale);
 
+  // Joiner from the record (PRE_JOINER without a live onboarding) and a ticket
+  // raised on the person's behalf (Drafters) — each route re-checks.
+  const [canRaiseTicket, liveJoin] = await Promise.all([
+    hasHivePermission(session.user.id, "draftEscalation"),
+    employee.status === "PRE_JOINER"
+      ? prisma.jmlCase.findFirst({
+          where: { employeeId: employee.id, caseType: "JOIN", status: { not: "CANCELLED" } },
+          select: { id: true },
+        })
+      : null,
+  ]);
+
   const actions: RecordActionsProps = {
     employeeId: employee.id,
     employeeName: employee.name,
@@ -266,7 +277,9 @@ export default async function EmployeeDetailPage({
           }
         : null,
     record: recordEdit(actor, subject, detail.record),
-    links: recordLinks(actor, subject, employee, locale),
+    links: recordLinks(actor, subject, employee, locale, canRaiseTicket),
+    startJoiner:
+      employee.status === "PRE_JOINER" && !liveJoin && canFor(actor, "jml.manageJoiners", subject),
     // UX review P0 (US-2) — a departure's PROCESS is a Joiners & leavers case;
     // recording it directly is only the HR Super Admin correction, with a reason.
     departure:
@@ -405,6 +418,7 @@ function recordLinks(
   subject: Subject,
   employee: { id: string; name: string; status: string },
   locale: string,
+  canRaiseTicket: boolean,
 ): RecordActionsProps["links"] {
   const prefill = new URLSearchParams({ employeeId: employee.id, name: employee.name });
   const links: RecordActionsProps["links"] = [];
@@ -412,6 +426,11 @@ function recordLinks(
     links.push({ label: "startMover", href: `/${locale}/jml/movers/new?${prefill}` });
   if (employee.status !== "LEAVER" && canFor(actor, "jml.manageLeavers", subject))
     links.push({ label: "startLeaver", href: `/${locale}/jml/leavers/new?${prefill}` });
+  if (canRaiseTicket && employee.status !== "LEAVER")
+    links.push({
+      label: "raiseTicket",
+      href: `/${locale}/tickets/new?${new URLSearchParams({ employeeId: employee.id })}`,
+    });
   links.push({
     label: "orgChart",
     href: `/${locale}/org?${new URLSearchParams({ q: employee.name })}`,

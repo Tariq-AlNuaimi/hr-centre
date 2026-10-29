@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiClient } from "@/lib/api-client";
 import { NativeSelect } from "./NativeSelect";
+import { HeadControl } from "./HeadControl";
 import { UnitRow } from "./UnitRow";
 import { useOrgAction } from "./useOrgAction";
 import type { Company, Directorate } from "./types";
@@ -37,6 +38,9 @@ export function DirectoratesSection({
               key={d.id}
               name={d.name}
               badge={<Badge>{d.entity.code}</Badge>}
+              head={
+                <HeadControl kind="DIRECTORATE" unitId={d.id} unitName={d.name} head={d.head} />
+              }
               meta={t("directorateCounts", { departments: d._count.departments })}
               busy={busy}
               onRename={(next) =>

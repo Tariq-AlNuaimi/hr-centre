@@ -1,4 +1,3 @@
-import type { PmsRole } from "@/generated/prisma/client";
 import {
   canInScope,
   has,
@@ -8,6 +7,13 @@ import {
   type ScopeSubject,
 } from "@/lib/rbac/grants";
 import type { Permission } from "@/lib/rbac/catalogue";
+
+/**
+ * §4.1's three HR roles, now the starter roles of the same keys. Kept as a
+ * type for the starter-role shorthand below; nothing stores it any more (the
+ * `Employee.pmsRoles` column was dropped).
+ */
+export type PmsRole = "HR_SUPER_ADMIN" | "HRBP" | "EXECUTIVE_VIEWER";
 
 /**
  * PMS capability resolution — spec §4 (roles, permissions & visibility).
@@ -43,7 +49,7 @@ export type PmsActor = {
    */
   employeeId: string | null;
   /**
-   * LEGACY input only (HR Centre F-c). `resolveActor` always sets `[]` and
+   * Starter-role shorthand for actors built in code (HR Centre F-c). `resolveActor` always sets `[]` and
    * supplies `grants`; an actor built without `grants` (tests, background jobs)
    * is read as these roles' STARTER role at Group scope — which is exactly how
    * the Performance contract tests prove the starter roles reproduce the old

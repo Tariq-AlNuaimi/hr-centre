@@ -51,7 +51,7 @@ export const escalationQuerySchema = z
     // US-T6's filters. Each is opt-in: with none set the queue is still the one
     // shared, company-wide list AC-10.1 describes.
     pairId: z.string().trim().min(1).max(64).optional(),
-    source: z.enum(["HIVE", "SIRAAJ"]).optional(),
+    source: z.enum(["HIVE", "SIRAAJ", "HR"]).optional(),
     from: isoDaySchema.optional(),
     to: isoDaySchema.optional(),
     q: z.string().trim().max(100).optional(),

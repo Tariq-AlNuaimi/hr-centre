@@ -7,8 +7,14 @@ import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 import { Prisma } from "../../generated/prisma/client";
-import type { PmsRole } from "../../generated/prisma/client";
-import { TEST_EMPLOYEE_PREFIX, suiteActor, suiteLogin, syncFixtureRoles } from "./fixture";
+import type { PmsRole } from "../../lib/pms/permissions";
+import {
+  TEST_EMPLOYEE_PREFIX,
+  describeRoles,
+  suiteActor,
+  suiteLogin,
+  syncFixtureRoles,
+} from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -71,7 +77,7 @@ before(async () => {
     where: { entityId: entity.id },
     select: { id: true },
   });
-  const actor = async (odooId: string, name: string, pmsRoles: PmsRole[]) => {
+  const actor = async (odooId: string, name: string, starterRoles: PmsRole[]) => {
     const row = await prisma.employee.upsert({
       where: { odooId },
       create: {
@@ -82,12 +88,12 @@ before(async () => {
         entityId: entity.id,
         roleTrack: "INDIVIDUAL",
         status: "ACTIVE",
-        pmsRoles,
         dateOfJoining: new Date(Date.UTC(2020, 0, 1)),
       },
-      update: { pmsRoles, status: "ACTIVE" },
+      update: { status: "ACTIVE" },
       select: { id: true },
     });
+    describeRoles(row.id, starterRoles);
     return row.id;
   };
   ids.superAdmin = await actor(`${TEST_EMPLOYEE_PREFIX}CHAIN-SA`, "Chain HR Super Admin", [
@@ -126,7 +132,7 @@ before(async () => {
   };
   ids.superAdminUser = await login(ids.superAdmin, "sa");
   ids.hrbpUser = await login(ids.hrbp, "hrbp");
-  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  // Authority is role assignments now: grant the actors' described starter roles (fixture.ts).
   await syncFixtureRoles(prisma);
 });
 

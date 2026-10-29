@@ -6,7 +6,7 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
-import { NOT_SUITE_OWNED, suiteActor, syncFixtureRoles } from "./fixture";
+import { NOT_SUITE_OWNED, NO_HR_ROLE, suiteActor, syncFixtureRoles } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -77,7 +77,7 @@ before(async () => {
     suite: "ts",
     tag: "hr",
     name: "360 HR Super Admin",
-    pmsRoles: ["HR_SUPER_ADMIN"],
+    starterRoles: ["HR_SUPER_ADMIN"],
   });
 
   const cycle = await prisma.performanceCycle.upsert({
@@ -114,7 +114,7 @@ before(async () => {
   ids.entity = entity.id;
   const dept = await prisma.department.findFirstOrThrow({ select: { id: true } });
   ids.department = dept.id;
-  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  // Authority is role assignments now: grant the actors' described starter roles (fixture.ts).
   await syncFixtureRoles(prisma);
 });
 
@@ -137,7 +137,7 @@ const TEMPLATES = [
 test("§8.4 only HR keys a Strategy score", async () => {
   const emp = await prisma.employee.findFirstOrThrow({
     // Never another suite's own employee — see tests/integration/fixture.ts.
-    where: { pmsRoles: { isEmpty: true }, ...NOT_SUITE_OWNED },
+    where: { ...NO_HR_ROLE, ...NOT_SUITE_OWNED },
     select: { id: true },
   });
   const user = await prisma.user.upsert({

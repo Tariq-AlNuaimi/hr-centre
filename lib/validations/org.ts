@@ -62,6 +62,15 @@ export const teamListQuerySchema = z.object({
   departmentId: id.optional(),
 });
 
+/** Unit heads (overnight item 2): which unit, and who leads it (null clears). */
+const ORG_UNIT_KINDS = ["COMPANY", "DIRECTORATE", "DEPARTMENT", "TEAM"] as const;
+export const setUnitHeadSchema = z.object({
+  kind: z.enum(ORG_UNIT_KINDS),
+  unitId: id,
+  headEmployeeId: id.nullable(),
+});
+export type SetUnitHeadInput = z.infer<typeof setUnitHeadSchema>;
+
 export type CreateDirectorateInput = z.infer<typeof createDirectorateSchema>;
 export type CreateOrgDepartmentInput = z.infer<typeof createOrgDepartmentSchema>;
 export type UpdateOrgDepartmentInput = z.infer<typeof updateOrgDepartmentSchema>;

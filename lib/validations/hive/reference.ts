@@ -154,8 +154,6 @@ export const rotationConfigSchema = z.object({
 export const orgInfoSchema = z.object({
   kind: z.enum(["COMPANY", "DIRECTORATE", "DEPARTMENT", "TEAM"]),
   unitId: id,
-  leaderName: optionalText(120),
-  leaderTitle: optionalText(120),
   order,
 });
 

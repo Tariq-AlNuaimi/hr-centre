@@ -237,7 +237,13 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
   }
 
   const hr = await prisma.employee.findFirst({
-    where: { pmsRoles: { has: "HR_SUPER_ADMIN" } },
+    where: {
+      user: {
+        roleAssignments: {
+          some: { scopeType: "GROUP", role: { starterKey: "HR_SUPER_ADMIN", deletedAt: null } },
+        },
+      },
+    },
     select: { id: true },
     orderBy: { createdAt: "asc" },
   });
@@ -379,7 +385,7 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
           odooId: true,
           managerId: true,
           roleTrack: true,
-          pmsRoles: true,
+          user: { select: { roleAssignments: { select: { id: true }, take: 1 } } },
           assignmentPeriods: {
             where: { cycleId: cycle.id },
             select: { id: true, managerEmployeeId: true },
@@ -407,7 +413,7 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
           // "watch HR approve HR's own baseline" is a confusing thing to put on a
           // stage — §5.1 permits it, but the flow being shown is a line manager's
           // set reaching HR, not HR's own.
-          p.employee.pmsRoles.length === 0 &&
+          (p.employee.user?.roleAssignments.length ?? 0) === 0 &&
           p.employee.odooId !== "BOOTSTRAP-ADMIN",
       )
       .sort((a, b) => a.employee.odooId.localeCompare(b.employee.odooId))

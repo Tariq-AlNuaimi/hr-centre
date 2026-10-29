@@ -19,7 +19,6 @@ const EMPLOYEE_STATUSES = ["ACTIVE", "LEAVER", "PRE_JOINER"] as const;
  * ACTIVE on day one; the People forms neither create nor reach that state.
  */
 const CREATABLE_STATUSES = ["ACTIVE", "LEAVER"] as const;
-const PMS_ROLES = ["HR_SUPER_ADMIN", "HRBP", "EXECUTIVE_VIEWER"] as const;
 
 /** ISO calendar day. Strict, for the reason given in import/validate.ts. */
 export const isoDate = z
@@ -70,7 +69,6 @@ const employeeCore = {
   entityId: z.string().trim().min(1, "Entity is required"),
   managerId: z.string().trim().min(1).nullable(),
   roleTrack: z.enum(ROLE_TRACKS),
-  pmsRoles: z.array(z.enum(PMS_ROLES)).max(3).default([]),
   basicSalary: salary.default(null),
   status: z.enum(CREATABLE_STATUSES).default("ACTIVE"),
   lastWorkingDay: isoDate.nullable().default(null),
@@ -161,19 +159,17 @@ export const createEmployeeSchema = applyOrgInvariants(z.object(employeeCore));
 const { odooId: _immutableKey, ...updatableFields } = employeeCore;
 
 /**
- * The six fields whose DEFAULT is safe on a create and destructive on an update.
+ * The five fields whose DEFAULT is safe on a create and destructive on an update.
  *
  * `PUT /api/employees/[id]` replaces the whole row. On a CREATE, an absent
- * `status` reasonably means "a new employee, so ACTIVE", and an absent
- * `pmsRoles` means "no HR authority yet" — the defaults are a convenience and
- * they are right. On a full-replace UPDATE the same absence means "I forgot to
+ * `status` reasonably means "a new employee, so ACTIVE" — the defaults are a
+ * convenience and they are right. On a full-replace UPDATE the same absence means "I forgot to
  * send it", and zod filling it in is silent data loss:
  *
  *   - `status` → ACTIVE **reactivates a leaver**, and does it without restoring
  *     the login ADR-069's off-boarding revoked — leaving an ACTIVE employee whose
  *     account is soft-deleted, which is the one state that amendment exists to
  *     prevent. This is why the risk got sharper rather than staying theoretical.
- *   - `pmsRoles` → `[]` **strips §4.1 authority** from an HR Super Admin.
  *   - `basicSalary` → null **wipes payroll** (§11.3 multiplies by it).
  *   - `unpaidLeaveDays` → 0 **wipes §11.5's** service reduction.
  *   - `dateOfJoining` → null **wipes §3.3's anchor**, and §11.7 then refuses to
@@ -194,7 +190,6 @@ const { odooId: _immutableKey, ...updatableFields } = employeeCore;
 const updateRequiredFields = {
   ...updatableFields,
   dateOfJoining: isoDate.nullable(),
-  pmsRoles: z.array(z.enum(PMS_ROLES)).max(3),
   basicSalary: salary,
   status: z.enum(EMPLOYEE_STATUSES),
   lastWorkingDay: isoDate.nullable(),

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { addWorkingHours } from "@/lib/working-time/calendar";
 import { loadWorkingCalendar } from "@/lib/working-time/load";
+import { DEFAULT_RESPONSE_HOURS } from "@/lib/validations/hive/ticket-settings";
 
 /**
  * HR tickets' internal clock and ownership (UX review tickets P1-2,
@@ -9,8 +10,6 @@ import { loadWorkingCalendar } from "@/lib/working-time/load";
  * ageing badge and never to the employee (blueprint hive.md keeps employee-
  * facing SLA wording out).
  */
-
-const DEFAULT_RESPONSE_HOURS = 16;
 
 /** When a ticket raised at `now` should be answered by. Never throws — null when unknown. */
 export async function answerDueAt(now: Date = new Date()): Promise<Date | null> {

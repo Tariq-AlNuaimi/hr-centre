@@ -1,7 +1,9 @@
 import type { NextRequest } from "next/server";
-import { ok, err, forbidden } from "@/lib/api-response";
-import { withAuth } from "@/lib/api-helpers";
-import { ticketReach } from "@/lib/hive/services/permissions";
+import { ok, err, forbidden, created, readJsonBody } from "@/lib/api-response";
+import { withAuth, withRateLimit } from "@/lib/api-helpers";
+import { requireHivePermission, ticketReach } from "@/lib/hive/services/permissions";
+import { raiseTicketForEmployee } from "@/lib/hive/services/escalation-raise";
+import { raiseForEmployeeSchema } from "@/lib/validations/hive/escalation";
 import { listEscalations, listQueuePairs } from "@/lib/hive/services/escalation-queue";
 import { escalationQuerySchema } from "@/lib/validations/hive/escalation-queue";
 import { getTicketSettings } from "@/lib/hive/services/ticket-settings";
@@ -43,3 +45,24 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   ]);
   return ok({ data, nextCursor, counts, pairs, settings, total: data.length });
 });
+
+/**
+ * HR raises a ticket on an employee's behalf. Needs Draft on at least one pair;
+ * the ticket then routes like any other (it may land with a different pair) and
+ * goes through the same approval — the raiser gains nothing on it.
+ */
+export const POST = withRateLimit(
+  withAuth(
+    requireHivePermission("draftEscalation", async (req: NextRequest, ctx) => {
+      const parsed = raiseForEmployeeSchema.safeParse(await readJsonBody(req));
+      if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Invalid ticket.", 400);
+      const result = await raiseTicketForEmployee(
+        { userId: ctx.session.user.id, name: ctx.session.user.name ?? null },
+        parsed.data,
+      );
+      if (!result.ok) return err(result.error, result.status);
+      return created({ id: result.ticket.id, ticketNumber: result.ticket.ticketNumber });
+    }),
+  ),
+  { id: "hive-raise-ticket", limit: 20, windowMs: 60_000 },
+);

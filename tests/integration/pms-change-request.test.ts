@@ -22,7 +22,7 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
-import { NOT_SUITE_OWNED, suiteActor, syncFixtureRoles } from "./fixture";
+import { NOT_SUITE_OWNED, NO_HR_ROLE, suiteActor, syncFixtureRoles } from "./fixture";
 import { Prisma } from "../../generated/prisma/client";
 
 const mockApi = mock as unknown as {
@@ -117,7 +117,7 @@ before(async () => {
   const manager = await prisma.employee.findFirstOrThrow({
     where: {
       status: "ACTIVE",
-      pmsRoles: { isEmpty: true },
+      ...NO_HR_ROLE,
       reports: { some: { status: "ACTIVE", roleTrack: { not: "C_LEVEL" } } },
       // Never another suite's own employee — see tests/integration/fixture.ts.
       ...NOT_SUITE_OWNED,
@@ -213,7 +213,7 @@ before(async () => {
     suite: "cr",
     tag: "hr",
     name: "Change-request HR Super Admin",
-    pmsRoles: ["HR_SUPER_ADMIN"],
+    starterRoles: ["HR_SUPER_ADMIN"],
   });
   ids.hrUser = await login(ids.hr, "hr");
 
@@ -229,7 +229,7 @@ before(async () => {
   // Someone with no relationship to the subject at all — §4.2's 404 case.
   const stranger = await prisma.employee.findFirst({
     where: {
-      pmsRoles: { isEmpty: true },
+      ...NO_HR_ROLE,
       id: { notIn: [ids.manager, ids.employee, ids.hr] },
       NOT: { reports: { some: {} } },
       // Never another suite's own employee — see tests/integration/fixture.ts.
@@ -244,7 +244,7 @@ before(async () => {
   // Start from a clean slate so a re-run is meaningful.
   await prisma.kpiChangeRequest.deleteMany({ where: { participantId: ids.participant } });
   await prisma.kpiVersion.deleteMany({ where: { kpiId: { in: ids.kpis } } });
-  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  // Authority is role assignments now: grant the actors' described starter roles (fixture.ts).
   await syncFixtureRoles(prisma);
 });
 

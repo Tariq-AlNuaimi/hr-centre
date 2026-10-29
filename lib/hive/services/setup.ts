@@ -37,31 +37,53 @@ export async function saveRotationConfig(input: z.output<typeof rotationConfigSc
   return loadRotationConfig();
 }
 
-// --- Org-chart details (leaders, order) over the CORE org ---------------------
+// --- Org-chart details (display order) over the CORE org ----------------------
 
 /**
  * Every core unit with its ticket org-chart details, for the editor. Core org
- * is read-only here: this only describes units (leader, title, order).
+ * is read-only here: this only sets display order. Leaders are the units' core
+ * heads (Organisation structure); a HIVE-era leader name is returned only as
+ * `legacyLeader`, for a unit with no head, so HR can see who to pick.
  */
 export async function listOrgInfo() {
   const [entities, directorates, departments, teams, info] = await Promise.all([
     prisma.orgEntity.findMany({
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        head: { select: { name: true, jobTitle: true, status: true } },
+      },
       orderBy: { code: "asc" },
       take: 50,
     }),
     prisma.directorate.findMany({
-      select: { id: true, name: true, entityId: true },
+      select: {
+        id: true,
+        name: true,
+        entityId: true,
+        head: { select: { name: true, jobTitle: true, status: true } },
+      },
       orderBy: { name: "asc" },
       take: 200,
     }),
     prisma.department.findMany({
-      select: { id: true, name: true, entityId: true, directorateId: true },
+      select: {
+        id: true,
+        name: true,
+        entityId: true,
+        directorateId: true,
+        head: { select: { name: true, jobTitle: true, status: true } },
+      },
       orderBy: { name: "asc" },
       take: 500,
     }),
     prisma.team.findMany({
-      select: { id: true, name: true, departmentId: true },
+      select: {
+        id: true,
+        name: true,
+        departmentId: true,
+        head: { select: { name: true, jobTitle: true, status: true } },
+      },
       orderBy: { name: "asc" },
       take: 500,
     }),
@@ -71,31 +93,38 @@ export async function listOrgInfo() {
     }),
   ]);
   const byKey = new Map(info.map((i) => [`${i.kind}:${i.unitId}`, i]));
-  const withInfo = (kind: string, id: string) => {
+  type Head = { name: string; jobTitle: string | null; status: string } | null;
+  const withInfo = (kind: string, id: string, head: Head) => {
     const i = byKey.get(`${kind}:${id}`);
+    const current = head && head.status !== "LEAVER" ? head : null;
+    const legacy = i?.leaderName ? [i.leaderName, i.leaderTitle].filter(Boolean).join(", ") : null;
     return {
-      leaderName: i?.leaderName ?? null,
-      leaderTitle: i?.leaderTitle ?? null,
+      head: current ? { name: current.name, jobTitle: current.jobTitle } : null,
+      legacyLeader: current ? null : legacy,
       order: i?.order ?? 0,
     };
   };
   return {
-    companies: entities.map((e) => ({
+    companies: entities.map(({ head, ...e }) => ({
       kind: "COMPANY" as const,
       ...e,
-      ...withInfo("COMPANY", e.id),
+      ...withInfo("COMPANY", e.id, head),
     })),
-    directorates: directorates.map((d) => ({
+    directorates: directorates.map(({ head, ...d }) => ({
       kind: "DIRECTORATE" as const,
       ...d,
-      ...withInfo("DIRECTORATE", d.id),
+      ...withInfo("DIRECTORATE", d.id, head),
     })),
-    departments: departments.map((d) => ({
+    departments: departments.map(({ head, ...d }) => ({
       kind: "DEPARTMENT" as const,
       ...d,
-      ...withInfo("DEPARTMENT", d.id),
+      ...withInfo("DEPARTMENT", d.id, head),
     })),
-    teams: teams.map((t) => ({ kind: "TEAM" as const, ...t, ...withInfo("TEAM", t.id) })),
+    teams: teams.map(({ head, ...t }) => ({
+      kind: "TEAM" as const,
+      ...t,
+      ...withInfo("TEAM", t.id, head),
+    })),
   };
 }
 
@@ -112,7 +141,8 @@ export async function saveOrgInfo(input: z.output<typeof orgInfoSchema>) {
     throw new OrgRuleError("unitId: that unit does not exist", 404);
   }
   const where = { kind_unitId: { kind: input.kind, unitId: input.unitId } };
-  const data = { leaderName: input.leaderName, leaderTitle: input.leaderTitle, order: input.order };
+  // Order only: leaders are core unit heads now (the legacy columns are never written).
+  const data = { order: input.order };
   const exists = await prisma.hiveOrgUnitInfo.findUnique({ where, select: { id: true } });
   if (exists) return prisma.hiveOrgUnitInfo.update({ where, data, select: { id: true } });
   return prisma.hiveOrgUnitInfo.create({

@@ -33,6 +33,7 @@ export const GET = withRateLimit(
           department: {
             select: { id: true, name: true, entity: { select: { id: true, code: true } } },
           },
+          head: { select: { id: true, name: true, status: true } },
           _count: { select: { employees: { where: { deletedAt: null } } } },
         },
       }),

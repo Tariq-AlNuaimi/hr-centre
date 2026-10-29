@@ -80,7 +80,7 @@ before(async () => {
   await prisma.notification.deleteMany({
     where: { recipientEmployee: { odooId: { startsWith: TEST_EMPLOYEE_PREFIX } } },
   });
-  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  // Authority is role assignments now: grant the actors' described starter roles (fixture.ts).
   await syncFixtureRoles(prisma);
 });
 

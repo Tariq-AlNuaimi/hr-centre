@@ -4,7 +4,8 @@ import type { OpenJoinCaseInput } from "@/lib/validations/jml/joiner";
 import { cancelOpenWork } from "../engine/case-actions";
 import { JmlError } from "../errors";
 import { isLive } from "../vocab";
-import { DRAFT_REF_PREFIX } from "./draft";
+import { subjectOf, type JmlActor } from "../access";
+import { DRAFT_REF_PREFIX, requireManage } from "./draft";
 
 /**
  * The JML entry point for other modules (D8) — Hiring calls this when an offer
@@ -84,6 +85,35 @@ export async function openJoinCase(
     return kase.id;
   });
   return { caseId, created: true };
+}
+
+/**
+ * "Start joiner case" from an employee record's Actions menu: a PRE_JOINER with
+ * no live onboarding (made outside Hiring, or whose first case was cancelled)
+ * gets a DRAFT joiner case, exactly as Hiring's hand-over would open one. Needs
+ * Manage joiners for the person's placement — out of scope reads as 404.
+ */
+export async function startJoinCaseFromRecord(
+  actor: JmlActor,
+  employeeId: string,
+): Promise<{ caseId: string; created: boolean }> {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { entityId: true, departmentId: true, department: { select: { directorateId: true } } },
+  });
+  if (!employee) throw new JmlError("Employee not found", 404);
+  requireManage(actor, subjectOf(employee), 404);
+  return openJoinCase(
+    {
+      employeeId,
+      // Unique per attempt: a cancelled case keeps its own source reference.
+      sourceRef: `people:${employeeId}:${Date.now()}`,
+      plannedStartDate: null,
+      contractTypeId: null,
+      probationMonths: null,
+    },
+    actor.userId,
+  );
 }
 
 /**

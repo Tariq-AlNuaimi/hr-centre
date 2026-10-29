@@ -173,10 +173,12 @@ export async function createEscalation(
   capture: EscalationCapture,
   ctx: {
     sessionId: string | null;
-    source?: "HIVE" | "SIRAAJ";
+    source?: "HIVE" | "SIRAAJ" | "HR";
     identityVerified?: boolean;
     companyId?: string | null;
     orgUnitId?: string | null;
+    /** Source HR: who raised it, and the employee record it is for (not matched by email). */
+    raisedBy?: { userId: string; employeeId: string; note: string };
   },
 ): Promise<CreatedEscalation | { error: "no_hr_pairs" } | { error: "rate_limited" }> {
   {
@@ -237,7 +239,7 @@ export async function createEscalation(
   });
   if (!routed) return { error: "no_hr_pairs" };
 
-  const employeeId = await employeeIdFor(capture.employeeEmail);
+  const employeeId = ctx.raisedBy?.employeeId ?? (await employeeIdFor(capture.employeeEmail));
   // UX P1 (tickets P1-2): the internal answer-by time, in working hours.
   const dueAt = await answerDueAt();
 
@@ -261,13 +263,19 @@ export async function createEscalation(
         // 5), and a default can change in a migration without anyone reading this.
         status: "OPEN",
         dueAt,
+        raisedById: ctx.raisedBy?.userId ?? null,
       },
       // `hrPairId` is selected so the automatic audit row's `after` records WHERE
       // this went, which makes a misroute explainable after the fact.
       select: { id: true, ticketNumber: true, threadKey: true, hrPairId: true },
     });
     await tx.escalationEvent.create({
-      data: { escalationId: row.id, kind: "OPENED", actorId: null },
+      data: {
+        escalationId: row.id,
+        kind: "OPENED",
+        actorId: ctx.raisedBy?.userId ?? null,
+        note: ctx.raisedBy?.note ?? null,
+      },
       select: { id: true },
     });
     return row;

@@ -15,7 +15,7 @@ import { emailSchema } from "./common";
  * Every read of `User.role` in the product is `=== "ADMIN"`. So HR was asked to
  * make a three-way choice the product read as two-way, in words that appear
  * nowhere in the specification (§4.1's vocabulary is HR_SUPER_ADMIN / HRBP /
- * EXECUTIVE_VIEWER, on `Employee.pmsRoles`, and it is a separate axis by ADR-065).
+ * EXECUTIVE_VIEWER, on role assignments, and it is a separate axis by ADR-065).
  * A control that does not do what it appears to do teaches something false.
  *
  * The narrowing happens HERE, at the boundary, not only in the form. A UI-only

@@ -19,7 +19,7 @@
 //   - PASSWORDLESS. `authorize()` returns null without a hash, so these accounts cannot be
 //     signed into with a guessed password. They become usable when an IdP is configured.
 //   - `VIEWER`. Appearing in an HR directory never mints a platform administrator; §4.1
-//     authority lives on `Employee.pmsRoles` and is granted at /admin/roles by a human.
+//     authority lives on role assignments and is granted at /admin/roles by a human.
 //   - LEAVERs are skipped. §12.1 preserves a leaver's record, not their access.
 //   - Idempotent, and never destructive. An employee who already has `userId` is skipped;
 //     an email that already has a `User` — live OR soft-deleted — is skipped and NOT

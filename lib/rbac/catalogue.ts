@@ -213,7 +213,7 @@ const JML_MANAGER: readonly Permission[] = [
  * through these definitions. Admins may edit or delete them afterwards.
  *
  * Mirrored by migration 20261026180000 (which creates them and migrates
- * `Employee.pmsRoles` once); a contract test keeps the two in lockstep.
+ * the since-dropped `Employee.pmsRoles` once); a contract test keeps the two in lockstep.
  */
 export const STARTER_ROLES: ReadonlyArray<{
   key: StarterKey;

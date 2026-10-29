@@ -60,8 +60,8 @@ import {
  *      omitting it would encrypt `null` over a real figure and §11 would pay the
  *      wrong bonus for a year.
  *   3. **Only six fields are OFFERED.** Status and last working day belong to
- *      §12.1's audited departure path (`LeaverRecorder`), and `pmsRoles` to
- *      §4.3's roles screen. Both are held and returned unchanged; putting a
+ *      §12.1's audited departure path (`LeaverRecorder`); HR authority is a
+ *      role assignment (Admin › Roles). They are held and returned unchanged; putting a
  *      second, unaudited control for them here would make "who recorded this
  *      departure" unanswerable.
  *   4. **`odooId` is absent, as it is from the schema.** §3.2 makes it the

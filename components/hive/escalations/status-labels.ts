@@ -42,7 +42,7 @@ export function useStatusLabels(overrides?: Record<string, string>): Record<stri
  */
 export function useSourceLabels(): Record<string, string> {
   const t = useTranslations("hive.escalations");
-  return { HIVE: t("sourceHIVE"), SIRAAJ: t("sourceSIRAAJ") };
+  return { HIVE: t("sourceHIVE"), SIRAAJ: t("sourceSIRAAJ"), HR: t("sourceHR") };
 }
 
 /**

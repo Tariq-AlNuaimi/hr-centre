@@ -18,6 +18,8 @@
  * needs "some ordinary employee from the fixture" then reliably gets one.
  */
 
+import type { PmsRole } from "../../lib/pms/permissions";
+
 /** Every employee an integration suite creates for itself carries this prefix. */
 export const TEST_EMPLOYEE_PREFIX = "ZZTEST-";
 
@@ -46,11 +48,11 @@ export async function suiteActor(
     suite: string;
     tag: string;
     name: string;
-    pmsRoles?: import("../../generated/prisma/client").PmsRole[];
+    starterRoles?: PmsRole[];
     managerId?: string | null;
   },
 ): Promise<string> {
-  const { suite, tag, name, pmsRoles = [], managerId = null } = params;
+  const { suite, tag, name, starterRoles = [], managerId = null } = params;
   const odooId = `${TEST_EMPLOYEE_PREFIX}${suite}-${tag}`;
   const entity = await prisma.orgEntity.findFirstOrThrow({ select: { id: true } });
   const department = await prisma.department.findFirstOrThrow({
@@ -68,14 +70,14 @@ export async function suiteActor(
       managerId,
       roleTrack: "INDIVIDUAL",
       status: "ACTIVE",
-      pmsRoles,
       // The schema CHECK-constrains a joining date to at most a year ahead, so a
       // future-dated fixture is a fixture with a shelf life.
       dateOfJoining: new Date(Date.UTC(2020, 0, 1)),
     },
-    update: { pmsRoles, status: "ACTIVE", managerId, lastWorkingDay: null },
+    update: { status: "ACTIVE", managerId, lastWorkingDay: null },
     select: { id: true },
   });
+  describeRoles(row.id, starterRoles);
   return row.id;
 }
 
@@ -101,16 +103,15 @@ export async function suiteLogin(
     where: { userId: user.id, NOT: { id: employeeId } },
     data: { userId: null },
   });
-  const employee = await prisma.employee.update({
+  await prisma.employee.update({
     where: { id: employeeId },
     data: { userId: user.id },
-    select: { pmsRoles: true },
+    select: { id: true },
   });
-  // HR Centre F-c: authority is role assignments now. Suites still describe
-  // their actors with pmsRoles; mirror them as Group assignments of the
-  // matching starter role (created by migration 20261026180000).
+  // HR Centre F-c: authority is role assignments. The suite described this
+  // actor's starter roles (`describeRoles`); grant them at Group scope.
   await prisma.roleAssignment.deleteMany({ where: { userId: user.id } });
-  for (const key of employee.pmsRoles) {
+  for (const key of suiteRoles.get(employeeId) ?? []) {
     const role = await prisma.accessRole.findFirst({
       where: { starterKey: key },
       select: { id: true },
@@ -126,14 +127,29 @@ export async function suiteLogin(
 }
 
 /**
- * HR Centre F-c: authority comes from role assignments, not `Employee.pmsRoles`.
- * The suites still DESCRIBE their actors with pmsRoles and link logins with their
- * own helpers, so without this every HR actor answered 403/404 and ~50 security
- * tests proved nothing (QA 2026-10-27). Call once at the end of a suite's
- * `before`: every login-linked employee's pmsRoles are mirrored as GROUP
- * assignments of the matching starter role. Additive and idempotent (find, then
- * create), so concurrent suites never remove each other's grants; fixture rows
- * whose role the employee no longer lists are withdrawn.
+ * The starter roles each suite-described employee should hold, per process
+ * (each suite file runs in its own). `Employee.pmsRoles` used to carry this; the
+ * column is gone, so the suites describe their actors here instead.
+ */
+const suiteRoles = new Map<string, PmsRole[]>();
+
+/** Record which starter roles this employee's login should hold. */
+export function describeRoles(employeeId: string, roles: readonly PmsRole[]): void {
+  suiteRoles.set(employeeId, [...roles]);
+}
+
+/**
+ * "Holds no HR role" — the filter suites use to pick a plain employee from the
+ * seeded fixture (it used to be `pmsRoles: { isEmpty: true }`).
+ */
+export const NO_HR_ROLE = { NOT: { user: { roleAssignments: { some: {} } } } };
+
+/**
+ * Without this every HR actor answered 403/404 and ~50 security tests proved
+ * nothing (QA 2026-10-27). Call once at the end of a suite's `before`: every
+ * login-linked employee the suite described gets its starter roles as GROUP
+ * assignments. Additive and idempotent (find, then create); fixture rows whose
+ * role the employee no longer lists are withdrawn.
  */
 export async function syncFixtureRoles(
   prisma: typeof import("../../lib/prisma").prisma,
@@ -149,13 +165,14 @@ export async function syncFixtureRoles(
     );
   }
   const linked = await prisma.employee.findMany({
-    where: { userId: { not: null } },
-    select: { userId: true, pmsRoles: true },
+    where: { id: { in: [...suiteRoles.keys()] }, userId: { not: null } },
+    select: { id: true, userId: true },
     take: 2000,
   });
   let created = 0;
   for (const e of linked) {
-    const want = new Set(e.pmsRoles.map((k) => roleFor.get(k)).filter((x): x is string => !!x));
+    const roles = suiteRoles.get(e.id) ?? [];
+    const want = new Set(roles.map((k) => roleFor.get(k)).filter((x): x is string => !!x));
     const have = await prisma.roleAssignment.findMany({
       where: { userId: e.userId!, scopeType: "GROUP" },
       select: { id: true, roleId: true, note: true },
