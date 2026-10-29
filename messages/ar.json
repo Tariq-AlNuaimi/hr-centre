@@ -2526,7 +2526,6 @@
     "home": {
       "title": "HR tickets",
       "intro": "HR's ticket desk: questions employees raise in Siraaj, and the reference data Siraaj answers from.",
-      "noAccess": "You do not have access to any HR ticket screens yet. Ask a platform administrator for a ticket role.",
       "escalationsTitle": "التذاكر",
       "escalationsDescription": "أجب عن الأسئلة التي رفعها الموظفون في سراج، واعتمد ما يُرسل.",
       "reportsTitle": "التقارير",

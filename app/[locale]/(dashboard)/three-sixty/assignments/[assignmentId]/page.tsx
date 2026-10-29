@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ThreeSixtyForm } from "@/components/pms/ThreeSixtyForm";
+import { requireRecord } from "@/lib/nav/record-gate";
 
 /**
  * §9.7 — one rater answering one 360 assessment.
@@ -21,6 +22,7 @@ export default async function ThreeSixtyAssignmentPage({
   params: Promise<{ assignmentId: string }>;
 }) {
   const { assignmentId } = await params;
+  await requireRecord("pms.threeSixtyAssignment", assignmentId);
   const t = await getTranslations("pms.threeSixtyForm");
 
   return (

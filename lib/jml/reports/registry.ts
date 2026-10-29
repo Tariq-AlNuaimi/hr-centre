@@ -28,6 +28,11 @@ const REPORTS: readonly ReportDefinition[] = [
   allCompanies,
 ];
 
+/** Is `slug` a report this registry runs? (The page answers 404 otherwise.) */
+export function isReportSlug(slug: string): boolean {
+  return REPORTS.some((r) => r.slug === slug);
+}
+
 function findReport(slug: string): ReportDefinition {
   const report = REPORTS.find((r) => r.slug === slug);
   if (!report) throw new JmlError("Report not found", 404);

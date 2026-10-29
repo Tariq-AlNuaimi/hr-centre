@@ -25,6 +25,11 @@ const LEAVE_REPORTS: readonly LeaveReport[] = [
   r8Omanisation,
 ];
 
+/** Is `slug` a report this registry runs? (The page answers 404 otherwise.) */
+export function isLeaveReportSlug(slug: string): boolean {
+  return LEAVE_REPORTS.some((r) => r.slug === slug);
+}
+
 function findLeaveReport(slug: string): LeaveReport {
   const r = LEAVE_REPORTS.find((x) => x.slug === slug);
   if (!r) throw new JmlError("Report not found", 404);

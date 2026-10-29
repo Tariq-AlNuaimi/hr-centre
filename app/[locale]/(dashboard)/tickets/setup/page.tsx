@@ -1,8 +1,8 @@
+import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { getHivePermissions } from "@/lib/hive/services/permissions";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { LinkCards } from "@/components/shared/LinkCards";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { HiveRoleBadge } from "@/components/hive/HiveRoleBadge";
@@ -92,26 +92,26 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
       : [],
   );
 
+  // Nothing here this viewer may open: a real 404, not an empty hub in a 200
+  // (ADR-101). This page has no loading boundary above it.
+  if (ticketSettings.length + knowledge.length === 0) notFound();
+
   return (
     <>
       <PageHeader title={t("title")} subtitle={t("intro")} actions={<HiveRoleBadge />} />
 
-      {ticketSettings.length + knowledge.length === 0 ? (
-        <EmptyState description={t("noAccess")} />
-      ) : (
-        <div className="space-y-6">
-          {ticketSettings.length > 0 ? (
-            <SectionCard title={t("ticketSettingsSection")} subtitle={t("ticketSettingsNote")}>
-              <LinkCards cards={ticketSettings} />
-            </SectionCard>
-          ) : null}
-          {knowledge.length > 0 ? (
-            <SectionCard title={t("knowledgeSection")} subtitle={t("knowledgeNote")}>
-              <LinkCards cards={knowledge} />
-            </SectionCard>
-          ) : null}
-        </div>
-      )}
+      <div className="space-y-6">
+        {ticketSettings.length > 0 ? (
+          <SectionCard title={t("ticketSettingsSection")} subtitle={t("ticketSettingsNote")}>
+            <LinkCards cards={ticketSettings} />
+          </SectionCard>
+        ) : null}
+        {knowledge.length > 0 ? (
+          <SectionCard title={t("knowledgeSection")} subtitle={t("knowledgeNote")}>
+            <LinkCards cards={knowledge} />
+          </SectionCard>
+        ) : null}
+      </div>
     </>
   );
 }

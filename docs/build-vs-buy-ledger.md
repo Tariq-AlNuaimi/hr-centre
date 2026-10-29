@@ -1176,3 +1176,11 @@ Considered: **A policy engine (OpenFGA, Cerbos, Oso) answering "can user X read 
 would drift from the read routes it must mirror). **Filtering in every emitter** (rejected — one
 missed caller leaks; the core writer is the one choke point every notice passes).
 Decision: build — a small link→loader table applied by the core notification writer.
+
+### 2026-10-29 — Real 404s for refused and missing screens (ADR-101)
+
+Scope: lib/nav/page-gate.ts, lib/nav/record-gate.ts
+Considered: **Next.js `forbidden()` / `unauthorized()` (authInterrupts)** (rejected — experimental
+flag, and the API answers 404 for out-of-scope on purpose). **A middleware path gate** (rejected —
+middleware cannot run the module loaders a record gate needs, and is an Ask-before surface).
+Decision: build — two small server helpers over the existing nav context and module loaders.

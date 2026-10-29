@@ -9,11 +9,11 @@
 - app/[locale]/(careers)/careers/[slug]/page.tsx
 - app/[locale]/(careers)/careers/page.tsx
 - app/[locale]/(careers)/careers/status/[token]/page.tsx
+- app/[locale]/(dashboard)/admin/access/(list)/page.tsx
 - app/[locale]/(dashboard)/admin/access/[id]/page.tsx
 - app/[locale]/(dashboard)/admin/access/new/page.tsx
-- app/[locale]/(dashboard)/admin/access/page.tsx
+- app/[locale]/(dashboard)/admin/cycles/(list)/page.tsx
 - app/[locale]/(dashboard)/admin/cycles/[cycleId]/page.tsx
-- app/[locale]/(dashboard)/admin/cycles/page.tsx
 - app/[locale]/(dashboard)/admin/edge-cases/page.tsx
 - app/[locale]/(dashboard)/admin/import/page.tsx
 - app/[locale]/(dashboard)/admin/imports/page.tsx
@@ -28,8 +28,8 @@
 - app/[locale]/(dashboard)/audit-log/page.tsx
 - app/[locale]/(dashboard)/calibration/page.tsx
 - app/[locale]/(dashboard)/executive/page.tsx
+- app/[locale]/(dashboard)/goal-setting/(roster)/page.tsx
 - app/[locale]/(dashboard)/goal-setting/[cycleId]/participants/[participantId]/page.tsx
-- app/[locale]/(dashboard)/goal-setting/page.tsx
 - app/[locale]/(dashboard)/hiring/approvals/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/[id]/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/[id]/preboarding/page.tsx
@@ -111,8 +111,8 @@
 - app/[locale]/(dashboard)/jml/statutory/page.tsx
 - app/[locale]/(dashboard)/me/documents/page.tsx
 - app/[locale]/(dashboard)/me/requests/page.tsx
+- app/[locale]/(dashboard)/mid-year/(home)/page.tsx
 - app/[locale]/(dashboard)/mid-year/[cycleId]/participants/[participantId]/page.tsx
-- app/[locale]/(dashboard)/mid-year/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
 - app/[locale]/(dashboard)/page.tsx
 - app/[locale]/(dashboard)/people/(list)/page.tsx
@@ -123,10 +123,10 @@
 - app/[locale]/(dashboard)/scorecard/page.tsx
 - app/[locale]/(dashboard)/settings/page.tsx
 - app/[locale]/(dashboard)/settings/profile/page.tsx
+- app/[locale]/(dashboard)/team/(people)/page.tsx
 - app/[locale]/(dashboard)/team/hiring/page.tsx
-- app/[locale]/(dashboard)/team/page.tsx
+- app/[locale]/(dashboard)/three-sixty/(console)/page.tsx
 - app/[locale]/(dashboard)/three-sixty/assignments/[assignmentId]/page.tsx
-- app/[locale]/(dashboard)/three-sixty/page.tsx
 - app/[locale]/(dashboard)/tickets/(queue)/[id]/page.tsx
 - app/[locale]/(dashboard)/tickets/(queue)/new/page.tsx
 - app/[locale]/(dashboard)/tickets/(queue)/page.tsx
@@ -143,8 +143,8 @@
 - app/[locale]/(dashboard)/users/[id]/page.tsx
 - app/[locale]/(dashboard)/users/new/page.tsx
 - app/[locale]/(dashboard)/users/page.tsx
+- app/[locale]/(dashboard)/year-end/(home)/page.tsx
 - app/[locale]/(dashboard)/year-end/[cycleId]/participants/[participantId]/page.tsx
-- app/[locale]/(dashboard)/year-end/page.tsx
 - app/[locale]/(hive)/reply/[token]/page.tsx
 - app/[locale]/(joiner)/preboarding/[token]/page.tsx
 - app/[locale]/forbidden/page.tsx
@@ -850,10 +850,10 @@
 - lib/jml/reports/leave/base.ts: LeaveReportContext, LeaveReportResult, LeaveReport, period, unsuppressed, LeaveRow, loadLeaveRows, emptyResult, orgNames
 - lib/jml/reports/leave/process.ts: r6Active, r7Settlement
 - lib/jml/reports/leave/reasons.ts: r1Reasons, r3Regrettable, r4Managers
-- lib/jml/reports/leave/registry.ts: runLeaveReport, exportLeaveReport
+- lib/jml/reports/leave/registry.ts: isLeaveReportSlug, runLeaveReport, exportLeaveReport
 - lib/jml/reports/leave/rules.ts: SMALL_CELL_THRESHOLD, BELOW_THRESHOLD, Cell, suppressSmallCells, monthsBetween, TENURE_BANDS, tenureBand, quarterOf, monthOf, lowerMedian, mean, ratio, daysBetween, attritionRate, employedOn, settlementBucket, topReason
 - lib/jml/reports/months.ts: monthBuckets
-- lib/jml/reports/registry.ts: runReport, exportReport
+- lib/jml/reports/registry.ts: isReportSlug, runReport, exportReport
 - lib/jml/route.ts: jml, body, query, requireAnywhere, requireGroup
 - lib/jml/routing/assign.ts: managerLogin, routingContextFor, caseRoutingWarnings, notifyRoutedTasks, reconcileLineManagerTasks, resolveCaseTaskNotices
 - lib/jml/routing/desks.ts: getDeskSettings, saveDeskSettings, desksOf, deskMembers, staffedDesks
@@ -869,8 +869,10 @@
 - lib/jml/work-items.ts: jmlWorkProvider
 - lib/nav/config.ts: NAV_GROUPS, NavGroup, Persona, NavContext, NavIcon, NavLink, NavEntry, personaOf, NAV
 - lib/nav/legacy-redirects.ts: Redirect, legacyRedirects
+- lib/nav/page-gate.ts: SECTION_GATES, Section, sectionAllowed, requireSession, requireSection
+- lib/nav/record-gate.ts: RecordKind, requireRecord
 - lib/nav/resolve.ts: ResolvedEntry, hrefOf, visibleNav, groupedNav, normalisePath, covers, ActiveNav, activeNav, tabsFor, PaletteItem, paletteItems
-- lib/nav/server-context.ts: navContextFor
+- lib/nav/server-context.ts: navContextFor, navContextAndActor
 - lib/nav/tabs.ts: Gate, always, hr, teamLead, admin, hiring, ownsRequisitions, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
 - lib/nav/trail.ts: NavCrumb, navTrail
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
