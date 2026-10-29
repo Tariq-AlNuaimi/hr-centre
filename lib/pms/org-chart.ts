@@ -68,7 +68,7 @@ export type OrgChartPerson = {
   descendantCount: number;
 };
 
-type OrgChartDepartment = {
+export type OrgChartDepartment = {
   /** Null for the entity-level group — §1.2 makes that exactly the C-Level. */
   id: string | null;
   name: string | null;
@@ -233,4 +233,29 @@ export function buildOrgChart(nodes: OrgNode[]): OrgChartEntity[] {
   }
 
   return [...entities.values()].sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/** P2 (R19) — the minimal person record the card view centres on. */
+export type OrgCardPerson = {
+  id: string;
+  name: string;
+  managerId: string | null;
+  departmentName: string | null;
+};
+
+/**
+ * P2 (R19) — "centre on person": their (visible) manager above, them, and
+ * their direct reports below — the people-first view BambooHR and HiBob open
+ * with. Only the already-scoped set is searched, so a manager outside the
+ * reader's §4.2 visibility is simply absent, never fetched.
+ */
+export function personContext(
+  people: readonly OrgCardPerson[],
+  id: string,
+): { manager: OrgCardPerson | null; person: OrgCardPerson; reports: OrgCardPerson[] } | null {
+  const person = people.find((p) => p.id === id);
+  if (!person) return null;
+  const manager = person.managerId ? (people.find((p) => p.id === person.managerId) ?? null) : null;
+  const reports = people.filter((p) => p.managerId === id).sort(byName);
+  return { manager, person, reports };
 }

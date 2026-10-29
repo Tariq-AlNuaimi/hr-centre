@@ -11,6 +11,7 @@ import { CompaniesSection } from "./CompaniesSection";
 import { DirectoratesSection } from "./DirectoratesSection";
 import { DepartmentsSection } from "./DepartmentsSection";
 import { TeamsSection } from "./TeamsSection";
+import { ReorgSection } from "./ReorgSection";
 import type { Company, Department, Directorate, Team } from "./types";
 
 /**
@@ -100,6 +101,11 @@ export function OrgSetup() {
         departments={departmentList}
       />
       <TeamsSection departments={departmentList} teams={teams.data?.data ?? []} />
+      <ReorgSection
+        directorates={directorateList}
+        departments={departmentList}
+        teams={teams.data?.data ?? []}
+      />
     </div>
   );
 }
