@@ -7,7 +7,8 @@
  *
  * Mapping (ADR-079): DIRECTORATE → Directorate; a parentless DEPARTMENT →
  * Department with no directorate; a TEAM under a directorate → Department under
- * it; a TEAM under a department → Team. Leaders and fixture order → info rows.
+ * it; a TEAM under a department → Team. A fixture leader → the unit's core head
+ * (name + job title); fixture order → info rows.
  */
 
 export type HiveCompany = { id: string; name: string; units: { id: string }[] };
@@ -64,6 +65,10 @@ export function orgDouble(companies: HiveCompany[], units: Record<string, HiveUn
   );
   const byId = new Map(all.map((u) => [u.id, u]));
   const isDirectorate = (u: { kind: string }) => u.kind === "DIRECTORATE";
+  const headOf = (u: HiveUnit) =>
+    u.leaderName
+      ? { name: u.leaderName, jobTitle: u.leaderTitle, status: "ACTIVE", deletedAt: null }
+      : null;
   // A unit is a core Department when it is a top-level DEPARTMENT, or a TEAM
   // whose parent is a directorate — or whose parent is GONE (orphan).
   const isDepartment = (u: HiveUnit) => {
@@ -82,9 +87,10 @@ export function orgDouble(companies: HiveCompany[], units: Record<string, HiveUn
         name: d.name,
         // A parent that does not exist is a retired directorate's dangling id.
         directorateId: d.parentId,
+        head: headOf(d),
         teams: all
           .filter((t) => t.parentId === d.id && !isDepartment(t) && !isDirectorate(t))
-          .map((t) => ({ id: t.id, name: t.name })),
+          .map((t) => ({ id: t.id, name: t.name, head: headOf(t) })),
       }));
   return {
     orgEntity: {
@@ -110,7 +116,7 @@ export function orgDouble(companies: HiveCompany[], units: Record<string, HiveUn
     },
     directorate: {
       findMany: async ({ where }: { where: { entityId: string } }) =>
-        directoratesOf(where.entityId).map((d) => ({ id: d.id, name: d.name })),
+        directoratesOf(where.entityId).map((d) => ({ id: d.id, name: d.name, head: headOf(d) })),
     },
     department: {
       findMany: async ({ where }: { where: { entityId: string } }) => departmentsOf(where.entityId),
@@ -124,12 +130,7 @@ export function orgDouble(companies: HiveCompany[], units: Record<string, HiveUn
         }
         return all
           .filter((u) => where.unitId.in.includes(u.id))
-          .map((u) => ({
-            unitId: u.id,
-            leaderName: u.leaderName,
-            leaderTitle: u.leaderTitle,
-            order: u.order,
-          }));
+          .map((u) => ({ unitId: u.id, order: u.order }));
       },
     },
   };

@@ -5,8 +5,8 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
-import type { PmsRole } from "../../generated/prisma/client";
-import { TEST_EMPLOYEE_PREFIX, suiteActor, syncFixtureRoles } from "./fixture";
+import type { PmsRole } from "../../lib/pms/permissions";
+import { TEST_EMPLOYEE_PREFIX, describeRoles, suiteActor, syncFixtureRoles } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -130,7 +130,7 @@ before(async () => {
     odooId: string,
     name: string,
     managerId: string | null,
-    pmsRoles: PmsRole[] = [],
+    starterRoles: PmsRole[] = [],
   ) => {
     const row = await prisma.employee.upsert({
       where: { odooId },
@@ -143,7 +143,6 @@ before(async () => {
         managerId,
         roleTrack: "INDIVIDUAL",
         status: "ACTIVE",
-        pmsRoles,
         // Comfortably in the past: the schema CHECK-constrains a joining date to at
         // most a year ahead, and a future-dated fixture is a fixture with a
         // shelf life.
@@ -152,13 +151,13 @@ before(async () => {
       update: {
         managerId,
         status: "ACTIVE",
-        pmsRoles,
         lastWorkingDay: null,
         departmentId: department.id,
         entityId: entity.id,
       },
       select: { id: true },
     });
+    describeRoles(row.id, starterRoles);
     return row.id;
   };
 
@@ -196,7 +195,7 @@ before(async () => {
   ids.superAdminUser = await login(ids.superAdmin, "sa");
   ids.reportUser = await login(ids.report, "rpt");
   ids.hrbpUser = await login(ids.hrbp, "hrbp");
-  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  // Authority is role assignments now: grant the actors' described starter roles (fixture.ts).
   await syncFixtureRoles(prisma);
 });
 

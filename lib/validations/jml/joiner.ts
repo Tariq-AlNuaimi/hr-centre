@@ -135,6 +135,9 @@ export const joinerListSchema = z.object({
   employmentType: z.enum(CONTRACT_TYPES).optional(),
 });
 
+/** "Start joiner case" from an employee record (POST /api/jml/joiners/from-employee). */
+export const startJoinerFromEmployeeSchema = z.object({ employeeId: id });
+
 /** Hiring → JML (D8): the employee already exists as a PRE_JOINER. */
 const openJoinCaseSchema = z.object({
   employeeId: id,

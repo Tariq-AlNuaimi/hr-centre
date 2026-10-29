@@ -23,7 +23,6 @@ const base = {
   entityId: "ent-1",
   managerId: "mgr-1",
   roleTrack: "INDIVIDUAL" as const,
-  pmsRoles: [],
   basicSalary: "1200",
   status: "ACTIVE" as const,
   lastWorkingDay: null,
@@ -140,15 +139,6 @@ test("an update that OMITS status is refused, not silently set to ACTIVE", () =>
   assert.ok(
     issues.some((i) => i.startsWith("status:")),
     `the error should name the field; got ${JSON.stringify(issues)}`,
-  );
-});
-
-test("an update that OMITS pmsRoles is refused, not silently emptied", () => {
-  // Defaulting to [] strips §4.1 authority from an HR Super Admin.
-  const { pmsRoles: _omitted, ...withoutRoles } = base;
-  assert.ok(
-    issuesFor(withoutRoles).some((i) => i.startsWith("pmsRoles:")),
-    "a missing pmsRoles must be an error naming the field",
   );
 });
 

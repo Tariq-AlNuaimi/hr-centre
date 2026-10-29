@@ -1971,7 +1971,20 @@
     "retired": "Retired",
     "saveFailed": "Could not save the change",
     "loadFailed": "Could not load the organisation",
-    "notPermitted": "Organisation setup needs the org management permission"
+    "notPermitted": "Organisation setup needs the org management permission",
+    "head": {
+      "label": "Head: {name}",
+      "labelLeft": "Head: {name} (has left — choose a new head)",
+      "none": "No head set",
+      "set": "Set head",
+      "change": "Change head",
+      "clear": "Clear head",
+      "pickLabel": "Head of {name}",
+      "cancel": "Cancel",
+      "saved": "{name} is now the head",
+      "cleared": "Head cleared",
+      "saveFailed": "Couldn't save the unit head"
+    }
   },
   "people": {
     "record": {
@@ -2103,7 +2116,11 @@
       "startLeaver": "Start leaver case",
       "orgChart": "View in org chart",
       "manageLogin": "Manage login",
-      "recordDeparture": "Record departure without exit process"
+      "recordDeparture": "Record departure without exit process",
+      "startJoiner": "Start joiner case",
+      "startingJoiner": "Starting joiner case…",
+      "startJoinerFailed": "Could not start the joiner case. Try again.",
+      "raiseTicket": "Raise HR ticket for this person"
     },
     "history": {
       "title": "History",
@@ -2344,7 +2361,7 @@
       "providersTitle": "Network providers",
       "providersDescription": "The insurance network list Siraaj searches. Upload the insurer's spreadsheet.",
       "orgTitle": "Org chart details",
-      "orgDescription": "Leaders and order for the org chart Siraaj describes.",
+      "orgDescription": "Display order for the org chart Siraaj describes. Unit leaders are the heads set in Organisation structure.",
       "ticketSettingsSection": "Ticket settings",
       "ticketSettingsNote": "How tickets are routed, answered and approved.",
       "knowledgeSection": "Siraaj knowledge",
@@ -2543,7 +2560,10 @@
         "noReplies": "No saved replies yet",
         "reference": "Reference (what Siraaj answers from)",
         "noReference": "No reference data yet"
-      }
+      },
+      "actorEmployee": "Employee",
+      "sourceHR": "Raised by HR",
+      "raiseTicket": "Raise a ticket"
     },
     "roleLabel": {
       "Admin": "مسؤول",
@@ -2600,7 +2620,11 @@
       "reset": "استعادة الإعدادات الافتراضية",
       "resetConfirm": "العودة إلى البادئة HIVE وأسماء الحالات الافتراضية؟",
       "resetDone": "تمت استعادة الإعدادات الافتراضية",
-      "emailTemplateLink": "تعديل رسالة الرد"
+      "emailTemplateLink": "تعديل رسالة الرد",
+      "responseTitle": "Answer-by target",
+      "responseHint": "How long HR has to answer a new ticket, in working hours on the company calendar. Shown to HR as the ticket's due time, never to the employee. Applies to tickets raised after you save.",
+      "responseLabel": "Working hours",
+      "responsePreview": "About {days} working days at 8 hours a day"
     },
     "setup": {
       "add": "Add",
@@ -2730,7 +2754,10 @@
         "rotationCompany": "The company this team belongs to",
         "validUntil": "Leave empty when no end date was given",
         "redemption": "Leave empty to use the standard wording"
-      }
+      },
+      "setHeadsLink": "Set unit heads",
+      "noHead": "No head set",
+      "noHeadLegacy": "No head set — previously listed: {name}"
     },
     "tasks": {
       "title": "HR tickets",
@@ -2767,6 +2794,26 @@
       "delete": "Delete",
       "deleteTitle": "Delete this saved reply?",
       "deleteBody": "Drafts that already used it keep their text."
+    },
+    "raise": {
+      "title": "Raise a ticket for an employee",
+      "intro": "Raise an HR question on someone's behalf. It routes to their HR pair, goes through the usual draft and approval, and the answer is emailed to their work address.",
+      "employeeTitle": "Employee",
+      "searchLabel": "Find the employee",
+      "searchPlaceholder": "Name or work email",
+      "searchHint": "Type at least 2 characters.",
+      "searching": "Searching…",
+      "searchFailed": "Couldn't search the directory. Try again.",
+      "noMatches": "No one matches. Leavers and people without a work email can't be picked.",
+      "change": "Change",
+      "questionTitle": "Question",
+      "questionHint": "In the employee's words where you can. The ticket history records that HR raised it for them.",
+      "questionLabel": "What do they want to know?",
+      "raise": "Raise ticket",
+      "raising": "Raising…",
+      "raised": "Ticket raised",
+      "failed": "Couldn't raise the ticket",
+      "cancel": "Cancel"
     }
   },
   "jml": {

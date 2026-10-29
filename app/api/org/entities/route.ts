@@ -24,6 +24,7 @@ export const GET = withRateLimit(
         id: true,
         code: true,
         name: true,
+        head: { select: { id: true, name: true, status: true } },
         _count: { select: { departments: true, employees: true } },
       },
     });

@@ -40,9 +40,15 @@ export type OrgNode = {
   roleTrack: string;
   status: string;
   managerId: string | null;
-  department: { id: string; name: string } | null;
-  entity: { id: string; code: string };
+  department: { id: string; name: string; head?: HeadRef | null } | null;
+  entity: { id: string; code: string; head?: HeadRef | null };
 };
+
+type HeadRef = { name: string; status?: string; deletedAt?: Date | null };
+
+/** A head who has left the group is not shown (the setup screen flags them). */
+const currentHead = (head: HeadRef | null | undefined): string | null =>
+  head && head.status !== "LEAVER" && !head.deletedAt ? head.name : null;
 
 export type OrgChartPerson = {
   id: string;
@@ -66,6 +72,8 @@ type OrgChartDepartment = {
   /** Null for the entity-level group — §1.2 makes that exactly the C-Level. */
   id: string | null;
   name: string | null;
+  /** The unit head's name (overnight item 2), when one is set. */
+  headName: string | null;
   tops: OrgChartPerson[];
   /** People in this department, at any depth. */
   headcount: number;
@@ -81,6 +89,8 @@ export type OrgChartEntity = {
    */
   departments: OrgChartDepartment[];
   headcount: number;
+  /** The company head's name, when one is set. */
+  headName: string | null;
 };
 
 const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
@@ -158,6 +168,7 @@ export function buildOrgChart(nodes: OrgNode[]): OrgChartEntity[] {
         code: node.entity.code,
         departments: [],
         headcount: 0,
+        headName: currentHead(node.entity.head),
       });
     }
     entities.get(node.entity.id)!.headcount += 1;
@@ -167,6 +178,7 @@ export function buildOrgChart(nodes: OrgNode[]): OrgChartEntity[] {
       departments.set(key, {
         id: node.department?.id ?? null,
         name: node.department?.name ?? null,
+        headName: currentHead(node.department?.head),
         tops: [],
         headcount: 0,
       });

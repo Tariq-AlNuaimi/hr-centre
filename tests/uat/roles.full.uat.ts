@@ -69,8 +69,8 @@ function hasAuthState(role: string): boolean {
  * reason. Discovery reads the SIDEBAR to learn which sections are admin-gated
  * (`item.key !== "x" || isAdmin` is a literal in the nav). §4.1's gate is not
  * discoverable that way: it lives inside each page as a `usePmsActor()`
- * capability check against `Employee.pmsRoles` — a different table the
- * filesystem cannot be asked about. Each entry cites the clause it encodes.
+ * capability check against the starter roles held as Group assignments — a
+ * table the filesystem cannot be asked about. Each entry cites the clause it encodes.
  */
 const PMS_GATES: Record<string, (a: FixtureActor) => boolean> = {
   // §10.6 — "Only HR Super Admin performs calibration adjustments... HRBP does

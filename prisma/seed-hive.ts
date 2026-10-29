@@ -19,7 +19,8 @@ import { DEFAULT_TICKET_PREFIX } from "../lib/hive/ticket-id";
  *  - the office rotation (config singleton, groups, coverage);
  *  - the employee discounts;
  *  - the answer-email template and the ticket settings defaults;
- *  - the org-chart details (leaders, order) for core units that exist by name.
+ *  - the org-chart display order for core units that exist by name (leaders are
+ *    core unit heads now, set by HR in Organisation structure).
  *
  * NOT seeded: HIVE's 12 placeholder network providers (the real list arrives via
  * `npm run hive:providers -- <file.xlsx>`), HR accounts or role assignments,
@@ -137,7 +138,7 @@ const HR_PAIRS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Org-chart details (HIVE §6.5) — leaders and order for the `hive_org_structure`
+// Org-chart details (HIVE §6.5) — display order for the `hive_org_structure`
 // tool. HR Centre's core org is the JML module's; these rows only DESCRIBE core
 // units, matched by name inside their company, once those units exist.
 // ---------------------------------------------------------------------------
@@ -145,8 +146,6 @@ const HR_PAIRS = [
 const RIHAL_DIRECTORATES = [
   {
     name: "Operations",
-    leaderName: "Tariq Al Nuaimi",
-    leaderTitle: "Director",
     teams: [
       "Human Resources",
       "Accounting & Finance",
@@ -158,26 +157,18 @@ const RIHAL_DIRECTORATES = [
   },
   {
     name: "Commercials",
-    leaderName: "Mohammed Al Ghaithi",
-    leaderTitle: "Director",
     teams: ["Sales", "Pre-Sales", "Marketing"],
   },
   {
     name: "Products",
-    leaderName: "Zainul Abedeen",
-    leaderTitle: "Director",
     teams: ["Product Management", "New Ventures"],
   },
   {
     name: "Data Engineering & Analytics",
-    leaderName: "Ahmed Al Ghusaini",
-    leaderTitle: "Acting Director",
     teams: ["Data Engineering", "Data Analytics", "Data Science", "Data Management"],
   },
   {
     name: "Technology & Development",
-    leaderName: "Ahmed Al Hasani",
-    leaderTitle: "Director",
     teams: [
       "UI/UX Design",
       "Quality Assurance",
@@ -187,20 +178,16 @@ const RIHAL_DIRECTORATES = [
       "Software",
     ],
   },
-  { name: "Strategy", leaderName: "Sadiq Damani", leaderTitle: "Director", teams: [] },
+  { name: "Strategy", teams: [] },
 ];
 
 const TP_DEPARTMENTS = [
   {
     name: "Commercials",
-    leaderName: "Mohammed Al Ghaithi",
-    leaderTitle: "Commercial Director",
     teams: ["Marketing", "Sales", "Account Management"],
   },
   {
     name: "Operations",
-    leaderName: "Sultan Al Masroori",
-    leaderTitle: "Operation Manager",
     teams: ["HR", "Finance", "Admin", "IT", "Legal"],
   },
   // §6.5: these four are their own entities, peers to Commercials and
@@ -208,26 +195,18 @@ const TP_DEPARTMENTS = [
   // report to the Operation Manager.
   {
     name: "Project & Change Management",
-    leaderName: "Abdulmalik Al Rawahi",
-    leaderTitle: "Manager",
     teams: [],
   },
   {
     name: "Digital Transformation & AI",
-    leaderName: "Mohammed Suwaid",
-    leaderTitle: "Manager",
     teams: [],
   },
   {
     name: "Digital Trust & Resilience",
-    leaderName: "Maiysa Al Dhanki",
-    leaderTitle: "Manager",
     teams: [],
   },
   {
     name: "ERP & Digital Innovation",
-    leaderName: "Amin Elimam",
-    leaderTitle: "Manager",
     teams: [],
   },
 ];
@@ -615,7 +594,7 @@ async function ensureInfo(
   prisma: Db,
   kind: "COMPANY" | "DIRECTORATE" | "DEPARTMENT" | "TEAM",
   unitId: string,
-  data: { leaderName?: string; leaderTitle?: string; order: number },
+  data: { order: number },
 ): Promise<void> {
   const found = await prisma.hiveOrgUnitInfo.findUnique({
     where: { kind_unitId: { kind, unitId } },
@@ -626,8 +605,6 @@ async function ensureInfo(
     data: {
       kind,
       unitId,
-      leaderName: data.leaderName ?? null,
-      leaderTitle: data.leaderTitle ?? null,
       order: data.order,
     },
   });
@@ -653,11 +630,7 @@ async function seedOrgInfo(prisma: Db, entities: Map<string, string>): Promise<v
           ? { kind: "DEPARTMENT" as const, id: departmentId }
           : null;
       if (!top) continue; // HR has not created this unit yet; the next deploy links it
-      await ensureInfo(prisma, top.kind, top.id, {
-        leaderName: u.leaderName,
-        leaderTitle: u.leaderTitle,
-        order: i + 1,
-      });
+      await ensureInfo(prisma, top.kind, top.id, { order: i + 1 });
       // Child order, as HIVE listed it (Rihal: departments; TP: teams).
       for (const [j, child] of u.teams.entries()) {
         const childRow =

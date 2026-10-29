@@ -134,7 +134,7 @@ test("directory filters: org + reporting line accepted and bounded", () => {
 });
 
 test("directory: salary column is off until the viewer turns it on", () => {
-  const page = readFileSync("app/[locale]/(dashboard)/people/page.tsx", "utf8");
+  const page = readFileSync("app/[locale]/(dashboard)/people/(list)/page.tsx", "utf8");
   assert.match(page, /useState\(false\)/);
   assert.match(page, /showCompensation: capabilities\.viewCompensation && showSalary/);
 });

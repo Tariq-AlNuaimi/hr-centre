@@ -57,6 +57,7 @@ export function OrgChart({
 }) {
   const t = useTranslations("pms.org");
   const tPms = useTranslations("pms");
+  const withHead = useWithHead();
   const [query, setQuery] = useState(initialQuery);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   /**
@@ -156,7 +157,7 @@ export function OrgChart({
                   onToggle={() => toggle(entity.id)}
                   icon={<Building2 aria-hidden className="h-4 w-4 text-muted-foreground" />}
                   label={entity.code}
-                  meta={t("peopleCount", { count: entity.headcount })}
+                  meta={withHead(t("peopleCount", { count: entity.headcount }), entity.headName)}
                   level="entity"
                 />
 
@@ -176,7 +177,10 @@ export function OrgChart({
                             // it is named for what it is rather than shown as a
                             // missing value.
                             label={department.name ?? t("executiveGroup")}
-                            meta={t("peopleCount", { count: department.headcount })}
+                            meta={withHead(
+                              t("peopleCount", { count: department.headcount }),
+                              department.headName,
+                            )}
                             level="department"
                           />
 
@@ -220,6 +224,13 @@ export function OrgChart({
  * of this redesign is navigating a 200-person tree, and a keyboard or screen
  * reader user navigates it through exactly this control.
  */
+/** "Head: Name · 12 people" when the unit has a head (overnight item 2). */
+function useWithHead() {
+  const tHead = useTranslations("org.head");
+  return (count: string, head: string | null) =>
+    head ? `${tHead("label", { name: head })} · ${count}` : count;
+}
+
 function Disclosure({
   open,
   onToggle,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_TICKET_PREFIX } from "@/lib/hive/ticket-id";
 import {
+  DEFAULT_RESPONSE_HOURS,
   statusLabelsSchema,
   type TicketSettingsInput,
 } from "@/lib/validations/hive/ticket-settings";
@@ -21,18 +22,30 @@ export interface TicketSettings {
   ticketPrefix: string;
   /** Overrides only; a status not listed uses its built-in label. */
   statusLabels: Record<string, string>;
+  /** Working hours to answer a new ticket (the internal answer-by target). */
+  responseHours: number;
 }
 
 export async function getTicketSettings(): Promise<TicketSettings> {
   const row = await prisma.hiveTicketSettings.findUnique({
     where: { id: ID },
-    select: { ticketPrefix: true, statusLabels: true },
+    select: { ticketPrefix: true, statusLabels: true, responseHours: true },
   });
-  if (!row) return { ticketPrefix: DEFAULT_TICKET_PREFIX, statusLabels: {} };
+  if (!row) {
+    return {
+      ticketPrefix: DEFAULT_TICKET_PREFIX,
+      statusLabels: {},
+      responseHours: DEFAULT_RESPONSE_HOURS,
+    };
+  }
   // Re-validated on read: a hand-edited row must not put an unknown key or an
   // over-long label on every HR screen.
   const labels = statusLabelsSchema.safeParse(row.statusLabels);
-  return { ticketPrefix: row.ticketPrefix, statusLabels: labels.success ? labels.data : {} };
+  return {
+    ticketPrefix: row.ticketPrefix,
+    statusLabels: labels.success ? labels.data : {},
+    responseHours: row.responseHours ?? DEFAULT_RESPONSE_HOURS,
+  };
 }
 
 export async function updateTicketSettings(
@@ -40,7 +53,7 @@ export async function updateTicketSettings(
   userId: string,
 ): Promise<TicketSettings> {
   const data = { ...input, updatedById: userId };
-  const select = { ticketPrefix: true, statusLabels: true } as const;
+  const select = { ticketPrefix: true, statusLabels: true, responseHours: true } as const;
   // create-or-update rather than `upsert`: upsert bypasses the audit extension
   // (ADR-010). Two editors racing the very first save is the only window where
   // the create can collide, and the loser's P2002 simply retries as an update.
@@ -60,5 +73,6 @@ export async function updateTicketSettings(
   return {
     ticketPrefix: row.ticketPrefix,
     statusLabels: row.statusLabels as Record<string, string>,
+    responseHours: row.responseHours,
   };
 }

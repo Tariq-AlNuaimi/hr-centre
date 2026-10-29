@@ -69,14 +69,25 @@ async function saveActor(role: string, email: string): Promise<void> {
   try {
     const user = await prismaUnfiltered.user.findUnique({
       where: { email },
-      select: { employee: { select: { id: true, pmsRoles: true } } },
+      select: {
+        employee: { select: { id: true } },
+        roleAssignments: {
+          where: { scopeType: "GROUP" },
+          select: { role: { select: { starterKey: true } } },
+          take: 20,
+        },
+      },
     });
     const emp = user?.employee ?? null;
     if (emp) {
       // Line-manager authority is DERIVED from the org tree, never assigned
       // (§4.2), so it is counted rather than read off a field.
       const reports = await prismaUnfiltered.employee.count({ where: { managerId: emp.id } });
-      actor = { linked: true, pmsRoles: emp.pmsRoles as string[], isLineManager: reports > 0 };
+      // HR authority = the starter roles held at Group scope (F-c).
+      const pmsRoles = (user?.roleAssignments ?? [])
+        .map((a) => a.role.starterKey)
+        .filter((k): k is string => !!k);
+      actor = { linked: true, pmsRoles, isLineManager: reports > 0 };
     }
   } catch (e) {
     // Never fail the run over this: the matrix treats a missing actor file as

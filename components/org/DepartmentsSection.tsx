@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiClient } from "@/lib/api-client";
 import { NativeSelect } from "./NativeSelect";
+import { HeadControl } from "./HeadControl";
 import { UnitRow } from "./UnitRow";
 import { useOrgAction } from "./useOrgAction";
 import { decodePlacement, encodePlacement, placementOptions } from "./placement";
@@ -45,6 +46,7 @@ export function DepartmentsSection({
               key={d.id}
               name={d.name}
               badge={<Badge>{d.entity.code}</Badge>}
+              head={<HeadControl kind="DEPARTMENT" unitId={d.id} unitName={d.name} head={d.head} />}
               meta={t("departmentCounts", {
                 directorate: d.directorate?.name ?? t("directlyUnderCompany"),
                 people: d._count.employees,

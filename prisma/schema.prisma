@@ -10,7 +10,7 @@ datasource db {
 // -- Enums --
 
 /// Platform administration only — NOT §4.1's HR authority, which lives on
-/// `Employee.pmsRoles` and is a separate axis by ADR-065.
+/// role assignments (`RoleAssignment`) and is a separate axis by ADR-065.
 ///
 /// TWO values since ADR-070 (2026-08-27). `EDITOR` was removed: it gated nothing
 /// — `withEditorAuth` was defined and never called by any route — while looking
@@ -86,6 +86,7 @@ model User {
   hiveEscalationsSubmitted Escalation[]         @relation("EscalationSubmittedBy")
   hiveEscalationsApproved  Escalation[]         @relation("EscalationApprovedBy")
   hiveEscalationsAssigned  Escalation[]         @relation("EscalationAssignee")
+  hiveEscalationsRaised    Escalation[]         @relation("EscalationRaisedBy")
   hiveSavedReplies         HiveSavedReply[]     @relation("HiveSavedReplyAuthor")
   hiveEscalationEvents     EscalationEvent[]    @relation("EscalationEventActor")
   hiveTemplatesUpdated     HiveEmailTemplate[]  @relation("HiveEmailTemplateUpdatedBy")
@@ -222,26 +223,11 @@ model AuditLog {
 // stays forward-compatible. Nothing below assumes a cycle exists.
 // ---------------------------------------------------------------------------
 
-// PMS authority, ADDITIVE (§4.3: "a user may hold more than one; permissions
-// merge — most access wins. Do not invent hybrid roles"). Held as an array on
-// Employee, deliberately SEPARATE from the platform `Role` enum above, which
-// keeps its own meaning (application administration) — see ADR-065.
-//
-// Two roles from §4.1 are intentionally NOT members:
-//   * Employee     — everyone is one; membership would carry no information.
-//   * Line Manager — DERIVED from Employee.managerId edges, never assigned. That
-//                    is what makes §4.2's "editing/sign-off is always reserved
-//                    for the direct line manager" and Appendix A's "one owner
-//                    per assessment" true by construction rather than by
-//                    convention: there is no field an admin could set to hand
-//                    someone else's sign-off rights away.
-// The Strategy team (§4.1) has NO system access at all, so it has no role here —
-// HR keys their scores in on their behalf (Phase 5).
-enum PmsRole {
-  HR_SUPER_ADMIN // §4.1 everything + overrides; runs calibration; master export
-  HRBP // §4.1 runs the cycle org-wide; everything EXCEPT master export
-  EXECUTIVE_VIEWER // §4.1 COO / Ops Director: org-wide read-only, incl. salary/bonus
-}
+// PMS authority (§4.1) is a role assignment since HR Centre F-c — the starter
+// roles HR_SUPER_ADMIN / HRBP / EXECUTIVE_VIEWER in lib/rbac/catalogue.ts. The
+// legacy `Employee.pmsRoles` column and its enum were dropped in
+// 20261029102306_small_heads_tickets_pms_roles. Line Manager stays DERIVED from
+// Employee.managerId edges, never assigned.
 
 // §1.3 — every employee is tagged to exactly one track, which determines their
 // scoring formula (§8.3). C_LEVEL is the exception throughout: no department
@@ -372,6 +358,11 @@ model OrgEntity {
   code String @unique // RIHAL | TP | CL — stable machine key, used in imports
   name String
 
+  /// Unit head (overnight item 2): the employee who leads this unit. Shown on the
+  /// org chart and read by HR tickets' org-structure tool. Cleared if they are removed.
+  headEmployeeId String?   @map("head_employee_id")
+  head           Employee? @relation("OrgEntityHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+
   departments       Department[]
   directorates      Directorate[]
   employees         Employee[]
@@ -384,6 +375,7 @@ model OrgEntity {
   corporateScores EntityScore[]
 
   @@index([deletedAt, createdAt])
+  @@index([headEmployeeId])
   @@map("org_entities")
 }
 
@@ -402,6 +394,11 @@ model Directorate {
   entityId String    @map("entity_id")
   entity   OrgEntity @relation(fields: [entityId], references: [id])
 
+  /// Unit head (overnight item 2): the employee who leads this unit. Shown on the
+  /// org chart and read by HR tickets' org-structure tool. Cleared if they are removed.
+  headEmployeeId String?   @map("head_employee_id")
+  head           Employee? @relation("DirectorateHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
+
   departments      Department[] @relation("DepartmentDirectorate")
   /// Back-relation of the composite agreement FK (see Department.directorateAgree).
   departmentsAgree Department[] @relation("DepartmentDirectorateEntityAgree")
@@ -415,6 +412,7 @@ model Directorate {
   /// Target of `departments_directorate_entity_agree_fkey` (20261026120000).
   @@unique([id, entityId], map: "directorates_id_entity_key")
   @@index([deletedAt, createdAt])
+  @@index([headEmployeeId])
   @@map("directorates")
 }
 
@@ -427,6 +425,11 @@ model Team {
   name         String
   departmentId String     @map("department_id")
   department   Department @relation(fields: [departmentId], references: [id])
+
+  /// Unit head (overnight item 2): the employee who leads this unit. Shown on the
+  /// org chart and read by HR tickets' org-structure tool. Cleared if they are removed.
+  headEmployeeId String?   @map("head_employee_id")
+  head           Employee? @relation("TeamHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
 
   employees      Employee[] @relation("EmployeeTeam")
   /// Back-relation of the composite agreement FK (see Employee.teamDepartmentAgree).
@@ -441,6 +444,7 @@ model Team {
   /// Target of `employees_team_department_agree_fkey` (20261026120000).
   @@unique([id, departmentId], map: "teams_id_department_key")
   @@index([deletedAt, createdAt])
+  @@index([headEmployeeId])
   @@map("teams")
 }
 
@@ -449,6 +453,11 @@ model Department {
   name     String
   entityId String
   entity   OrgEntity @relation(fields: [entityId], references: [id])
+
+  /// Unit head (overnight item 2): the employee who leads this unit. Shown on the
+  /// org chart and read by HR tickets' org-structure tool. Cleared if they are removed.
+  headEmployeeId String?   @map("head_employee_id")
+  head           Employee? @relation("DepartmentHead", fields: [headEmployeeId], references: [id], onDelete: SetNull)
 
   /// F-a — optional; when set, the directorate must belong to the same company
   /// (composite FK `departments_directorate_entity_agree_fkey`).
@@ -476,6 +485,7 @@ model Department {
   @@index([entityId])
   @@index([directorateId])
   @@index([deletedAt, createdAt])
+  @@index([headEmployeeId])
   @@map("departments")
 }
 
@@ -556,6 +566,11 @@ model Employee {
   notifications           Notification[]          @relation("NotificationRecipient")
   // HR tickets (HIVE port): tickets whose employee email matched this record.
   hiveEscalations         Escalation[]            @relation("EscalationEmployee")
+  // Unit heads (overnight item 2).
+  headOfEntities          OrgEntity[]             @relation("OrgEntityHead")
+  headOfDirectorates      Directorate[]           @relation("DirectorateHead")
+  headOfDepartments       Department[]            @relation("DepartmentHead")
+  headOfTeams             Team[]                  @relation("TeamHead")
 
   // §12 back-relations.
   rollUpsAbout      ManagerRollUp[]            @relation("RollUpSubject")
@@ -566,7 +581,6 @@ model Employee {
   periodsManaged    EmployeeAssignmentPeriod[] @relation("AssignmentPeriodManager")
 
   roleTrack RoleTrack // §1.3
-  pmsRoles  PmsRole[] // §4.3 additive; empty for a plain employee
 
   // RESTRICTED (SECURITY.md §1; spec §4.5 + §11.6). Visible ONLY to HR
   // (HR_SUPER_ADMIN + HRBP) and the COO/Ops Director (EXECUTIVE_VIEWER). Line
@@ -2189,6 +2203,8 @@ enum EscalationDirection {
 enum EscalationSource {
   HIVE
   SIRAAJ
+  /// Raised by HR on the employee's behalf (`raisedById` names who).
+  HR
 }
 
 enum RotationAnchorType {
@@ -2259,6 +2275,9 @@ model Escalation {
   /// UX P1 (tickets P1-2): who in the pair owns answering this ticket. Internal only.
   assigneeId      String?                @map("assignee_id")
   assignee        User?                  @relation("EscalationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  /// Source HR: the Drafter who raised it for the employee. Routing and approval are unchanged.
+  raisedById      String?                @map("raised_by_id")
+  raisedBy        User?                  @relation("EscalationRaisedBy", fields: [raisedById], references: [id], onDelete: SetNull)
   /// The internal answer-by time, in WORKING hours on the core calendar (never shown to employees).
   dueAt           DateTime?              @map("due_at")
   /// When the first answer was sent.
@@ -2276,6 +2295,7 @@ model Escalation {
   @@index([submittedById])
   @@index([assigneeId, status])
   @@index([dueAt])
+  @@index([raisedById])
   @@map("hive_escalations")
 }
 
@@ -2572,6 +2592,10 @@ model HiveOrgUnitInfo {
   id          String          @id @default(cuid())
   kind        HiveOrgUnitKind
   unitId      String
+  /// LEGACY (overnight item 2): unit leaders are core heads now
+  /// (`headEmployeeId` on the unit). Kept read-only so a name that matched no
+  /// employee is not lost; nothing writes it, and the setup page shows it only
+  /// as a prompt to set the head.
   leaderName  String?
   leaderTitle String?
   order       Int             @default(0)

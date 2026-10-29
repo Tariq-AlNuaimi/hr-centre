@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { unitOptions } from "@/components/org/unit-options";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
@@ -49,7 +50,9 @@ export function DirectoryFilters({
   const departments = useQuery({
     queryKey: ["org", "departments", "directory", value.entityId],
     queryFn: () =>
-      apiClient.get<{ data: Array<Option & { directorateId?: string | null }> }>(
+      apiClient.get<{
+        data: Array<Option & { directorateId?: string | null; entityId?: string | null }>;
+      }>(
         `/api/org/departments?pageSize=200${value.entityId ? `&entityId=${encodeURIComponent(value.entityId)}` : ""}`,
       ),
     staleTime: 300_000,
@@ -89,7 +92,10 @@ export function DirectoryFilters({
           label={t("directorate")}
           allLabel={t("all")}
           value={value.directorateId}
-          options={directorateOptions.map((d) => ({ value: d.id, label: d.name }))}
+          options={unitOptions(
+            directorateOptions,
+            (id) => entities.data?.find((e) => e.id === id)?.name,
+          )}
           onChange={(directorateId) => onChange({ directorateId, departmentId: "", teamId: "" })}
         />
       ) : null}
@@ -98,7 +104,10 @@ export function DirectoryFilters({
         label={t("department")}
         allLabel={t("all")}
         value={value.departmentId}
-        options={departmentOptions.map((d) => ({ value: d.id, label: d.name }))}
+        options={unitOptions(
+          departmentOptions,
+          (id) => entities.data?.find((e) => e.id === id)?.name,
+        )}
         onChange={(departmentId) => onChange({ departmentId, teamId: "" })}
       />
       <FilterSelect

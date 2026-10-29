@@ -54,3 +54,24 @@ export const escalationCaptureSchema = z.object({
 });
 
 export type EscalationCapture = z.infer<typeof escalationCaptureSchema>;
+
+/**
+ * HR raises a ticket on an employee's behalf (POST /api/hive/escalations). The
+ * name, email and placement come from the employee record, never the form.
+ */
+export const raiseForEmployeeSchema = z.object({
+  employeeId: z.string().trim().min(1).max(64),
+  question: z
+    .string()
+    .trim()
+    .min(5, "Write the question in at least 5 characters.")
+    .max(ESCALATION_QUESTION_MAX, `Keep the question to ${ESCALATION_QUESTION_MAX} characters.`),
+});
+
+export type RaiseForEmployeeInput = z.infer<typeof raiseForEmployeeSchema>;
+
+/** The employee picker on the raise form (GET /api/hive/employees). */
+export const ticketEmployeeQuerySchema = z.object({
+  search: z.string().trim().max(120).optional(),
+  id: z.string().trim().min(1).max(64).optional(),
+});

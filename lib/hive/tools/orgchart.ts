@@ -29,12 +29,16 @@ import { loadCompanies } from "../hrtag-source";
  * §4.4's binding note applies here as hard as anywhere: rotation groups, HR Tag
  * coverage and the org chart are three independent structures that only happen
  * to overlap. This file reads the core org (OrgEntity → Directorate →
- * Department → Team) plus `hive_org_unit_info` (leaders, order) and nothing else — it
+ * Department → Team, whose `head` is each unit's leader) plus `hive_org_unit_info` for
+ * display order only, and nothing else — it
  * never consults `RotationCoverage` or `HrTagCoverage` to resolve a name, and it
  * must not start, because that is the collapse the note forbids.
  *
  * @public
  */
+
+/** A unit head as the tool shows it: the core employee's name and job title. */
+const HEAD = { select: { name: true, jobTitle: true, status: true, deletedAt: true } } as const;
 
 interface UnitRow {
   id: string;
@@ -100,14 +104,15 @@ function card(unit: UnitRow, children: UnitRow[]) {
  * One company's chart from the CORE org, in HIVE's unit shape. HIVE's kinds:
  * a directorate is DIRECTORATE; a department directly under the company is
  * DEPARTMENT (TP); a department under a directorate is what HIVE called a TEAM
- * (Rihal's "Human Resources" under Operations), as is a core Team. Leaders and
- * order come from `hive_org_unit_info`; without a row, name order and no leader.
+ * (Rihal's "Human Resources" under Operations), as is a core Team. The leader is
+ * the unit's core head (name + job title); order comes from `hive_org_unit_info`,
+ * without a row name order. No head set → no leader, never a guess.
  */
 async function loadUnits(entityId: string): Promise<UnitRow[]> {
   const [directorates, departments] = await Promise.all([
     prisma.directorate.findMany({
       where: { entityId, deletedAt: null },
-      select: { id: true, name: true },
+      select: { id: true, name: true, head: HEAD },
       take: 200,
     }),
     prisma.department.findMany({
@@ -116,34 +121,62 @@ async function loadUnits(entityId: string): Promise<UnitRow[]> {
         id: true,
         name: true,
         directorateId: true,
-        teams: { where: { deletedAt: null }, select: { id: true, name: true }, take: 100 },
+        head: HEAD,
+        teams: {
+          where: { deletedAt: null },
+          select: { id: true, name: true, head: HEAD },
+          take: 100,
+        },
       },
       take: 300,
     }),
   ]);
   const liveDirectorates = new Set(directorates.map((d) => d.id));
-  const raw: Omit<UnitRow, "leaderName" | "leaderTitle">[] = [
-    ...directorates.map((d) => ({ id: d.id, name: d.name, kind: "DIRECTORATE", parentId: null })),
+  // A head who has left (or been removed) is no leader: say nothing rather than a stale name.
+  const lead = (
+    head: { name: string; jobTitle: string | null; status: string; deletedAt: Date | null } | null,
+  ) => {
+    const current = head && head.status !== "LEAVER" && !head.deletedAt ? head : null;
+    return { leaderName: current?.name ?? null, leaderTitle: current?.jobTitle ?? null };
+  };
+  const raw: UnitRow[] = [
+    ...directorates.map((d) => ({
+      id: d.id,
+      name: d.name,
+      kind: "DIRECTORATE",
+      parentId: null,
+      ...lead(d.head),
+    })),
     ...departments.map((d) => {
       const parentId =
         d.directorateId && liveDirectorates.has(d.directorateId) ? d.directorateId : null;
-      return { id: d.id, name: d.name, kind: parentId ? "TEAM" : "DEPARTMENT", parentId };
+      return {
+        id: d.id,
+        name: d.name,
+        kind: parentId ? "TEAM" : "DEPARTMENT",
+        parentId,
+        ...lead(d.head),
+      };
     }),
     ...departments.flatMap((d) =>
-      d.teams.map((t) => ({ id: t.id, name: t.name, kind: "TEAM", parentId: d.id })),
+      d.teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        kind: "TEAM",
+        parentId: d.id,
+        ...lead(t.head),
+      })),
     ),
   ];
   const info = await prisma.hiveOrgUnitInfo.findMany({
     where: { unitId: { in: raw.map((u) => u.id) } },
-    select: { unitId: true, leaderName: true, leaderTitle: true, order: true },
+    select: { unitId: true, order: true },
     take: 600,
   });
   const byId = new Map(info.map((i) => [i.unitId, i]));
   return raw
     .map((u) => ({
       ...u,
-      leaderName: byId.get(u.id)?.leaderName ?? null,
-      leaderTitle: byId.get(u.id)?.leaderTitle ?? null,
       order: byId.get(u.id)?.order ?? Number.MAX_SAFE_INTEGER,
     }))
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))

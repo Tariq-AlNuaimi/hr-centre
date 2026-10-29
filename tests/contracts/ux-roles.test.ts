@@ -113,3 +113,13 @@ test("R13: no runtime code reads Employee.pmsRoles from the database any more", 
     .filter((f) => /pmsRoles:\s*(true|\{)/.test(readFileSync(f, "utf8")));
   assert.deepEqual(offenders, [], "authority comes from role assignments (lib/rbac)");
 });
+
+test("R13: the Employee.pmsRoles column and its enum are gone, and no seed writes them", () => {
+  const schema = readFileSync(join("prisma", "schema.prisma"), "utf8");
+  assert.doesNotMatch(schema, /^\s+pmsRoles\s/m, "no pmsRoles field on any model");
+  assert.doesNotMatch(schema, /^enum PmsRole\b/m, "no PmsRole enum");
+  for (const seed of ["seed.ts", "seed-pms.ts", "seed-demo-cycle.ts"]) {
+    const text = readFileSync(join("prisma", seed), "utf8");
+    assert.doesNotMatch(text, /pmsRoles/, `${seed} must not use the dropped column`);
+  }
+});

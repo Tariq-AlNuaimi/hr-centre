@@ -4,6 +4,8 @@ import * as React from "react";
 import { useForm, type FieldValues, type Resolver, type UseFormProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ZodType, infer as zInfer } from "zod";
+// QA D-15: the same readable messages the API returns.
+import "@/lib/validations/messages";
 import {
   Form,
   FormControl,

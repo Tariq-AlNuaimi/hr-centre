@@ -16,7 +16,12 @@ import { useStatusLabels } from "@/components/hive/escalations/status-labels";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
 import { DEFAULT_TICKET_PREFIX, formatTicketId } from "@/lib/hive/ticket-id";
-import { LABELLED_STATUSES, ticketPrefixSchema } from "@/lib/validations/hive/ticket-settings";
+import {
+  DEFAULT_RESPONSE_HOURS,
+  LABELLED_STATUSES,
+  responseHoursSchema,
+  ticketPrefixSchema,
+} from "@/lib/validations/hive/ticket-settings";
 
 /**
  * Spec V2 §8.8 Settings (blueprint T5): the ticket ID prefix and the status
@@ -32,6 +37,7 @@ const ENDPOINT = "/api/hive/admin/ticket-settings";
 interface Settings {
   ticketPrefix: string;
   statusLabels: Record<string, string>;
+  responseHours: number;
 }
 
 export default function HiveSettingsPage() {
@@ -78,11 +84,14 @@ function SettingsForm({ settings, refetch }: { settings: Settings; refetch: () =
   const defaults = useStatusLabels();
   const [prefix, setPrefix] = useState(settings.ticketPrefix);
   const [labels, setLabels] = useState<Record<string, string>>(settings.statusLabels);
+  const [hours, setHours] = useState(String(settings.responseHours));
+  const hoursChecked = responseHoursSchema.safeParse(hours.trim() === "" ? NaN : Number(hours));
   const [busy, setBusy] = useState(false);
 
   const customised =
     settings.ticketPrefix !== DEFAULT_TICKET_PREFIX ||
-    Object.keys(settings.statusLabels).length > 0;
+    Object.keys(settings.statusLabels).length > 0 ||
+    settings.responseHours !== DEFAULT_RESPONSE_HOURS;
   // The same rule the server applies, checked as you type: a preview of an ID
   // the server will refuse is a promise the Save button cannot keep.
   const checked = ticketPrefixSchema.safeParse(prefix);
@@ -138,6 +147,39 @@ function SettingsForm({ settings, refetch }: { settings: Settings; refetch: () =
         </div>
       </SectionCard>
 
+      <SectionCard title={t("responseTitle")} subtitle={t("responseHint")}>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="response-hours">{t("responseLabel")}</Label>
+            <Input
+              id="response-hours"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={400}
+              className="w-32"
+              value={hours}
+              aria-invalid={hoursChecked.success ? undefined : true}
+              aria-describedby="response-hours-status"
+              onChange={(e) => setHours(e.target.value)}
+            />
+          </div>
+          {hoursChecked.success ? (
+            <p id="response-hours-status" className="m-0 pb-2 text-sm text-muted-foreground">
+              {t("responsePreview", { days: Math.round((hoursChecked.data / 8) * 10) / 10 })}
+            </p>
+          ) : (
+            <p
+              id="response-hours-status"
+              role="alert"
+              className="m-0 pb-2 text-sm font-medium text-destructive-emphasis"
+            >
+              {hoursChecked.error.issues[0]?.message}
+            </p>
+          )}
+        </div>
+      </SectionCard>
+
       <SectionCard title={t("labelsTitle")} subtitle={t("labelsHint")}>
         <div className="grid gap-4 sm:grid-cols-2">
           {LABELLED_STATUSES.map((status) => (
@@ -157,8 +199,14 @@ function SettingsForm({ settings, refetch }: { settings: Settings; refetch: () =
 
       <div className="flex flex-wrap items-center gap-3">
         <Button
-          onClick={() => void put({ ticketPrefix: prefix, statusLabels: labels }, t("saved"))}
-          disabled={busy || !checked.success}
+          onClick={() =>
+            hoursChecked.success &&
+            void put(
+              { ticketPrefix: prefix, statusLabels: labels, responseHours: hoursChecked.data },
+              t("saved"),
+            )
+          }
+          disabled={busy || !checked.success || !hoursChecked.success}
         >
           {busy ? t("saving") : t("save")}
         </Button>
@@ -169,7 +217,14 @@ function SettingsForm({ settings, refetch }: { settings: Settings; refetch: () =
             okText={t("reset")}
             okType="danger"
             onConfirm={() =>
-              void put({ ticketPrefix: DEFAULT_TICKET_PREFIX, statusLabels: {} }, t("resetDone"))
+              void put(
+                {
+                  ticketPrefix: DEFAULT_TICKET_PREFIX,
+                  statusLabels: {},
+                  responseHours: DEFAULT_RESPONSE_HOURS,
+                },
+                t("resetDone"),
+              )
             }
           >
             <Button variant="outline" disabled={busy}>

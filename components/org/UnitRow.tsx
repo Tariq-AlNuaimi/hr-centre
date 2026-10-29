@@ -15,6 +15,7 @@ export function UnitRow({
   name,
   meta,
   badge,
+  head,
   extra,
   busy,
   onRename,
@@ -23,6 +24,8 @@ export function UnitRow({
   name: string;
   meta?: ReactNode;
   badge?: ReactNode;
+  /** The unit's head control (overnight item 2). */
+  head?: ReactNode;
   extra?: ReactNode;
   busy: boolean;
   onRename: (name: string) => Promise<boolean>;
@@ -61,6 +64,7 @@ export function UnitRow({
       )}
       {meta ? <span className="text-xs text-muted-foreground">{meta}</span> : null}
       <span className="ms-auto flex flex-wrap items-center gap-2">
+        {head}
         {extra}
         {!editing ? (
           <Button

@@ -87,13 +87,21 @@ describe("the labels", () => {
 describe("the stored row", { skip: !canMock }, () => {
   test("no row means the defaults — a fresh database needs no seed", async () => {
     reset();
-    assert.deepEqual(await svc.getTicketSettings(), { ticketPrefix: "HR", statusLabels: {} });
+    assert.deepEqual(await svc.getTicketSettings(), {
+      ticketPrefix: "HR",
+      statusLabels: {},
+      responseHours: 16,
+    });
   });
 
   test("a hand-edited row with a junk label set is ignored on read, not rendered", async () => {
     reset();
     row = { ticketPrefix: "HR", statusLabels: { NOPE: "x" } };
-    assert.deepEqual(await svc.getTicketSettings(), { ticketPrefix: "HR", statusLabels: {} });
+    assert.deepEqual(await svc.getTicketSettings(), {
+      ticketPrefix: "HR",
+      statusLabels: {},
+      responseHours: 16,
+    });
   });
 
   test("saving goes through the audited create/update, never upsert", async () => {

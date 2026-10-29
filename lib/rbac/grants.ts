@@ -91,7 +91,7 @@ export function partialScopes(grants: Grants, permission: Permission): ScopeRef[
 }
 
 /**
- * The grants a set of legacy `pmsRoles` meant — each starter role at Group
+ * The grants a set of starter-role keys means — each starter role at Group
  * scope. Used for actors that predate assignments (and by the Performance
  * contract tests, which is what proves the starter roles reproduce them).
  */

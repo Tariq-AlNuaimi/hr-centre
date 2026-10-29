@@ -80,7 +80,7 @@ test("the three claim shapes IdPs actually emit are all read", () => {
 
 test("SSO cannot grant §4.1 HR authority — only the platform role", () => {
   // The seam returns the PLATFORM Role enum and nothing else. HR authority lives
-  // on Employee.pmsRoles and is granted at /admin/roles by a human; a directory
+  // on role assignments and is granted at /admin/roles by a human; a directory
   // group edited by IT must never be able to mint an HR Super Admin.
   withGroups("app-admins", "app-editors");
   for (const claims of [{ groups: ["app-admins"] }, { groups: ["app-editors"] }, {}]) {

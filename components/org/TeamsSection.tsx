@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiClient } from "@/lib/api-client";
 import { NativeSelect } from "./NativeSelect";
+import { HeadControl } from "./HeadControl";
 import { UnitRow } from "./UnitRow";
 import { useOrgAction } from "./useOrgAction";
 import type { Department, Team } from "./types";
@@ -32,6 +33,9 @@ export function TeamsSection({ departments, teams }: { departments: Department[]
               key={team.id}
               name={team.name}
               badge={<Badge>{team.department.entity.code}</Badge>}
+              head={
+                <HeadControl kind="TEAM" unitId={team.id} unitName={team.name} head={team.head} />
+              }
               meta={t("teamCounts", {
                 department: team.department.name,
                 people: team._count.employees,

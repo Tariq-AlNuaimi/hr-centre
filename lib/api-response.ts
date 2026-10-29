@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+// QA D-15: readable zod messages for every route that returns an issue verbatim.
+import "@/lib/validations/messages";
 
 /** @public */
 export interface ApiResponse<T = unknown> {

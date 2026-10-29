@@ -4,7 +4,7 @@ import { hashPassword } from "../lib/password";
 import { grantBootstrapModuleAdmins, seedFoundation } from "./seed-foundation";
 import { seedJml } from "./seed-jml";
 import { seedHive } from "./seed-hive";
-import { seedPms } from "./seed-pms";
+import { EMPLOYEES, seedPms } from "./seed-pms";
 import { seedHiring } from "./seed-hiring";
 
 async function main() {
@@ -79,24 +79,25 @@ async function main() {
 }
 
 /**
- * HR Centre F-c — the LOCAL-ONLY demo fixture still describes its HR people with
- * `pmsRoles`; give each the matching starter role for the whole group so the
+ * HR Centre F-c — give the LOCAL-ONLY demo fixture's HR people their starter
+ * roles for the whole group (the fixture names them in `starterRoles`), so the
  * demo has HR authority. Idempotent (skips existing assignments). Never runs in
- * a real deployment (SEED_DEMO is local-only), where migration 20261026180000
- * converted `pmsRoles` exactly once.
+ * a real deployment (SEED_DEMO is local-only).
  */
 async function grantDemoRoles(prisma: PrismaClient) {
   const roles = await prisma.accessRole.findMany({
     where: { starterKey: { not: null }, deletedAt: null },
     select: { id: true, starterKey: true },
   });
+  const wanted = EMPLOYEES.filter((e) => (e.starterRoles ?? []).length > 0);
   const employees = await prisma.employee.findMany({
-    where: { userId: { not: null }, NOT: { pmsRoles: { isEmpty: true } } },
-    select: { userId: true, pmsRoles: true },
+    where: { odooId: { in: wanted.map((e) => e.odooId) }, userId: { not: null } },
+    select: { odooId: true, userId: true },
     take: 1000,
   });
   for (const e of employees) {
-    for (const key of e.pmsRoles) {
+    const keys = wanted.find((w) => w.odooId === e.odooId)?.starterRoles ?? [];
+    for (const key of keys) {
       const role = roles.find((r) => r.starterKey === key);
       if (!role || !e.userId) continue;
       const found = await prisma.roleAssignment.findFirst({

@@ -1,4 +1,5 @@
-import type { PrismaClient, RoleTrack, PmsRole } from "../generated/prisma/client";
+import type { PrismaClient, RoleTrack } from "../generated/prisma/client";
+import type { PmsRole } from "../lib/pms/permissions";
 import { encryptSalary } from "../lib/pms/employee-select";
 
 /**
@@ -26,7 +27,8 @@ type SeedEmployee = {
   entity: string;
   manager: string | null;
   roleTrack: RoleTrack;
-  pmsRoles?: PmsRole[];
+  /** Starter roles granted at Group scope once the login exists (prisma/seed.ts). */
+  starterRoles?: PmsRole[];
   basicSalary: string;
   /**
    * §3.3 — months BEFORE the seed runs, not an ISO date.
@@ -86,7 +88,8 @@ const DEPARTMENTS: SeedDept[] = [
   { name: "Support", entity: "CL" },
 ];
 
-const EMPLOYEES: SeedEmployee[] = [
+/** The demo fixture. Exported for `grantDemoRoles` (prisma/seed.ts). */
+export const EMPLOYEES: SeedEmployee[] = [
   // --- C-Level (§1.2: entity directly, no department; §8.3: no formula) ------
   {
     odooId: "1000",
@@ -108,7 +111,7 @@ const EMPLOYEES: SeedEmployee[] = [
     roleTrack: "C_LEVEL",
     // §4.3 — additive: the COO is an executive viewer who ALSO has reports.
     // There is no "COO" role; the two standard ones are stacked.
-    pmsRoles: ["EXECUTIVE_VIEWER"],
+    starterRoles: ["EXECUTIVE_VIEWER"],
     basicSalary: "5500",
   },
   {
@@ -141,7 +144,7 @@ const EMPLOYEES: SeedEmployee[] = [
     entity: "RIHAL",
     manager: "1001",
     roleTrack: "DIRECTOR",
-    pmsRoles: ["HR_SUPER_ADMIN"],
+    starterRoles: ["HR_SUPER_ADMIN"],
     basicSalary: "3200",
   },
   {
@@ -152,7 +155,7 @@ const EMPLOYEES: SeedEmployee[] = [
     entity: "RIHAL",
     manager: "1100",
     roleTrack: "MANAGER",
-    pmsRoles: ["HRBP"],
+    starterRoles: ["HRBP"],
     basicSalary: "2400",
   },
   {
@@ -175,7 +178,7 @@ const EMPLOYEES: SeedEmployee[] = [
     entity: "RIHAL",
     manager: "1001",
     roleTrack: "DIRECTOR",
-    pmsRoles: ["EXECUTIVE_VIEWER"],
+    starterRoles: ["EXECUTIVE_VIEWER"],
     basicSalary: "3400",
   },
   {
@@ -294,7 +297,7 @@ const EMPLOYEES: SeedEmployee[] = [
     // and it matters more than a typo usually would, because §4.1 gives
     // HR_SUPER_ADMIN the configure column, §10.6's calibration, §13.2's publish
     // and §13.5's master export, and this fixture is going to production.
-    pmsRoles: ["HR_SUPER_ADMIN"],
+    starterRoles: ["HR_SUPER_ADMIN"],
   },
   {
     odooId: "1311",
@@ -550,7 +553,6 @@ export async function seedPms(prisma: PrismaClient): Promise<void> {
         departmentId,
         entityId,
         roleTrack: employee.roleTrack,
-        pmsRoles: employee.pmsRoles ?? [],
         // ADR-067 — even the fixture is encrypted, so a dev database never
         // holds a shape production does not.
         basicSalaryEnc: encryptSalary(employee.basicSalary, employee.odooId),
@@ -652,7 +654,7 @@ async function provisionFixtureLogins(
  * First-run bootstrap: give the deploy's seeded admin a way INTO the PMS.
  *
  * ADR-065 keeps platform authority (`User.role`) and HR authority
- * (`Employee.pmsRoles`) deliberately separate, and `resolveActor` is right to
+ * (role assignments) deliberately separate, and `resolveActor` is right to
  * resolve a `User` with no `Employee` to an actor who sees nothing. The
  * consequence on a fresh deploy is that the operator logs into their own new
  * instance and the PMS is empty with no way in — the fixture's HR Super Admin
@@ -724,7 +726,6 @@ async function bootstrapAdminEmployee(
       departmentId,
       entityId,
       roleTrack: "MANAGER",
-      pmsRoles: ["HR_SUPER_ADMIN"],
       // No salary invented: this is an access record, not a person's pay data.
       // Nor a joining date — §11 refuses to compute a bonus without one, which
       // is the right outcome for a bootstrap record that is not a real hire.
@@ -733,6 +734,25 @@ async function bootstrapAdminEmployee(
     },
     select: { id: true },
   });
+
+  // HR authority is a role assignment (F-c): the starter HR Super Admin role at
+  // Group scope, when the login exists. Find-then-create keeps it audited.
+  const role = await prisma.accessRole.findFirst({
+    where: { starterKey: "HR_SUPER_ADMIN", deletedAt: null },
+    select: { id: true },
+  });
+  if (user && role) {
+    const held = await prisma.roleAssignment.findFirst({
+      where: { userId: user.id, roleId: role.id, scopeType: "GROUP" },
+      select: { id: true },
+    });
+    if (!held) {
+      await prisma.roleAssignment.create({
+        data: { userId: user.id, roleId: role.id, scopeType: "GROUP", note: "Bootstrap admin" },
+        select: { id: true },
+      });
+    }
+  }
 
   console.log(`PMS bootstrap: ${email} seeded as HR Super Admin (odooId BOOTSTRAP-ADMIN).`);
 }

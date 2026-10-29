@@ -16,6 +16,8 @@ import { formatDay } from "@/lib/format";
 import { useSourceLabels, useStatusLabels } from "@/components/hive/escalations/status-labels";
 import { StatusPill } from "@/components/hive/escalations/StatusPill";
 import { apiClient } from "@/lib/api-client";
+import { useHiveAccess } from "@/components/hive/use-hive-access";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { formatTicketId } from "@/lib/hive/ticket-id";
 
 /**
@@ -92,6 +94,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 export default function EscalationQueuePage() {
   const t = useTranslations("hive.escalations");
   const sourceLabel = useSourceLabels();
+  const access = useHiveAccess();
   const locale = useLocale();
   const [status, setStatus] = useState<string | null>(null);
   // UX P1 (tickets P1-2): All / Mine / Unassigned / Overdue.
@@ -226,7 +229,17 @@ export default function EscalationQueuePage() {
 
   return (
     <>
-      <PageHeader title={t("title")} subtitle={t("intro")} />
+      <PageHeader
+        title={t("title")}
+        subtitle={t("intro")}
+        actions={
+          access.draftEscalation ? (
+            <Link href={`/${locale}/tickets/new`} className={buttonVariants()}>
+              {t("raiseTicket")}
+            </Link>
+          ) : null
+        }
+      />
 
       <div className="mb-4">
         <FilterChips
@@ -274,7 +287,10 @@ export default function EscalationQueuePage() {
           allLabel={t("anySource")}
           value={filters.source ?? ""}
           onChange={(v) => narrow({ source: v || null })}
-          options={(["SIRAAJ", "HIVE"] as const).map((s) => ({ value: s, label: sourceLabel[s] }))}
+          options={(["SIRAAJ", "HR", "HIVE"] as const).map((s) => ({
+            value: s,
+            label: sourceLabel[s],
+          }))}
         />
         <div className="flex flex-col gap-1">
           <Label htmlFor="queue-from" className="text-xs text-muted-foreground">

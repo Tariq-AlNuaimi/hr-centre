@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,8 @@ import {
 import { EmployeeEditForm } from "@/components/pms/EmployeeEditForm";
 import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
 import { RecordDepartureDialog } from "@/components/pms/RecordDepartureDialog";
+import { useNotify } from "@/hooks/use-notify";
+import { apiClient } from "@/lib/api-client";
 import type { RecordValues } from "./RecordFields";
 import type { UpdateEmployeeInput } from "@/lib/validations/employee";
 import type { DeparturePreview } from "@/lib/pms/departure";
@@ -28,7 +31,12 @@ export type RecordActionsProps = {
   core: { initial: UpdateEmployeeInput; managerName: string | null } | null;
   /** Job, personal and ID details (PATCH) — only where the viewer may edit. */
   record: { initial: RecordValues; canEditPersonal: boolean; canEditIdDocuments: boolean } | null;
-  links: { label: "startMover" | "startLeaver" | "orgChart" | "manageLogin"; href: string }[];
+  links: {
+    label: "startMover" | "startLeaver" | "raiseTicket" | "orgChart" | "manageLogin";
+    href: string;
+  }[];
+  /** A PRE_JOINER with no live onboarding, for a viewer who may manage joiners here. */
+  startJoiner: boolean;
   /** The HR Super Admin correction (record a departure without the exit process). */
   departure: { preview: DeparturePreview | null } | null;
 };
@@ -46,9 +54,27 @@ export function RecordActions({
   core,
   record,
   links,
+  startJoiner,
   departure,
 }: RecordActionsProps) {
   const t = useTranslations("people.actions");
+  const router = useRouter();
+  const locale = useLocale();
+  const notify = useNotify();
+  const [starting, setStarting] = useState(false);
+  async function startJoinerCase() {
+    setStarting(true);
+    try {
+      const { caseId } = await apiClient.post<{ caseId: string }>(
+        "/api/jml/joiners/from-employee",
+        { employeeId },
+      );
+      router.push(`/${locale}/jml/joiners/${caseId}`);
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : t("startJoinerFailed"));
+      setStarting(false);
+    }
+  }
   const [open, setOpen] = useState<Dialog>(null);
   const [opening, setOpening] = useState(0);
   const show = (d: Exclude<Dialog, null>) => {
@@ -59,7 +85,7 @@ export function RecordActions({
   const editTargets = [core && "core", record && "record"].filter(Boolean) as Array<
     "core" | "record"
   >;
-  const hasActions = links.length > 0 || departure !== null;
+  const hasActions = links.length > 0 || startJoiner || departure !== null;
 
   return (
     <>
@@ -93,6 +119,11 @@ export function RecordActions({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
+            {startJoiner ? (
+              <DropdownMenuItem disabled={starting} onSelect={() => void startJoinerCase()}>
+                {starting ? t("startingJoiner") : t("startJoiner")}
+              </DropdownMenuItem>
+            ) : null}
             {links.map((l) => (
               <DropdownMenuItem key={l.label} asChild>
                 <Link href={l.href}>{t(l.label)}</Link>

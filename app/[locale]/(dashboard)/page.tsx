@@ -8,7 +8,9 @@
 // cross it either). So this RSC renders no JSX of its own -- all UI lives in the
 // client island. See docs/recipes/perf/1-rsc-list-reads.md.
 
+import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
+import { PageSkeleton } from "@/components/shared/Skeletons";
 import { auth } from "@/lib/auth";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
 import {
@@ -121,7 +123,20 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
  * Performance, Joiners & leavers, Hiring and HR tickets — then Performance
  * oversight, then (platform admins only) the platform overview.
  */
-export default async function DashboardPage() {
+/**
+ * QA D-16 moved the route-level loading boundary off (dashboard) — it streamed
+ * every page, so a `notFound()` (out-of-scope person) went out as HTTP 200 —
+ * and down to each section. Home keeps its skeleton with its own boundary.
+ */
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<PageSkeleton rows={6} />}>
+      <DashboardHome />
+    </Suspense>
+  );
+}
+
+async function DashboardHome() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
   const data = isAdmin ? await getDashboardData() : null;

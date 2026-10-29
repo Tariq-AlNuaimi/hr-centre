@@ -996,3 +996,20 @@ Centre's "My work" next to everything else, and the IT intake integration stays 
 setting; line-manager authority is derived from `Employee.managerId`, as Performance does).
 Decision: build — an assignee role on template/case tasks, a desk-member table and a derived
 authority check in the existing task engine.
+
+### 2026-10-29 — Overnight small items: readable validation messages, raise-on-behalf, unit heads
+
+Scope: lib/validations/messages.ts, lib/hive/services/escalation-raise.ts, lib/org/heads.ts
+Considered:
+
+- **`zod-validation-error` / `zod-i18n-map`** for readable messages. Rejected: zod 4 ships a
+  global `customError` hook; one small function over it covers our handful of issue codes, with
+  no dependency and every schema's own message still winning.
+- **Raise-on-behalf through an external desk (a Freshdesk/Zendesk "agent creates ticket on
+  behalf of requester")**. Rejected: tickets live here; this is one more entry point into the
+  existing `createEscalation`, with the same routing and approval.
+- **An org-design tool for unit heads (Workday supervisory orgs, HiBob org settings)**.
+  Rejected: HR Centre is the system of record for the org; a nullable head FK per unit is the
+  whole requirement.
+
+Decision: build.

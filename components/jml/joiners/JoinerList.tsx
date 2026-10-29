@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { unitOptions } from "@/components/org/unit-options";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -138,7 +139,10 @@ export function JoinerList() {
               allLabel={t("allDepartments")}
               value={f.departmentId}
               onChange={(v) => upd("departmentId", v)}
-              options={departments.map((d) => ({ value: d.id, label: d.name }))}
+              options={unitOptions(
+                departments,
+                (id) => lookups.data?.companies.find((c) => c.id === id)?.name,
+              )}
             />
             <FilterSelect
               id="joiner-type"
