@@ -140,6 +140,20 @@ async function eraseChildren(tx: Tx, candidateId: string, files: string[]) {
       select: { id: true },
     });
   }
+  // Core approval rounds carry the candidate's name as their title (ADR-094).
+  const rounds = offerIds.length
+    ? await tx.approvalRequest.findMany({
+        where: { subjectType: "hiring.offer", subjectId: { in: offerIds } },
+        select: { id: true },
+        take: CHILD_CAP,
+      })
+    : [];
+  for (const r of rounds)
+    await tx.approvalRequest.update({
+      where: { id: r.id },
+      data: { title: ERASED },
+      select: { id: true },
+    });
   for (const h of history)
     await tx.hiringStageHistory.update({
       where: { id: h.id },
@@ -165,6 +179,7 @@ async function eraseChildren(tx: Tx, candidateId: string, files: string[]) {
   await redactAudit(tx, "HiringCandidateDocument", ids(docs));
   await redactAudit(tx, "HiringNegotiationNote", ids(notes));
   await redactAudit(tx, "HiringOffer", offerIds);
+  await redactAudit(tx, "ApprovalRequest", ids(rounds));
   await redactAudit(tx, "HiringOfferVersion", ids(versions));
   await redactAudit(tx, "HiringStageHistory", ids(history));
   await redactAudit(tx, "HiringAiInsight", ids(insights));

@@ -1,3 +1,4 @@
+import { decisionRefusal, type RefusalCode } from "@/lib/core/approvals/rules";
 import type { HiringOfferStatus } from "@/generated/prisma/client";
 
 /**
@@ -79,11 +80,31 @@ export function nextOfferStep<T extends OfferStep>(
   return chain.find((s) => !approved.has(s.sequence));
 }
 
+/** The core engine's refusal codes, in Hiring's words. */
+export function offerRefusalMessage(code: RefusalCode): string {
+  switch (code) {
+    case "NO_SUBMITTER":
+      return "Can't tell who submitted this offer for approval, so it can't be decided. Send it back to drafting and submit it again.";
+    case "SUBMITTER":
+      return "You submitted this offer, so it needs a different approver (segregation of duties).";
+    case "EXCLUDED":
+      return "You referred this candidate, so you can't approve their offer. A referral is a conflict of interest.";
+    case "PRIOR_STEP":
+      return "You approved an earlier step of this offer. The next step needs a different approver.";
+    case "ALREADY":
+      return "You have already decided this step.";
+    case "NOT_QUALIFIED":
+      return "Only someone who holds this step's approval role can decide it.";
+  }
+}
+
 /**
  * Who may decide the next step. Never the submitter (segregation of duties),
  * never the referrer, never someone who approved an earlier step of this round
  * (D17 — Interview Hub had this for requisitions only), and only someone who
- * holds the step's role — or a hiring admin.
+ * holds the step's role — or a hiring admin. The rule itself is the core
+ * engine's (ADR-094); `actingForId` is the holder a delegate acts for, who is
+ * held to the same bans.
  */
 export function offerDecisionRefusal(input: {
   actorId: string;
@@ -91,21 +112,23 @@ export function offerDecisionRefusal(input: {
   referrerId: string | null;
   qualified: boolean;
   priorApproverIds: readonly string[];
+  actingForId?: string | null;
 }): string | null {
-  if (!input.submitterId) {
-    return "Can't tell who submitted this offer for approval, so it can't be decided. Send it back to drafting and submit it again.";
-  }
-  if (input.actorId === input.submitterId) {
-    return "You submitted this offer, so it needs a different approver (segregation of duties).";
-  }
-  if (input.actorId === input.referrerId) {
-    return "You referred this candidate, so you can't approve their offer. A referral is a conflict of interest.";
-  }
-  if (input.priorApproverIds.includes(input.actorId)) {
-    return "You approved an earlier step of this offer. The next step needs a different approver.";
-  }
-  if (!input.qualified) return "Only someone who holds this step's approval role can decide it.";
-  return null;
+  const code = decisionRefusal({
+    actorId: input.actorId,
+    actingFor: input.actingForId ?? null,
+    submitterId: input.submitterId,
+    excludedIds: input.referrerId ? [input.referrerId] : [],
+    step: { sequence: 0 },
+    decisions: input.priorApproverIds.map((id) => ({
+      sequence: -1,
+      deciderId: id,
+      onBehalfOfId: null,
+      action: "APPROVED" as const,
+    })),
+    qualified: input.qualified,
+  });
+  return code ? offerRefusalMessage(code) : null;
 }
 
 /** The joining date on acceptance must be the offered start date (same calendar day in Muscat). */

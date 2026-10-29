@@ -27,6 +27,8 @@ export type WorkItem = {
   dueAt: string | null;
   /** Locale-less path to act on it. */
   href: string;
+  /** A decision someone is waiting for — listed in the Approvals inbox too (ADR-094). */
+  approval?: boolean;
 };
 
 type ProviderResult = { items: WorkItem[]; total: number };

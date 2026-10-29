@@ -1,9 +1,12 @@
 import { Prisma, type HiringOfferStatus } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
+import { cancelOpenRounds, openRound } from "@/lib/core/approvals/store";
+import { OFFER_SUBJECT } from "./offer-round";
 import type { HiringActor } from "./access";
 import { computeChain, totalMonthlyComp } from "./approval-chain";
 import { randomUUID } from "node:crypto";
 import {
+  approvalRoleLabel,
   assertChainStaffed,
   configToChainOptions,
   loadApprovalConfig,
@@ -162,14 +165,22 @@ export async function updateOffer(
   }
   if (to === "DRAFTING") extra.approvalChain = Prisma.DbNull;
   await auditedTransaction(async (tx) => {
-    if (to === "PENDING_APPROVAL" || to === "DRAFTING") {
-      // A new round starts clean; the audit log keeps every earlier decision.
-      const old = await tx.hiringOfferApproval.findMany({
-        where: { offerId: o.id },
-        select: { id: true },
-        take: 50,
+    // Rounds live in the core approvals engine (ADR-094). A new submission opens
+    // a fresh round (closing any open one); leaving approval any other way
+    // cancels it. Every earlier round and its decisions stay on record.
+    if (to === "PENDING_APPROVAL" && routed) {
+      await openRound(tx, {
+        module: "hiring",
+        subjectType: OFFER_SUBJECT,
+        subjectId: o.id,
+        title: o.candidate.name,
+        href: `/hiring/offers/${o.id}`,
+        submittedById: actor.userId,
+        excludedIds: [o.candidate.referredById],
+        steps: routed.map((s) => ({ roleKey: s.role, label: approvalRoleLabel(s.role) })),
       });
-      for (const a of old) await tx.hiringOfferApproval.delete({ where: { id: a.id } });
+    } else if (to && from === "PENDING_APPROVAL") {
+      await cancelOpenRounds(tx, OFFER_SUBJECT, o.id);
     }
     await tx.hiringOffer.update({
       where: { id: o.id, status: from },
