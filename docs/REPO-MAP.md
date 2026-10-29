@@ -438,6 +438,7 @@
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
+- MagicLink: id, purpose, subjectId, tokenHash, expiresAt, revokedAt, lastUsedAt, createdById, createdAt
 - AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, headEmployeeId, head, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
@@ -564,6 +565,7 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
+- lib/core/tokens/magic-link.ts: mintRawToken, digestToken, isTokenShaped, isLinkLive, magicLinkUrl, issueMagicLink, resolveMagicLink, revokeMagicLinks
 - lib/core/work-items/index.ts: WorkModule, WorkItem, WorkProvider, PROVIDER_LIMIT, WorkList, collectWorkItems, byDue, DueGroup, dueGroup
 - lib/crypto/field-encryption.ts: Keyring, SALARY_KEYRING, ID_DOCUMENT_KEYRING, FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
 - lib/date-input.ts: toDateInput, startOfDay, endOfDay

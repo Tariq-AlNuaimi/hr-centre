@@ -31,10 +31,13 @@ const canMock = typeof mockApi.module === "function";
 type Tokens = typeof import("../../lib/hive/reply-token.ts");
 let tokens: Tokens;
 
+// The ticket module's binding of the core magic-link store (ADR-090): rows live
+// in `core_magic_links` with purpose `hive.reply`; `subjectId` is the escalation.
 interface Row {
   id: string;
+  purpose: string;
   tokenHash: string;
-  escalationId: string;
+  subjectId: string;
   expiresAt: Date;
   revokedAt: Date | null;
   lastUsedAt: Date | null;
@@ -68,13 +71,14 @@ before(async () => {
   mockApi.module!(import.meta.resolve("../../lib/prisma.ts"), {
     namedExports: {
       prisma: {
-        escalationReplyToken: {
+        magicLink: {
           create: async ({ data }: { data: Record<string, unknown> }) => {
             creates.push(data);
             rows.push({
               id: `t${rows.length}`,
+              purpose: String(data.purpose),
               tokenHash: String(data.tokenHash),
-              escalationId: String(data.escalationId),
+              subjectId: String(data.subjectId),
               expiresAt: data.expiresAt as Date,
               revokedAt: null,
               lastUsedAt: null,
@@ -113,7 +117,7 @@ before(async () => {
             where,
             data,
           }: {
-            where: { escalationId: string; revokedAt: null };
+            where: { purpose: string; subjectId: string; revokedAt: null };
             data: Record<string, unknown>;
           }) => {
             // The `where` is modelled, not ignored: dropping `revokedAt: null`
@@ -121,7 +125,10 @@ before(async () => {
             // audit row reports.
             assert.equal(where.revokedAt, null, "already-revoked rows must not be re-stamped");
             const hit = rows.filter(
-              (r) => r.escalationId === where.escalationId && r.revokedAt === null,
+              (r) =>
+                r.purpose === where.purpose &&
+                r.subjectId === where.subjectId &&
+                r.revokedAt === null,
             );
             for (const r of hit) r.revokedAt = data.revokedAt as Date;
             return { count: hit.length };
