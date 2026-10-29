@@ -9,6 +9,7 @@ import { registerHivePairScopes } from "@/lib/hive/pair-scope";
 import { getTicketSettings } from "./ticket-settings";
 import type { NotificationKind } from "@/generated/prisma/client";
 import { notifyUsers, shortPreview } from "@/lib/core/notify/user-notify";
+import { whoCanOpen } from "@/lib/core/notify/audience";
 
 /**
  * Spec V2 §8.9's HR notifications (blueprint US-T5, phase T3).
@@ -223,7 +224,10 @@ async function deliver(kind: Kind, escalationId: string): Promise<void> {
   try {
     const ticket = await loadTicket(escalationId);
     if (!ticket) return;
-    const ids = await recipientIds(kind, ticket);
+    // Only people who can open the ticket hear about it — bell AND email
+    // (docs/blueprints/limits.md slice 2). The drafter of a "sent" or
+    // "reopened" ticket may since have lost the pair.
+    const ids = await whoCanOpen(`/tickets/${ticket.id}`, await recipientIds(kind, ticket));
     if (ids.size === 0) return;
     const { ticketPrefix } = await getTicketSettings();
     const inApp = IN_APP[kind];

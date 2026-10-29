@@ -226,9 +226,14 @@ async function jdSignoffs(actor: HiringActor): Promise<WorkItem[]> {
 
 /** Interviews that have happened (or are today) and still lack my submitted scorecard. */
 async function scorecardsDue(actor: HiringActor, now: Date): Promise<WorkItem[]> {
+  // The score page opens only for a panelist who still reads the requisition
+  // (`loadMyInterview`), so a panelist moved out of its scope is not listed.
+  const scope = await requisitionScopeWhere(actor, "hiring.view");
+  if (scope === null) return [];
   const endOfToday = new Date(now.getTime() + DAY_MS);
   const rows = await prisma.hiringInterview.findMany({
     where: {
+      requisition: scope,
       panelists: { some: { userId: actor.userId } },
       status: { not: "CANCELLED" },
       scheduledDate: { lte: endOfToday },

@@ -3,7 +3,7 @@ import type { JmlCaseType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { resolveActor, type ResolvedActor } from "@/lib/core/actor";
 import { grantsOf } from "@/lib/core/permissions";
-import { canInScope, has, hasGroup, type ScopeSubject } from "@/lib/rbac/grants";
+import { canInScope, has, hasGroup, type Grants, type ScopeSubject } from "@/lib/rbac/grants";
 import type { Permission } from "@/lib/rbac/catalogue";
 import { JmlError } from "./errors";
 import { isRoutedParticipant } from "./routing/worker";
@@ -163,6 +163,37 @@ export async function loadCaseFor(
     throw new JmlError("You do not have permission to do that on this case.", 403);
   }
   return { ...row, subject };
+}
+
+/**
+ * Of these people, who may OPEN the case — the visibility half of `loadCaseFor`
+ * (`jml.view` over the employee's placement, or over the placement a mover is
+ * moving into), for a notice about it (docs/blueprints/limits.md slice 2). A
+ * routed task worker without `jml.view` is NOT a viewer: the case answers them
+ * 403, and their notices point at My tasks instead. One case read for the batch.
+ */
+export async function caseViewerIds(
+  caseId: string,
+  people: ReadonlyArray<{ userId: string; grants: Grants }>,
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const row = await prisma.jmlCase.findUnique({
+    where: { id: caseId },
+    select: { id: true, caseType: true, employee: CASE_ACCESS_SELECT.employee },
+  });
+  if (!row) return out;
+  const subject = subjectOf(row.employee);
+  let target: ScopeSubject | null | undefined;
+  for (const p of people) {
+    if (canInScope(p.grants, "jml.view", subject)) {
+      out.add(p.userId);
+      continue;
+    }
+    if (row.caseType !== "MOVE") continue;
+    if (target === undefined) target = await movingInto(row.id);
+    if (target && canInScope(p.grants, "jml.view", target)) out.add(p.userId);
+  }
+  return out;
 }
 
 /** The placement an open internal change moves the employee into, if it moves them. */

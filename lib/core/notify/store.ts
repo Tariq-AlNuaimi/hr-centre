@@ -2,6 +2,7 @@ import type { NotificationKind } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { mutedInApp } from "./preferences";
+import { grantsMemo, isGatedHref, whoCanOpen } from "./audience";
 
 /**
  * The core notification store (P2 platform, ADR-091): who a feed belongs to and
@@ -56,14 +57,10 @@ export type PendingNotification = {
   sendAfter?: Date | null;
 };
 
-/**
- * Drop the notices their recipient has turned off (ADR-095 preferences). A
- * mandatory kind is never dropped; an employee recipient is matched through
- * their login. Two bounded queries for the whole batch.
- */
-async function withoutMuted(
+/** Each pending notice's recipient LOGIN (an employee recipient through its link). One query. */
+async function loginsOf(
   pending: readonly PendingNotification[],
-): Promise<readonly PendingNotification[]> {
+): Promise<(p: PendingNotification) => string | undefined> {
   const employeeIds = [
     ...new Set(pending.map((p) => p.recipientEmployeeId).filter((x): x is string => Boolean(x))),
   ];
@@ -75,8 +72,19 @@ async function withoutMuted(
       })
     : [];
   const loginOf = new Map(logins.map((e) => [e.id, e.userId!]));
-  const userOf = (p: PendingNotification) =>
+  return (p) =>
     p.recipientEmployeeId ? loginOf.get(p.recipientEmployeeId) : (p.recipientUserId ?? undefined);
+}
+
+/**
+ * Drop the notices their recipient has turned off (ADR-095 preferences). A
+ * mandatory kind is never dropped; an employee recipient is matched through
+ * their login. One bounded query for the whole batch.
+ */
+async function withoutMuted(
+  pending: readonly PendingNotification[],
+  userOf: (p: PendingNotification) => string | undefined,
+): Promise<readonly PendingNotification[]> {
   const users = [...new Set(pending.map(userOf).filter((x): x is string => Boolean(x)))];
   const off = await mutedInApp(users, [...new Set(pending.map((p) => p.kind))]);
   if (off.size === 0) return pending;
@@ -84,6 +92,37 @@ async function withoutMuted(
     const u = userOf(p);
     return !u || !off.has(`${u}:${p.kind}`);
   });
+}
+
+/**
+ * Drop the notices whose recipient cannot open the record the link points at
+ * (docs/blueprints/limits.md slice 2, `./audience`). Grouped by link, so a
+ * record is read once per batch and each recipient's grants once. A gated
+ * notice to someone with no login is dropped: nobody signs in to read it.
+ */
+async function withAccess(
+  pending: readonly PendingNotification[],
+  userOf: (p: PendingNotification) => string | undefined,
+): Promise<readonly PendingNotification[]> {
+  const byHref = new Map<string, PendingNotification[]>();
+  for (const p of pending) {
+    if (!isGatedHref(p.href)) continue;
+    const group = byHref.get(p.href!) ?? [];
+    group.push(p);
+    byHref.set(p.href!, group);
+  }
+  if (byHref.size === 0) return pending;
+  const grantsFor = grantsMemo();
+  const allowed = new Set<PendingNotification>();
+  for (const [href, group] of byHref) {
+    const users = group.map(userOf).filter((x): x is string => Boolean(x));
+    const open = await whoCanOpen(href, users, grantsFor);
+    for (const p of group) {
+      const u = userOf(p);
+      if (u && open.has(u)) allowed.add(p);
+    }
+  }
+  return pending.filter((p) => !isGatedHref(p.href) || allowed.has(p));
 }
 
 /** Keys per existence query. Postgres copes with far more; this keeps the plan flat. */
@@ -134,15 +173,29 @@ async function alreadySent(pending: readonly PendingNotification[]): Promise<Set
 export async function persistNotifications(
   pending: readonly PendingNotification[],
   max: number,
-): Promise<{ written: number; duplicates: number; failed: number; pending: number }> {
+): Promise<{
+  written: number;
+  duplicates: number;
+  failed: number;
+  pending: number;
+  /** Dropped because the recipient cannot open the record (`./audience`). */
+  refused: number;
+}> {
   let written = 0;
   let duplicates = 0;
   let failed = 0;
 
   const sent = await alreadySent(pending);
-  // Fail open: a preferences read that fails must not swallow a notice.
-  const wanted = await withoutMuted(pending).catch(() => pending);
-  const unsent = wanted.filter((p) => !sent.has(p.dedupeKey));
+  const fresh = pending.filter((p) => !sent.has(p.dedupeKey));
+  // Access FAILS CLOSED: if the recipients' logins cannot be read, gated notices
+  // are held back (the next run retries them) rather than sent unchecked.
+  const userOf = await loginsOf(fresh).catch(() => null);
+  const reachable = userOf
+    ? await withAccess(fresh, userOf)
+    : fresh.filter((p) => !isGatedHref(p.href));
+  const refused = fresh.length - reachable.length;
+  // Preferences fail OPEN: a preferences read that fails must not swallow a notice.
+  const unsent = userOf ? await withoutMuted(reachable, userOf).catch(() => reachable) : reachable;
   // Anything past the budget is not lost — it has no row, so the next run's
   // `alreadySent` will still report it missing and it moves to the front of the
   // queue. The count is reported so a backlog that never drains is visible.
@@ -181,5 +234,5 @@ export async function persistNotifications(
     }
   }
 
-  return { written, duplicates, failed, pending: unsent.length - batch.length };
+  return { written, duplicates, failed, pending: unsent.length - batch.length, refused };
 }
