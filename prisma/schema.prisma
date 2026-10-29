@@ -402,7 +402,9 @@ model Directorate {
   entityId String    @map("entity_id")
   entity   OrgEntity @relation(fields: [entityId], references: [id])
 
-  departments Department[]
+  departments      Department[] @relation("DepartmentDirectorate")
+  /// Back-relation of the composite agreement FK (see Department.directorateAgree).
+  departmentsAgree Department[] @relation("DepartmentDirectorateEntityAgree")
 
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by")
@@ -410,6 +412,8 @@ model Directorate {
   updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@unique([entityId, name])
+  /// Target of `departments_directorate_entity_agree_fkey` (20261026120000).
+  @@unique([id, entityId], map: "directorates_id_entity_key")
   @@index([deletedAt, createdAt])
   @@map("directorates")
 }
@@ -424,7 +428,9 @@ model Team {
   departmentId String     @map("department_id")
   department   Department @relation(fields: [departmentId], references: [id])
 
-  employees Employee[]
+  employees      Employee[] @relation("EmployeeTeam")
+  /// Back-relation of the composite agreement FK (see Employee.teamDepartmentAgree).
+  employeesAgree Employee[] @relation("EmployeeTeamDepartmentAgree")
 
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by")
@@ -432,6 +438,8 @@ model Team {
   updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@unique([departmentId, name])
+  /// Target of `employees_team_department_agree_fkey` (20261026120000).
+  @@unique([id, departmentId], map: "teams_id_department_key")
   @@index([deletedAt, createdAt])
   @@map("teams")
 }
@@ -444,11 +452,16 @@ model Department {
 
   /// F-a — optional; when set, the directorate must belong to the same company
   /// (composite FK `departments_directorate_entity_agree_fkey`).
-  directorateId String?      @map("directorate_id")
-  directorate   Directorate? @relation(fields: [directorateId], references: [id])
-  teams         Team[]
+  directorateId    String?      @map("directorate_id")
+  directorate      Directorate? @relation("DepartmentDirectorate", fields: [directorateId], references: [id])
+  /// The composite agreement FK itself — read-only in practice; write
+  /// `directorateId`. It exists so the schema describes the real constraint.
+  directorateAgree Directorate? @relation("DepartmentDirectorateEntityAgree", fields: [directorateId, entityId], references: [id, entityId], onDelete: Restrict, onUpdate: Restrict, map: "departments_directorate_entity_agree_fkey")
+  teams            Team[]
 
-  employees         Employee[]
+  employees         Employee[]                 @relation("EmployeeDepartment")
+  /// Back-relation of the composite agreement FK (see Employee.departmentEntityAgree).
+  employeesAgree    Employee[]                 @relation("EmployeeDepartmentEntityAgree")
   assignmentPeriods EmployeeAssignmentPeriod[]
 
   deletedAt        DateTime?
@@ -458,6 +471,8 @@ model Department {
   departmentScores DepartmentScore[]
 
   @@unique([entityId, name])
+  /// Target of `employees_department_entity_agree_fkey` (20260824120000).
+  @@unique([id, entityId], map: "departments_id_entity_key")
   @@index([entityId])
   @@index([directorateId])
   @@index([deletedAt, createdAt])
@@ -494,15 +509,21 @@ model Employee {
   // invariant (department.entityId == employee.entityId) are enforced by CHECK
   // constraint + trigger in the migration, and again in zod at the boundary —
   // a denormalized column that can drift silently is worse than the join.
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  entityId     String
-  entity       OrgEntity   @relation(fields: [entityId], references: [id])
+  departmentId          String?
+  department            Department? @relation("EmployeeDepartment", fields: [departmentId], references: [id])
+  /// The composite agreement FK (department belongs to the employee's company) —
+  /// read-only in practice; write `departmentId`.
+  departmentEntityAgree Department? @relation("EmployeeDepartmentEntityAgree", fields: [departmentId, entityId], references: [id, entityId], onDelete: Restrict, onUpdate: Cascade, map: "employees_department_entity_agree_fkey")
+  entityId              String
+  entity                OrgEntity   @relation(fields: [entityId], references: [id])
 
   // F-a — optional refinement of departmentId. The team must belong to the
   // employee's department (composite FK + CHECK in 20261026120000).
-  teamId String? @map("team_id")
-  team   Team?   @relation(fields: [teamId], references: [id])
+  teamId              String? @map("team_id")
+  team                Team?   @relation("EmployeeTeam", fields: [teamId], references: [id])
+  /// The composite agreement FK (team belongs to the employee's department) —
+  /// read-only in practice; write `teamId`.
+  teamDepartmentAgree Team?   @relation("EmployeeTeamDepartmentAgree", fields: [teamId, departmentId], references: [id, departmentId], onDelete: Restrict, onUpdate: Restrict, map: "employees_team_department_agree_fkey")
 
   // §3.3 — "Direct reporting line; drives sign-off, escalation, visibility, 360."
   // Self-relation. Null only for C-Level (§3.4: "blank allowed only for C-Level")
@@ -1449,6 +1470,7 @@ model Kpi {
   updatedAt DateTime  @updatedAt
 
   @@index([participantId, orderIndex])
+  @@index([assignmentPeriodId])
   @@index([deletedAt, createdAt])
   @@map("kpis")
 }
@@ -1958,7 +1980,7 @@ model EmployeeAssignmentPeriod {
   /// which is why entity is separate and NOT NULL — §12.3 says the departmental
   /// AND corporate components both follow the periods.
   departmentId String?     @map("department_id")
-  department   Department? @relation(fields: [departmentId], references: [id])
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   entityId     String      @map("entity_id")
   entity       OrgEntity   @relation(fields: [entityId], references: [id])
 
@@ -2479,6 +2501,8 @@ model NetworkProvider {
   updatedAt DateTime  @updatedAt
 
   @@index([location])
+  /// pg_trgm GIN index for provider name search (20261027090000).
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "hive_network_providers_name_trgm_idx")
   @@index([deletedAt, createdAt])
   @@map("hive_network_providers")
 }
