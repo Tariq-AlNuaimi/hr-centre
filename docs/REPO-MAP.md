@@ -596,7 +596,7 @@
 - lib/core/ai/settings.ts: PlatformAiKey, readPlatformAiSettings, writePlatformAiSetting
 - lib/core/approvals/delegation-access.ts: canDelegateApprovals, canReceiveDelegation
 - lib/core/approvals/rules.ts: StepState, DecisionState, currentStep, RefusalCode, decisionRefusal, Outcome, decisionOutcome, vacantSteps, delegationLive
-- lib/core/approvals/store.ts: Tx, OpenRoundInput, cancelOpenRounds, openRound, Round, latestRound, latestRounds, decisionStates, ApprovalRefusal, Qualification, DecideInput, decide, delegatorsFor, delegationsOf, createDelegation, revokeDelegation
+- lib/core/approvals/store.ts: Tx, OpenRoundInput, cancelOpenRounds, openRound, Round, latestRound, latestRounds, decisionStates, ApprovalRefusal, Qualification, DecideInput, decide, delegatorsFor, delegatesOf, delegationsOf, createDelegation, revokeDelegation
 - lib/core/catalogue/grades.ts: relinkEmployeeGrades
 - lib/core/documents/access.ts: documentAccess
 - lib/core/documents/employee-documents.ts: EmployeeDocument, listEmployeeDocuments
@@ -692,7 +692,7 @@
 - lib/hiring/postings.ts: postingConsole, postChannel, withdrawChannel
 - lib/hiring/preboarding-rules.ts: HandoverRoute, handoverRoute, ChecklistInput, ChecklistItem, preboardingChecklist, handoverRefusal
 - lib/hiring/preboarding.ts: preboardingView, recordHandover, retryHandoff
-- lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, handToJml, withdrawFromJml
+- lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, hiringManagerEmployeeId, handToJml, withdrawFromJml
 - lib/hiring/requisition-pending.ts: PendingStep, pendingSteps
 - lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, RequiredField, ReadinessInput, readinessProblems, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal, isPastTargetClose
 - lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, notifyNextRequisitionStep, syncRequisitionFill, assertRoutedToActor
@@ -781,7 +781,7 @@
 - lib/jml/engine/tasks.ts: TASK_SELECT, GATE_SELECT, isMoveDue, refreshCase, LEFTOVER_REASON, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks
 - lib/jml/engine/templates.ts: listTemplates, getTemplate, createTemplate, updateTemplate, selectJoinOrMoveTemplate, selectLeaveTemplate, templateTaskDefs
 - lib/jml/errors.ts: JmlError, ValidationFailure, jmlErrorResponse
-- lib/jml/join/actions.ts: confirmActualStart, changeStartDate, confirmItReadiness, resubmitToIt, sendWelcomeReview
+- lib/jml/join/actions.ts: dayOneProblem, confirmActualStart, changeStartDate, confirmItReadiness, resubmitToIt, sendWelcomeReview
 - lib/jml/join/activation-checks.ts: factsOf, placementOf, assertActivatable, candidateOf, directorateProblem, emailDuplicates, duplicateProblem
 - lib/jml/join/activation.ts: previewActivation, joinProblems, activateJoiner
 - lib/jml/join/draft.ts: DRAFT_REF_PREFIX, requireManage, requireSalaryIfGiven, assertReferences, createJoinerDraft, detailData, loadJoinerForEdit, discardDraft
@@ -997,7 +997,7 @@
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema, contactSettingsSchema, ContactSettingsInput
 - lib/validations/jml/joiner.ts: draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, startJoinerFromEmployeeSchema, OpenJoinCaseInput
 - lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema, accessCutoffSchema
-- lib/validations/jml/move.ts: MOVE_BACKDATE_DAYS, MOVE_AHEAD_DAYS, createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
+- lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/preboarding.ts: preboardingTokenSchema, preboardingSubmitSchema, PreboardingSubmit, preboardingIssueSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
 - lib/validations/jml/routing.ts: deskSettingsSchema, DeskSettingsInput
