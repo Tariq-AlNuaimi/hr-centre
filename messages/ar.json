@@ -4733,6 +4733,26 @@
         "reference": "Reference (ticket, email)",
         "confirmedDone": "Access item confirmed.",
         "failed": "The access item could not be saved."
+      },
+      "cutoff": {
+        "title": "Access cut-off",
+        "scheduledDefault": "Login is cut at {when} ({zone}), the default: 17:00 on the last physical working day.",
+        "scheduled": "Login is cut at {when} ({zone}), set by HR.",
+        "noDate": "No cut-off yet: set the last physical working day or a time.",
+        "revoked": "The login was revoked on {when}, at the cut-off.",
+        "loginRevoked": "Login revoked",
+        "loginActive": "Login active",
+        "change": "Change",
+        "changeTitle": "Change the access cut-off",
+        "changeHelp": "The login is revoked within the hour after this time ({zone}).",
+        "at": "Cut-off date and time",
+        "save": "Save cut-off",
+        "useDefault": "Use the default (17:00 on the last physical working day)",
+        "saved": "Access cut-off saved",
+        "failed": "The cut-off could not be saved.",
+        "summary": "Access status by system type",
+        "done": "{done} of {total} done",
+        "overdue": "{count} overdue"
       }
     },
     "documentType": {

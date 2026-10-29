@@ -4412,6 +4412,10 @@ model LeaveCaseDetail {
   rekeyReason String?   @map("rekey_reason")
 
   /// D7 — the departure milestones (written by the sweep / closure, slice S6).
+  /// P2-5 — when the leaver's login is cut. Null = the default, 17:00 (schedule
+  /// zone, Asia/Muscat) on the Last Physical Working Day. The hourly sweep
+  /// revokes at the first run on or after this instant.
+  accessCutoffAt     DateTime? @map("access_cutoff_at")
   loginRevokedAt     DateTime? @map("login_revoked_at")
   departureAppliedAt DateTime? @map("departure_applied_at")
   departureNote      String?   @map("departure_note")

@@ -1,11 +1,13 @@
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { applyDeparture } from "@/lib/pms/departure";
 import { revokeLoginOnOffboard } from "@/lib/pms/offboarding";
-import { utcDate } from "@/lib/working-time/calendar";
+import { DEFAULT_CALENDAR, utcDate } from "@/lib/working-time/calendar";
+import { effectiveCutoff } from "./cutoff";
 
 /**
  * The departure milestones (D7), through the core functions: the login is
- * revoked once the Last Physical Working Day has ENDED, and the departure is
+ * revoked at the access cut-off (P2-5: HR's instant, else 17:00 local on the
+ * Last Physical Working Day), and the departure is
  * applied once the Last Day of Service has ended — `Employee.lastWorkingDay`
  * = the LDS, reports roll up (§12.1). Migrated history never departs anyone.
  * Idempotent: each milestone is stamped on the case and never repeated.
@@ -89,18 +91,30 @@ export async function applyLeaverDeparture(caseId: string): Promise<Outcome> {
   );
 }
 
-/** Sweep step: every live, non-migrated exit whose milestones have passed (local today). */
-export async function departureMilestones(today: Date) {
+/** Sweep step: every live, non-migrated exit whose milestones have passed. */
+export async function departureMilestones(
+  today: Date,
+  now: Date = new Date(),
+  timeZone: string = DEFAULT_CALENDAR.schedule.timeZone,
+) {
   const live = { status: { in: ["ACTIVE", "AT_RISK", "PENDING_SETTLEMENT"] as never[] } };
-  const toRevoke = await prisma.leaveCaseDetail.findMany({
+  // P2-5 — candidates by either cut-off source; the instant decides in code.
+  const candidates = await prisma.leaveCaseDetail.findMany({
     where: {
       migrated: false,
       loginRevokedAt: null,
-      lastPhysicalWorkingDay: { lt: today },
       case: live,
+      OR: [
+        { accessCutoffAt: { lte: now } },
+        { accessCutoffAt: null, lastPhysicalWorkingDay: { lte: today } },
+      ],
     },
-    select: { caseId: true },
+    select: { caseId: true, accessCutoffAt: true, lastPhysicalWorkingDay: true },
     take: 200,
+  });
+  const toRevoke = candidates.filter((d) => {
+    const at = effectiveCutoff(d, timeZone);
+    return at !== null && at <= now;
   });
   const toDepart = await prisma.leaveCaseDetail.findMany({
     where: {

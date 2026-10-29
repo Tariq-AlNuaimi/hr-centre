@@ -311,5 +311,9 @@ async function logIncident(caseId: string, i: DetectedIncident, now: Date): Prom
 
 /** Hourly: the departure milestones (D7) once their day has ended, in the schedule's zone. */
 export async function leaveDepartures({ now, calendar }: Ctx) {
-  return departureMilestones(zonedToday(now, calendar.schedule.timeZone));
+  return departureMilestones(
+    zonedToday(now, calendar.schedule.timeZone),
+    now,
+    calendar.schedule.timeZone,
+  );
 }

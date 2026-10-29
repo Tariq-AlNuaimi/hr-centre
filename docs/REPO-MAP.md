@@ -281,6 +281,7 @@
 - app/api/jml/calendar/exits/route.ts  [GET]
 - app/api/jml/calendar/export/route.ts  [GET]
 - app/api/jml/calendar/route.ts  [GET]
+- app/api/jml/cases/[id]/access-cutoff/route.ts  [PUT]
 - app/api/jml/cases/[id]/access/[itemId]/confirm/route.ts  [POST]
 - app/api/jml/cases/[id]/access/route.ts  [GET,POST]
 - app/api/jml/cases/[id]/activity/route.ts  [GET]
@@ -560,7 +561,7 @@
 - JmlJoinDetail: caseId, case, contractTypeId, contractType, plannedStartDate, actualStartDate, contractStartDate, contractEndDate, probationMonths, payrollApplicable, clientAssignedRole, introSentence, hobbies, msAccountRequired, laptopRequired, accessCardRequired, itReadinessConfirmed, itReadinessAt, itReadinessById, itReadinessBy, itIntakeSubmittedAt, itIntakeReference, itIntakeError, sourceRef, createdAt, updatedAt
 - JmlPreboarding: caseId, case, linkIssuedAt, linkExpiresAt, submittedAt, photoPathname, photoContentType, photoUploadedAt
 - JmlMoveDetail: caseId, case, changeType, effectiveDate
-- LeaveCaseDetail: caseId, case, exitType, exitSubtype, employmentTypeAtExit, nationality, noticeStartDate, noticePeriodDays, noticePeriodOverrideReason, lastPhysicalWorkingDay, lastDayOfService, departureDate, earlyReleaseApproved, settlementApplicable, visaSupportApplicable, docRefPerformanceHistory, docRefWrittenGrounds, docRefLegalReview, backfillDecision, backfillApprovalRef, rehireEligible, migrated, manuallyCreated, employeeNameAtExit, jobTitleAtExit, gradeAtExit, positionClassificationName, entityIdAtExit, directorateIdAtExit, departmentIdAtExit, teamIdAtExit, lineManagerEmployeeId, lineManager, rekeyedAt, rekeyReason, loginRevokedAt, departureAppliedAt, departureNote, createdAt, updatedAt
+- LeaveCaseDetail: caseId, case, exitType, exitSubtype, employmentTypeAtExit, nationality, noticeStartDate, noticePeriodDays, noticePeriodOverrideReason, lastPhysicalWorkingDay, lastDayOfService, departureDate, earlyReleaseApproved, settlementApplicable, visaSupportApplicable, docRefPerformanceHistory, docRefWrittenGrounds, docRefLegalReview, backfillDecision, backfillApprovalRef, rehireEligible, migrated, manuallyCreated, employeeNameAtExit, jobTitleAtExit, gradeAtExit, positionClassificationName, entityIdAtExit, directorateIdAtExit, departmentIdAtExit, teamIdAtExit, lineManagerEmployeeId, lineManager, rekeyedAt, rekeyReason, accessCutoffAt, loginRevokedAt, departureAppliedAt, departureNote, createdAt, updatedAt
 - JmlApproval: id, caseId, case, approvalType, holderRoleKey, status, requestedAt, decisionDate, reference, comments, holderEmployeeId, holderEmployee, decidedById, decidedBy, delegateUsed, secondLevelUsed, createdAt, updatedAt
 - JmlApprovalAuthority: id, approvalType, holderLabel, delegateEmployeeId, delegate, secondLevelDelegateEmployeeId, secondLevelDelegate, active, createdAt, updatedAt
 - JmlAssetType: id, label, active, sortOrder, assets, createdAt, updatedAt
@@ -783,6 +784,7 @@
 - lib/jml/leave/compliance.ts: COMPLIANCE_GATES, GateId, isGateId, ComplianceProfile, applicableGates, GateRecordLike, checkClosureGates, gateDataProblem, INCIDENT_KINDS, daysLate, DetectedIncident, detectIncidents
 - lib/jml/leave/config.ts: listAssetTypes, saveAssetType, listAccessChecklist, saveAccessChecklistItem, listReasonCodes, saveReasonCode
 - lib/jml/leave/csv.ts: parseCsv
+- lib/jml/leave/cutoff.ts: defaultCutoff, effectiveCutoff, localInputToInstant, AccessDomainSummary, accessSummary
 - lib/jml/leave/dates.ts: changeExitDates
 - lib/jml/leave/departure.ts: applyLeaverDeparture, departureMilestones
 - lib/jml/leave/draft.ts: createExitDraft, refreshSnapshots, updateExit
@@ -814,7 +816,7 @@
 - lib/jml/preboarding/reminders.ts: preboardingReminders, erasePreboardingPhoto
 - lib/jml/preboarding/rules.ts: PREBOARDING_PURPOSE, PREBOARDING_DOCUMENTS, PreboardingDocument, DOCUMENT_ANSWERS, DocumentAnswer, DOCUMENT_TASK_CODE, PHOTO_TASK_CODE, INTRO_TASK_CODE, MAX_PHOTO_BYTES, PHOTO_TYPES, linkExpiry, preboardingBlockedReason, reminderDue, readDocuments, photoPathname
 - lib/jml/preboarding/store.ts: Tx, savePreboarding, sendPreboardingEmail
-- lib/jml/register/access-items.ts: listAccessItems, addAccessItem, confirmAccessItem
+- lib/jml/register/access-items.ts: listAccessItems, addAccessItem, confirmAccessItem, setAccessCutoff
 - lib/jml/register/assets.ts: activeAssetTypes, listCaseAssets, addAsset, recordAssetReturn, writeOffAsset
 - lib/jml/register/rules.ts: unsettledAssets, AccessConfirmation, accessConfirmationProblem, rotationFor
 - lib/jml/reports/join-aggregate.ts: hrWorkload, volumeTrend, allCompanies
@@ -967,9 +969,9 @@
 - lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema, dashboardQuerySchema, myTasksQuerySchema
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema, contactSettingsSchema, ContactSettingsInput
 - lib/validations/jml/joiner.ts: draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, startJoinerFromEmployeeSchema, OpenJoinCaseInput
-- lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
+- lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema, accessCutoffSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
-- lib/validations/jml/preboarding.ts: preboardingTokenSchema, preboardingSubmitSchema, PreboardingSubmit
+- lib/validations/jml/preboarding.ts: preboardingTokenSchema, preboardingSubmitSchema, PreboardingSubmit, preboardingIssueSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
 - lib/validations/jml/routing.ts: deskSettingsSchema, DeskSettingsInput
 - lib/validations/jml/task.ts: updateTaskSchema, manualTaskSchema, commentSchema
@@ -1131,6 +1133,7 @@
 - components/jml/EmployeeJmlTab.tsx
 - components/jml/Field.tsx
 - components/jml/States.tsx
+- components/jml/case/AccessCutoff.tsx
 - components/jml/case/AccessSection.tsx
 - components/jml/case/AssetsSection.tsx
 - components/jml/case/CaseActions.tsx
