@@ -4,6 +4,7 @@ import { cancelQueuedEmails } from "../email/queue";
 import { JmlError } from "../errors";
 import { SETTLED_TASK_STATUSES, isLive } from "../vocab";
 import { userHolds } from "./assignment";
+import { resolveCaseTaskNotices } from "../routing/assign";
 
 /**
  * Case-level actions shared by every type — HR Onboarding `case.ts` (cancel,
@@ -82,6 +83,7 @@ export async function cancelCase(actor: JmlActor, caseId: string, reason: string
       actor,
     );
   });
+  await resolveCaseTaskNotices(caseId);
   return { cancelled: true };
 }
 

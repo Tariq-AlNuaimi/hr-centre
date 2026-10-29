@@ -17,6 +17,7 @@ import { getSettlement } from "../../lib/jml/leave/settlement";
 import { myTasks } from "../../lib/jml/dashboard";
 import { reconcileLineManagerTasks } from "../../lib/jml/routing/assign";
 import { saveDeskSettings } from "../../lib/jml/routing/desks";
+import { isTaskWorker } from "../../lib/jml/routing/worker";
 import { TEST_EMPLOYEE_PREFIX } from "./fixture";
 
 const RUN = `jr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -216,11 +217,15 @@ test(
       updateTask(desk, ids.itTask!, { status: "COMPLETED" }),
     );
     assert.equal(done.task.completedBy?.id, ids.desk);
+    // QA2 N-03 — with nothing left open they are still a desk worker: My tasks
+    // shows "Nothing waiting on you", not "You do not have access".
+    assert.equal(await isTaskWorker(desk), true, "a desk member stays a task worker");
   },
 );
 
 test("someone with no route to the case gets 404 everywhere", { skip: !dbReachable }, async () => {
   const outsider = await actorOf(ids.outsider!, "outsider");
+  assert.equal(await isTaskWorker(outsider), false, "no desk, no routed task: not a worker");
   assert.equal(await refusal(getSettlement(outsider, caseId)), 404);
   assert.equal(
     await refusal(

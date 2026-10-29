@@ -195,21 +195,27 @@ test("mayWorkAsWorker: HR tasks never; an LM task only for the direct manager; m
   );
 });
 
-test("isRoutedParticipant / hasWorkerTasks: no authority → no query; otherwise one bounded read", async () => {
+test("isRoutedParticipant / isTaskWorker: no authority → no query; otherwise one bounded read", async () => {
   on("jmlDeskMember.findMany", () => []);
   const nobody = { userId: "u9", employeeId: null };
   assert.equal(await worker.isRoutedParticipant(nobody, "c"), false);
-  assert.equal(await worker.hasWorkerTasks(nobody), false);
+  assert.equal(await worker.isTaskWorker(nobody), false);
   assert.equal(calls.filter((c) => c.model === "jmlTask").length, 0);
 
   on("jmlTask.count", () => 2);
   on("jmlTask.findFirst", () => ({ id: "t" }));
   assert.equal(await worker.isRoutedParticipant(actor, "c"), true);
-  assert.equal(await worker.hasWorkerTasks(actor), true);
+  assert.equal(await worker.isTaskWorker(actor), true);
   const count = calls.find((c) => c.op === "count")!;
   assert.deepEqual((count.args.where as { AND: unknown[] }).AND[0], { caseId: "c" });
   on("jmlTask.findFirst", () => null);
-  assert.equal(await worker.hasWorkerTasks(actor), false);
+  assert.equal(await worker.isTaskWorker(actor), false);
+});
+
+test("QA2 N-03 a desk member is a task worker with NOTHING open — no task query needed", async () => {
+  on("jmlDeskMember.findMany", () => [{ desk: "IT" }]);
+  on("jmlTask.findFirst", () => null);
+  assert.equal(await worker.isTaskWorker({ userId: "u3", employeeId: null }), true);
 });
 
 // --- assign -----------------------------------------------------------------

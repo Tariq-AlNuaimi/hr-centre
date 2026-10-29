@@ -8,6 +8,7 @@ import { checkClosureGates } from "./compliance";
 import { applyLeaverDeparture } from "./departure";
 import { noticeToOwners } from "./notices";
 import { settlementClosureProblems } from "./settlement-actions";
+import { resolveCaseTaskNotices } from "../routing/assign";
 
 /**
  * Close an exit (Offboarding `POST …/close`, AC-10.7 / AC-12.1) — the only way
@@ -97,5 +98,6 @@ export async function closeLeave(
     });
   });
   await noticeToOwners(caseId, "JML_CASE_CLOSED", `${kase.caseRef} is closed.`, "closed");
+  await resolveCaseTaskNotices(caseId);
   return { closed: true };
 }

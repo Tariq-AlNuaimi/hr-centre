@@ -6,7 +6,7 @@ import type { JmlActor } from "../access";
 import { TASK_STATUSES } from "../vocab";
 import { canCompleteTask, type GateTask } from "./gates";
 import { notApplicableData, reopenData } from "./task-status-rules";
-import { reconcileLineManagerTasks } from "../routing/assign";
+import { reconcileLineManagerTasks, resolveCaseTaskNotices } from "../routing/assign";
 import { workerChangeProblem } from "../routing/rules";
 import { GATE_SELECT, TASK_SELECT, assertOwner, loadTaskForWork, refreshCase } from "./tasks";
 
@@ -154,6 +154,8 @@ export async function updateTask(actor: JmlActor, taskId: string, input: UpdateT
   if (result.completedNow && kase.caseType === "MOVE") {
     await reconcileLineManagerTasks([kase.employeeId]);
   }
+  // QA2 N-03/N-04 — the case is done, so nobody is still being asked to work it.
+  if (result.completedNow) await resolveCaseTaskNotices(task.caseId);
   return result;
 }
 

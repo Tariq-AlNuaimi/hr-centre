@@ -857,7 +857,7 @@
 - lib/jml/routing/assign.ts: managerLogin, routingContextFor, caseRoutingWarnings, notifyRoutedTasks, reconcileLineManagerTasks
 - lib/jml/routing/desks.ts: getDeskSettings, saveDeskSettings, desksOf, deskMembers, staffedDesks
 - lib/jml/routing/rules.ts: TASK_DESKS, deskOf, RoutingContext, resolveTaskOwner, RoutingWarning, routingWarnings, WorkerFacts, workerMayWork, workerChangeProblem
-- lib/jml/routing/worker.ts: workerFacts, workerTaskWhere, mayWorkAsWorker, isRoutedParticipant, hasWorkerTasks, myTaskWhere
+- lib/jml/routing/worker.ts: workerFacts, workerTaskWhere, mayWorkAsWorker, isRoutedParticipant, isTaskWorker, myTaskWhere
 - lib/jml/search.ts: searchCases
 - lib/jml/sweep.ts: SweepStep, runSweep
 - lib/jml/vocab.ts: STAGE_ORDER, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, CASE_REF_PREFIX, isLive

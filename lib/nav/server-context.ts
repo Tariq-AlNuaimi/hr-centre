@@ -3,7 +3,7 @@ import { resolveActor } from "@/lib/core/actor";
 import { grantsOf } from "@/lib/core/permissions";
 import { has } from "@/lib/rbac/grants";
 import { permissionsFrom } from "@/lib/hive/services/permissions";
-import { hasWorkerTasks } from "@/lib/jml/routing/worker";
+import { isTaskWorker } from "@/lib/jml/routing/worker";
 import { personaOf, type NavContext } from "./config";
 
 /**
@@ -38,7 +38,7 @@ export async function navContextFor(session: Session): Promise<NavContext> {
       configure: hive.configure,
     },
     jml: (p) => has(grants, p),
-    jmlTaskWorker: await hasWorkerTasks(actor),
+    jmlTaskWorker: await isTaskWorker(actor),
     hiring: (p) => has(grants, p),
   };
   // P2 (R22) — the persona flag, derived from the same capabilities.
