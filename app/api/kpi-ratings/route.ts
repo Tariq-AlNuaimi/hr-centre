@@ -3,11 +3,11 @@ import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { YEAR_END_STAGE, divergenceBlockedReason, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { canViewEmployee } from "@/lib/core/permissions";
 import { upsertRatingSchema } from "@/lib/validations/rating";
 import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
 

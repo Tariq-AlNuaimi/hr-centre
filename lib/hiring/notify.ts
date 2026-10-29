@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { notifyUsers } from "@/lib/notifications/user-notify";
+import { notifyUsers } from "@/lib/core/notify/user-notify";
 import { formatDate } from "@/lib/format";
 import { approvalRoleLabel, type RoutedStep } from "./approval-config";
 

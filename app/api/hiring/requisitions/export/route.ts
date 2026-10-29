@@ -4,7 +4,7 @@ import { forbidden } from "@/lib/api-response";
 import { holdsAnywhere } from "@/lib/hiring/access";
 import { listRequisitions } from "@/lib/hiring/requisitions";
 import { hiringRoute, parseQuery } from "@/lib/hiring/route";
-import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 import { requisitionListQuerySchema } from "@/lib/validations/hiring/requisition";
 
 /** Requisitions to Excel (≤10,000; never pay): Title, Department, Company, Status, HM, Close date, Created. */

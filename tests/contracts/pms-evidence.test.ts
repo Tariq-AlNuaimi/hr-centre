@@ -14,7 +14,7 @@ import {
   uploadBlockedReason,
 } from "../../lib/pms/evidence";
 import { evidencePrefix, isWithinEvidencePrefix } from "../../lib/storage";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 
 const actor = (employeeId: string | null = "emp-1", roles: string[] = []): PmsActor =>
   ({

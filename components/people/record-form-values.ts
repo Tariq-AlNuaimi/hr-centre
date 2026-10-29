@@ -1,4 +1,4 @@
-import type { EmployeeRecordView } from "@/lib/pms/employee-select";
+import type { EmployeeRecordView } from "@/lib/core/employee-select";
 import type { RecordValues } from "./RecordFields";
 
 /** The serialised record as form strings ("" = not on file). */

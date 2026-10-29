@@ -4,7 +4,7 @@ import { forbidden } from "@/lib/api-response";
 import { holdsAnywhere } from "@/lib/hiring/access";
 import { calendarRows } from "@/lib/hiring/interview-views";
 import { hiringRoute, parseQuery } from "@/lib/hiring/route";
-import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 import { calendarQuerySchema } from "@/lib/validations/hiring/interview";
 
 /** Interviews to Excel: who, which requisition, round, when, status, where. No notes or transcripts. */

@@ -1036,3 +1036,11 @@ Considered:
   (ADR-001) and `components/shared/Chart` gains a multi-series bar option instead.
 
 Decision: build — pure, client-safe tally/share/9-box helpers next to the calibration rules.
+
+### 2026-10-29 — Core code organisation (P2 platform, ADR-091)
+
+Scope: lib/core/actor.ts, lib/core/permissions.ts, lib/core/employee-select.ts, lib/core/export/**, lib/core/notify/**
+Considered: **Re-export shims under `lib/pms`** (rejected — two paths to one module).
+**A monorepo package split (`packages/core`, Turborepo/Nx)** (rejected — workspace tooling
+for a folder move inside one Next.js app).
+Decision: build — a pure move of existing code; no new behaviour.

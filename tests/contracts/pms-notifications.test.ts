@@ -2,13 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  MAX_BODY_CHARS,
   changeRequestDedupeKey,
   hrDigestDedupeKey,
   ladderDedupeKey,
   notificationKindFor,
   threeSixtyDedupeKey,
 } from "../../lib/pms/notifications";
+import { MAX_BODY_CHARS } from "../../lib/core/notify/store";
 import { markReadSchema, MAX_MARK_READ_IDS } from "../../lib/validations/notification";
 
 /**

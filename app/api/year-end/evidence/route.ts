@@ -3,7 +3,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { randomUUID } from "node:crypto";
 import {
   ALLOWED_EVIDENCE_TYPES,

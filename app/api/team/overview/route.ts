@@ -1,6 +1,6 @@
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { teamOverview } from "@/lib/people/team-overview";
 
 /**

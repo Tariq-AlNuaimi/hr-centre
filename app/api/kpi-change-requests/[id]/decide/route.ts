@@ -4,7 +4,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   applyEdit,
   approvalBlockedReason,
@@ -19,7 +19,7 @@ import {
   toKpiEdit,
 } from "@/lib/pms/change-request-select";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { canViewEmployee } from "@/lib/core/permissions";
 import { decideChangeRequestSchema } from "@/lib/validations/change-request";
 import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
 

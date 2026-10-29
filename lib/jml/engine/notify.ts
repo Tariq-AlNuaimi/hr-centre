@@ -1,6 +1,6 @@
 import type { NotificationKind } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { persistNotifications, type PendingNotification } from "@/lib/pms/notifications";
+import { persistNotifications, type PendingNotification } from "@/lib/core/notify/store";
 import { nextWindowOpening, type WorkingCalendar } from "@/lib/working-time/calendar";
 
 /**

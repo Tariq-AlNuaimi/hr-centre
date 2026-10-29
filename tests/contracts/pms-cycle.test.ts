@@ -13,7 +13,7 @@ import {
   stageState,
   type StageWindow,
 } from "../../lib/pms/cycle";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 import { createCycleSchema, cycleStageSchema } from "../../lib/validations/cycle";
 
 // A December goal-setting stage, which is the one §5.5 warns about: a long grace

@@ -3,8 +3,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
-import { isHrSuperAdmin } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { isHrSuperAdmin } from "@/lib/core/permissions";
 import { countableParticipantWhere } from "@/lib/pms/cycle";
 import {
   adjustmentBlockedReason,

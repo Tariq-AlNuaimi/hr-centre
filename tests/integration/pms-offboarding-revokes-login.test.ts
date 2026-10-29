@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { prisma, prismaUnfiltered, auditedTransaction } from "../../lib/prisma";
 import { withAuditContext } from "../../lib/audit-context";
 import { revokeLoginOnOffboard } from "../../lib/pms/offboarding";
-import { employeeSelect, serializeEmployee } from "../../lib/pms/employee-select";
+import { employeeSelect, serializeEmployee } from "../../lib/core/employee-select";
 
 const RUN = `offb-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const email = (l: string) => `${RUN}.${l}@example.test`;

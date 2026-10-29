@@ -30,7 +30,7 @@ import {
   rollUpTarget,
 } from "../../lib/pms/roll-up";
 import { consolidateThreeSixty } from "../../lib/pms/three-sixty";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 
 /** §12 edge cases and §13's status engine. */
 

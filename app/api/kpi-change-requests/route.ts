@@ -4,7 +4,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   MID_YEAR_STAGE,
   applyEdit,
@@ -14,9 +14,10 @@ import {
   type KpiEdit,
 } from "@/lib/pms/change-request";
 import { CHANGE_REQUEST_SELECT, serializeChangeRequest } from "@/lib/pms/change-request-select";
-import { changeRequestDedupeKey, persistNotifications } from "@/lib/pms/notifications";
+import { changeRequestDedupeKey } from "@/lib/pms/notifications";
+import { persistNotifications } from "@/lib/core/notify/store";
 import { descendantEmployeeIds, visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { canViewEmployee } from "@/lib/core/permissions";
 import { createChangeRequestSchema } from "@/lib/validations/change-request";
 
 /**

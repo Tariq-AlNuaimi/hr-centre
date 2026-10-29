@@ -1,5 +1,5 @@
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { decryptSalary } from "@/lib/pms/employee-select";
+import { decryptSalary } from "@/lib/core/employee-select";
 import type { StatutoryRow } from "@/lib/statutory/parameters";
 import { canFor, loadCaseFor, type JmlActor } from "../access";
 import { JmlError } from "../errors";

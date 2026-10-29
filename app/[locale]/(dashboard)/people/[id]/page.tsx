@@ -2,12 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   employeeDetailSelect,
   serializeEmployeeDetail,
   type EmployeeRecordView,
-} from "@/lib/pms/employee-select";
+} from "@/lib/core/employee-select";
 import { IdSection, JobSection, PersonalSection } from "@/components/people/EmployeeRecordSections";
 import { RecordActions, type RecordActionsProps } from "@/components/people/RecordActions";
 import { RecordHeader } from "@/components/people/RecordHeader";
@@ -25,13 +25,13 @@ import { canFor, jmlActor } from "@/lib/jml/access";
 import { employeeJml, jmlTabVisible } from "@/lib/jml/employee-tab";
 import { hasHivePermission } from "@/lib/hive/services/permissions";
 import { recordFormValues } from "@/components/people/record-form-values";
-import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
+import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/core/permissions";
 import { placementOf } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { departurePreview } from "@/lib/pms/departure";
-import { isHrSuperAdmin } from "@/lib/pms/permissions";
+import { isHrSuperAdmin } from "@/lib/core/permissions";
 import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
 import type { UpdateEmployeeInput } from "@/lib/validations/employee";
 

@@ -3,8 +3,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
-import { isHr } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { isHr } from "@/lib/core/permissions";
 import {
   upsertDepartmentScoreSchema,
   upsertEntityScoreSchema,

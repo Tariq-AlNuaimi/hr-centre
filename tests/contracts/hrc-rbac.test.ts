@@ -12,7 +12,7 @@ import {
   starterGrants,
   validityProblem,
 } from "../../lib/rbac/grants";
-import { actorCan, capabilitiesFor, type PmsActor } from "../../lib/pms/permissions";
+import { actorCan, capabilitiesFor, type PmsActor } from "../../lib/core/permissions";
 import { assignmentBodySchema, roleBodySchema } from "../../lib/validations/rbac";
 
 /**

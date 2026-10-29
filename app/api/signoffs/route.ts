@@ -4,7 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { GOAL_SETTING_STAGE, signOffBlockedReason } from "@/lib/pms/kpi";
 import {
   contextBlockedReason,

@@ -1,8 +1,8 @@
 import type { Session } from "next-auth";
 import type { JmlCaseType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { resolveActor, type ResolvedActor } from "@/lib/pms/actor";
-import { grantsOf } from "@/lib/pms/permissions";
+import { resolveActor, type ResolvedActor } from "@/lib/core/actor";
+import { grantsOf } from "@/lib/core/permissions";
 import { canInScope, has, hasGroup, type ScopeSubject } from "@/lib/rbac/grants";
 import type { Permission } from "@/lib/rbac/catalogue";
 import { JmlError } from "./errors";

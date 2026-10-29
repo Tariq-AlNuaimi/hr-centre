@@ -1,9 +1,9 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { computeBonus } from "./bonus";
-import { decryptSalary } from "./employee-select";
+import { decryptSalary } from "@/lib/core/employee-select";
 import { BAND_COEFFICIENT } from "./scoring";
-import type { SheetColumn } from "./export/xlsx";
+import type { SheetColumn } from "@/lib/core/export/xlsx";
 
 /**
  * §11.7's payroll dataset, built once and served two ways.

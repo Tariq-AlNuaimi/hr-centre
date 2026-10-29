@@ -1,5 +1,5 @@
-import type { PmsActor } from "./permissions";
-import { isHr } from "./permissions";
+import type { PmsActor } from "@/lib/core/permissions";
+import { isHr } from "@/lib/core/permissions";
 
 /**
  * §12.1/§12.2 — what happens to a departing manager's reports, and the prompt

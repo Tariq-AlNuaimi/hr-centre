@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { canViewEvidence, evidenceWriteBlockedReason } from "@/lib/pms/evidence";
 import { YEAR_END_STAGE } from "@/lib/pms/rating";
 import { signedReadUrl, StorageNotConfiguredError } from "@/lib/storage";

@@ -1,7 +1,7 @@
 import { auditedTransaction } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { OrgRuleError } from "@/lib/org/rules";
-import { decryptSalary, encryptSalary } from "@/lib/pms/employee-select";
+import { decryptSalary, encryptSalary } from "@/lib/core/employee-select";
 import { encryptIdNumber, readIdNumber } from "./id-documents";
 import { isProvisionalOdooId } from "./provisional-id";
 

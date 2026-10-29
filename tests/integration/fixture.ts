@@ -18,7 +18,7 @@
  * needs "some ordinary employee from the fixture" then reliably gets one.
  */
 
-import type { PmsRole } from "../../lib/pms/permissions";
+import type { PmsRole } from "../../lib/core/permissions";
 
 /** Every employee an integration suite creates for itself carries this prefix. */
 export const TEST_EMPLOYEE_PREFIX = "ZZTEST-";

@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { feedOwnerWhere } from "../../lib/pms/notifications";
-import { PREVIEW_CHARS, shortPreview } from "../../lib/notifications/user-notify";
+import { feedOwnerWhere } from "../../lib/core/notify/store";
+import { PREVIEW_CHARS, shortPreview } from "../../lib/core/notify/user-notify";
 
 /**
  * UX review P0 (docs/blueprints/ux-p0.md, US-6): bell notices for Hiring and
@@ -53,7 +53,7 @@ test("a ticket question is previewed, never quoted in full", () => {
 });
 
 test("no notice is built from Restricted data (pay, ID numbers, protected attributes)", () => {
-  for (const f of ["lib/hiring/notify.ts", "lib/notifications/user-notify.ts"]) {
+  for (const f of ["lib/hiring/notify.ts", "lib/core/notify/user-notify.ts"]) {
     const code = src(f)
       .split("\n")
       .filter((l) => !/^\s*(\*|\/\/|\/\*)/.test(l))

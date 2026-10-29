@@ -1,6 +1,6 @@
 import type { Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import { hasDirectReports } from "./org-tree";
+import { hasDirectReports } from "@/lib/pms/org-tree";
 import { loadGrants, scopeMemberIds } from "@/lib/rbac/resolve";
 import type { Grants } from "@/lib/rbac/grants";
 import { capabilitiesFor, type PmsActor, type PmsCapabilities } from "./permissions";
@@ -11,7 +11,7 @@ import { capabilitiesFor, type PmsActor, type PmsCapabilities } from "./permissi
  * assembled, so no caller has to know they are separate tables.
  *
  * Called once per request. Every capability question afterwards is a pure
- * function over the returned object (lib/pms/permissions.ts), so a page that
+ * function over the returned object (lib/core/permissions.ts), so a page that
  * asks nine questions still pays for one lookup.
  */
 

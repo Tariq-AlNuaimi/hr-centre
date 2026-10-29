@@ -3,10 +3,10 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
-import { resolveActor } from "@/lib/pms/actor";
-import { canViewCompensation } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { canViewCompensation } from "@/lib/core/permissions";
 import { BONUS_EXPORT_COLUMNS, bonusRows, bonusTotals } from "@/lib/pms/bonus-report";
-import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 
 /**
  * §11 — the bonus report and §11.7's payroll Excel export.

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { forbidden, notFound, ok } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { canRunCycle } from "@/lib/pms/cycle";
 import { cycleOverview } from "@/lib/pms/cycle-overview";
 

@@ -7,7 +7,7 @@ import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 import { Prisma } from "../../generated/prisma/client";
-import type { PmsRole } from "../../lib/pms/permissions";
+import type { PmsRole } from "../../lib/core/permissions";
 import {
   TEST_EMPLOYEE_PREFIX,
   describeRoles,

@@ -4,15 +4,15 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, forbidden, ok, readJsonBody } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
-import { employeeSelect, serializeEmployee } from "@/lib/pms/employee-select";
+import { resolveActor } from "@/lib/core/actor";
+import { employeeSelect, serializeEmployee } from "@/lib/core/employee-select";
 import { visibleEmployeeIds } from "@/lib/pms/org-tree";
 import { employeeListQuerySchema } from "@/lib/validations/employee";
 import { addEmployeeSchema, recordFromBody } from "@/lib/validations/people";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";
 import { recordFieldsTouched } from "@/lib/people/record";
 import { createEmployeeFromForm } from "@/lib/people/service";
-import { actorCan } from "@/lib/pms/permissions";
+import { actorCan } from "@/lib/core/permissions";
 import { subjectForPlacement } from "@/lib/rbac/resolve";
 
 /**

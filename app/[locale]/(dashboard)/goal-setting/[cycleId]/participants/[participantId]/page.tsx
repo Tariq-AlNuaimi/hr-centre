@@ -10,7 +10,7 @@ import { KpiDraftBoard, type KpiRecord } from "@/components/pms/KpiDraftBoard";
 import { HrApprovalPanel, type HrApprovalPanelProps } from "@/components/pms/HrApprovalPanel";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   GOAL_SETTING_STAGE,
   kpiSetAccessRefusal,
@@ -26,7 +26,7 @@ import {
 } from "@/lib/pms/signoff";
 import { canRunCycle, isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canViewEmployee, type PmsActor } from "@/lib/pms/permissions";
+import { canViewEmployee, type PmsActor } from "@/lib/core/permissions";
 
 /**
  * KPI drafting for one participant — spec §5.1, §5.2, §5.3, §5.4, §4.2, §8.3.

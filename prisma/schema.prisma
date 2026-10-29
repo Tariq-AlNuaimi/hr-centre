@@ -604,7 +604,7 @@ model Employee {
   // (HR_SUPER_ADMIN + HRBP) and the COO/Ops Director (EXECUTIVE_VIEWER). Line
   // managers never see it — not for their own direct reports, not in chain view.
   //
-  // Enforcement is at the query layer, not the UI: lib/pms/employee-select.ts
+  // Enforcement is at the query layer, not the UI: lib/core/employee-select.ts
   // builds the Prisma `select` from the actor's capabilities, so this column
   // never enters an unauthorised response payload. It is also in SCRUB_FIELDS
   // (lib/prisma/audit-extension.ts) so it never lands in audit_logs.
@@ -643,7 +643,7 @@ model Employee {
   personalEmail     String?       @map("personal_email")
   personalPhone     String?       @map("personal_phone")
   // Personal — Confidential. Selected only with `people.viewPersonal`
-  // (lib/pms/employee-select.ts).
+  // (lib/core/employee-select.ts).
   dateOfBirth       DateTime?     @map("date_of_birth") @db.Date
   gender            Gender?
   nationality       String?

@@ -15,7 +15,7 @@ import {
   weightageMessageByPeriod,
 } from "../../lib/pms/kpi";
 import type { StageWindow } from "../../lib/pms/cycle";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 import { kpiInputSchema, updateKpiSchema } from "../../lib/validations/kpi";
 
 /**

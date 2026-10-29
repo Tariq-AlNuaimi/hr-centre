@@ -1,6 +1,6 @@
 import type { PrismaClient, RoleTrack } from "../generated/prisma/client";
-import type { PmsRole } from "../lib/pms/permissions";
-import { encryptSalary } from "../lib/pms/employee-select";
+import type { PmsRole } from "../lib/core/permissions";
+import { encryptSalary } from "../lib/core/employee-select";
 
 /**
  * PMS org fixture — spec §1.2 (three entities), §1.3 (five role tracks),
@@ -662,7 +662,7 @@ async function provisionFixtureLogins(
  *
  * So this creates ONE employee record for `SEED_ADMIN_EMAIL` carrying
  * HR_SUPER_ADMIN, which is a bootstrap, not a rule change: nothing in
- * `lib/pms/permissions.ts` learns to trust `User.role`.
+ * `lib/core/permissions.ts` learns to trust `User.role`.
  *
  * Three guards keep it out of a real deployment:
  *

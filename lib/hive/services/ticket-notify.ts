@@ -7,7 +7,7 @@ import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { registerHivePairScopes } from "@/lib/hive/pair-scope";
 import { getTicketSettings } from "./ticket-settings";
 import type { NotificationKind } from "@/generated/prisma/client";
-import { notifyUsers, shortPreview } from "@/lib/notifications/user-notify";
+import { notifyUsers, shortPreview } from "@/lib/core/notify/user-notify";
 
 /**
  * Spec V2 §8.9's HR notifications (blueprint US-T5, phase T3).

@@ -67,7 +67,7 @@ const MAX_ROWS = 2_000;
 
 /**
  * The sheet the loader looks for by name before falling back to the first one.
- * Matches the tab the generated template creates (lib/pms/export/xlsx.ts), so a
+ * Matches the tab the generated template creates (lib/core/export/xlsx.ts), so a
  * template-derived workbook is read from the right tab even when HR has added
  * their own notes or pivot tabs alongside it.
  */

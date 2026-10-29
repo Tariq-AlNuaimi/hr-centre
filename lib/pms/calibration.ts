@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Band } from "@/generated/prisma/client";
-import { isHrSuperAdmin, type PmsActor } from "./permissions";
+import { isHrSuperAdmin, type PmsActor } from "@/lib/core/permissions";
 import { BANDS, type Distribution } from "./distribution";
 
 export { BANDS, emptyDistribution, tally, type Distribution } from "./distribution";

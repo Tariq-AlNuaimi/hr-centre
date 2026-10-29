@@ -2,7 +2,7 @@ import { RECORD_FIELDS } from "../../lib/people/record";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildImportTemplate } from "../../lib/pms/export/xlsx";
+import { buildImportTemplate } from "../../lib/core/export/xlsx";
 import { ImportAlreadyAppliedError, ImportConflictError } from "../../lib/pms/import/run";
 import {
   ImportFileError,

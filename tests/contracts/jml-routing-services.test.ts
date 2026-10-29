@@ -54,7 +54,7 @@ before(async () => {
       auditedTransaction: async (fn: (tx: unknown) => unknown) => fn(client),
     },
   });
-  mockApi.module(import.meta.resolve("../../lib/notifications/user-notify.ts"), {
+  mockApi.module(import.meta.resolve("../../lib/core/notify/user-notify.ts"), {
     namedExports: {
       notifyUsers: async (
         ids: Iterable<string>,

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { canRunCycle, enrolParticipants } from "@/lib/pms/cycle";
 
 /** One open-click’s worth of enrolment; the rest via "Enrol missing employees". */

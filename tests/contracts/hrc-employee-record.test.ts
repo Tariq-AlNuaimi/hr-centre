@@ -11,11 +11,11 @@ const { encryptIdNumber, readIdNumber, IdDocumentKeyError } =
   await import("../../lib/people/id-documents");
 const { employeeCreateData, recordWriteData } = await import("../../lib/people/write");
 const { employeeDetailSelect, serializeEmployeeDetail } =
-  await import("../../lib/pms/employee-select");
+  await import("../../lib/core/employee-select");
 const { checkRecord } = await import("../../lib/pms/import/checks/record");
 const { employeeRecordSchema, recordFromBody } = await import("../../lib/validations/people");
 const { recordFieldsTouched } = await import("../../lib/people/record");
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 import type { EmployeeSourceRow } from "../../lib/pms/import/types";
 
 /**

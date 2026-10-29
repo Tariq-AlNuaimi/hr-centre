@@ -6,7 +6,7 @@ import { HiringRuleError } from "./http";
 import { canReveal, resolveBriefForRound } from "./interview-rules";
 import { panelAiMode } from "./interview-views";
 import { loadInterview, loadRoundPlan, type LoadedInterview } from "./interviews";
-import { resolveUserNotices } from "@/lib/notifications/user-notify";
+import { resolveUserNotices } from "@/lib/core/notify/user-notify";
 import { peopleById } from "./people";
 
 /**

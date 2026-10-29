@@ -76,7 +76,7 @@ before(async () => {
   mockApi.module(import.meta.resolve("../../lib/pms/status-query.ts"), {
     namedExports: { participantStatuses: async () => ({ rows, truncated: false }) },
   });
-  mockApi.module(import.meta.resolve("../../lib/pms/notifications.ts"), {
+  mockApi.module(import.meta.resolve("../../lib/core/notify/store.ts"), {
     namedExports: {
       persistNotifications: async (pending: typeof written) => {
         written = pending;

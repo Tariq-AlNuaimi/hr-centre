@@ -3,14 +3,14 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
-import { resolveActor } from "@/lib/pms/actor";
-import { canExportMasterResults } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { canExportMasterResults } from "@/lib/core/permissions";
 import {
   buildReportWorkbook,
   toReportSheet,
   xlsxDownloadHeaders,
   type SheetColumn,
-} from "@/lib/pms/export/xlsx";
+} from "@/lib/core/export/xlsx";
 
 /**
  * §13.5 — "Master results export — full dataset: all employees, all components,

@@ -14,13 +14,13 @@ import {
 } from "@/lib/pms/year-end-select";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEvidence } from "@/lib/pms/evidence";
-import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
+import { canActOnEmployee, canViewEmployee } from "@/lib/core/permissions";
 
 /**
  * §7.1 — one participant's year-end assessment.

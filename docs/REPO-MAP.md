@@ -565,6 +565,12 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
+- lib/core/actor.ts: ResolvedActor, resolveActor
+- lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
+- lib/core/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
+- lib/core/notify/store.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, PendingNotification, persistNotifications
+- lib/core/notify/user-notify.ts: PREVIEW_CHARS, UserNotice, notifyUsers, resolveUserNotices, shortPreview
+- lib/core/permissions.ts: PmsRole, PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/core/tokens/magic-link.ts: mintRawToken, digestToken, isTokenShaped, isLinkLive, magicLinkUrl, issueMagicLink, resolveMagicLink, revokeMagicLinks
 - lib/core/work-items/index.ts: WorkModule, WorkItem, WorkProvider, PROVIDER_LIMIT, WorkList, collectWorkItems, byDue, DueGroup, dueGroup
 - lib/crypto/field-encryption.ts: Keyring, SALARY_KEYRING, ID_DOCUMENT_KEYRING, FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
@@ -813,7 +819,6 @@
 - lib/nav/server-context.ts: navContextFor
 - lib/nav/tabs.ts: Gate, always, hr, teamLead, admin, hiring, ownsRequisitions, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
 - lib/nav/trail.ts: NavCrumb, navTrail
-- lib/notifications/user-notify.ts: PREVIEW_CHARS, UserNotice, notifyUsers, resolveUserNotices, shortPreview
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -837,7 +842,6 @@
 - lib/people/service.ts: createEmployeeFromForm, updateEmployeeRecord
 - lib/people/team-overview.ts: TeamCase, teamOverview
 - lib/people/write.ts: EmployeeCoreInput, recordWriteData, employeeCreateData, employeeUpdateData
-- lib/pms/actor.ts: ResolvedActor, resolveActor
 - lib/pms/bonus-report.ts: BonusRow, bonusRows, BonusTotals, bonusTotals, BONUS_EXPORT_COLUMNS
 - lib/pms/bonus.ts: DAYS_IN_YEAR, ELIGIBILITY_MONTHS, inclusiveDays, WorkDaysInput, workDays, effectiveServiceMonths, isBonusEligible, BonusResult, computeBonus
 - lib/pms/calibration.ts: distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
@@ -850,9 +854,7 @@
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
 - lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture, ReverseDepartureOutcome, reverseDeparture
 - lib/pms/distribution.ts: BANDS, Distribution, emptyDistribution, tally, bandShareRows, PerformanceTier, FeedbackTier, performanceTier, feedbackTier, NineBoxCell, nineBox
-- lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
-- lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
 - lib/pms/import/checks/employment.ts: checkSalary, checkDateOfJoining, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
 - lib/pms/import/checks/placement.ts: checkPlacement, checkManager
@@ -866,12 +868,11 @@
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KpiHashRow, kpiSetHash, currentKpiSetHash
 - lib/pms/kpi.ts: KPI_LEVELS, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, rosterWeightageTotal, WeightageView, weightageView, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
-- lib/pms/notifications.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey, PendingNotification, persistNotifications
+- lib/pms/notifications.ts: notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey
 - lib/pms/offboarding.ts: revokeLoginOnOffboard
 - lib/pms/org-chart-search.ts: matchOrgChart
 - lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartEntity, buildOrgChart
 - lib/pms/org-tree.ts: descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
-- lib/pms/permissions.ts: PmsRole, PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
 - lib/pms/score-run.ts: ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee

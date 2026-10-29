@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import { stageState } from "@/lib/pms/cycle";
 import { descendantEmployeeIds } from "@/lib/pms/org-tree";
 import { awaitingManager, stageProgress } from "@/lib/pms/status";

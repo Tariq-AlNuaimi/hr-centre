@@ -9,7 +9,7 @@ import type { Session } from "next-auth";
 
 import { prismaUnfiltered } from "../../lib/prisma";
 import { withAuditContext } from "../../lib/audit-context";
-import { resolveActor } from "../../lib/pms/actor";
+import { resolveActor } from "../../lib/core/actor";
 import { JmlError } from "../../lib/jml/errors";
 import { updateTask } from "../../lib/jml/engine/task-update";
 import { addComment } from "../../lib/jml/engine/tasks";

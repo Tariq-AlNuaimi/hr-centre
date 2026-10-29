@@ -1,6 +1,6 @@
 import type { Session } from "next-auth";
-import { resolveActor } from "@/lib/pms/actor";
-import { grantsOf } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { grantsOf } from "@/lib/core/permissions";
 import { has } from "@/lib/rbac/grants";
 import { permissionsFrom } from "@/lib/hive/services/permissions";
 import { hasWorkerTasks } from "@/lib/jml/routing/worker";

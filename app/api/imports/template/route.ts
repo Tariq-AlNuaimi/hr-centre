@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { forbidden } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
-import { buildImportTemplate, xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { resolveActor } from "@/lib/core/actor";
+import { buildImportTemplate, xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 
 /**
  * The blank employee-import template — spec §3.3.

@@ -5,7 +5,7 @@ import { holdsAnywhere } from "@/lib/hiring/access";
 import { exportRows } from "@/lib/hiring/candidate-bulk";
 import { candidateSheet } from "@/lib/hiring/candidate-export";
 import { hiringRoute, parseQuery } from "@/lib/hiring/route";
-import { xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
+import { xlsxDownloadHeaders } from "@/lib/core/export/xlsx";
 import { candidateExportQuerySchema } from "@/lib/validations/hiring/candidate";
 
 /** Candidates to Excel (≤10,000). Never pay, DEI, national ID or notes. */

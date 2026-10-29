@@ -1,5 +1,5 @@
 import type { EmployeeStatus, Prisma, RoleTrack } from "@/generated/prisma/client";
-import { encryptSalary } from "@/lib/pms/employee-select";
+import { encryptSalary } from "@/lib/core/employee-select";
 import { encryptIdNumber } from "./id-documents";
 import type { EmployeeRecordInput } from "./record";
 

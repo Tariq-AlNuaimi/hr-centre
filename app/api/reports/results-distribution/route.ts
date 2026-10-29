@@ -3,7 +3,7 @@ import type { Band } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { resolveActor } from "@/lib/pms/actor";
+import { resolveActor } from "@/lib/core/actor";
 import {
   BANDS,
   distributionGap,

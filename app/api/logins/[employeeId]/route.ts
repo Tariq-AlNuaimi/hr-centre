@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { resolveActor } from "@/lib/pms/actor";
-import { actorCan, canViewEmployee } from "@/lib/pms/permissions";
+import { resolveActor } from "@/lib/core/actor";
+import { actorCan, canViewEmployee } from "@/lib/core/permissions";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { placementOf } from "@/lib/rbac/resolve";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";

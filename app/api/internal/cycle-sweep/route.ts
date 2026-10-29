@@ -104,7 +104,7 @@ async function writeEvents(
   const results: WrittenEvent[] = [];
   // The compliance row's identity, minus the kind — carried onto every
   // WrittenEvent so the in-app fan-out can key a notification on the EVENT
-  // rather than on a weaker identity of its own (lib/pms/notifications.ts).
+  // rather than on a weaker identity of its own (lib/core/notify/store.ts).
   const identity = {
     cycleId,
     subjectEmployeeId,

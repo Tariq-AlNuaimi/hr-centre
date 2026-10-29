@@ -37,7 +37,7 @@ export type PmsRole = "HR_SUPER_ADMIN" | "HRBP" | "EXECUTIVE_VIEWER";
  * can ask the same questions without inventing a session.
  */
 
-/** The resolved identity behind a request. See lib/pms/actor.ts. */
+/** The resolved identity behind a request. See lib/core/actor.ts. */
 export type PmsActor = {
   /** Auth.js user id. Present for anyone who reached an authenticated route. */
   userId: string;
@@ -190,7 +190,7 @@ export function canSeePlatformAdminRoster(
  * figure. Keeping this a flat field-level predicate means the answer never
  * depends on WHOSE record is being read, which is what makes it auditable.
  *
- * Enforced at the query layer, never the UI: see lib/pms/employee-select.ts.
+ * Enforced at the query layer, never the UI: see lib/core/employee-select.ts.
  */
 export function canViewCompensation(actor: PmsActor): boolean {
   return hasGroup(grantsOf(actor), "people.viewSalary");

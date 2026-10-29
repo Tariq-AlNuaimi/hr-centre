@@ -7,10 +7,9 @@ import {
   hrDigestDedupeKey,
   ladderDedupeKey,
   notificationKindFor,
-  persistNotifications,
   threeSixtyDedupeKey,
-  type PendingNotification,
 } from "./notifications";
+import { persistNotifications, type PendingNotification } from "@/lib/core/notify/store";
 
 /**
  * Who hears about a compliance event — the notification half of the §5.5 sweep.

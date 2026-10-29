@@ -21,7 +21,7 @@ import {
   type KpiState,
 } from "../../lib/pms/change-request";
 import type { StageWindow } from "../../lib/pms/cycle";
-import type { PmsActor } from "../../lib/pms/permissions";
+import type { PmsActor } from "../../lib/core/permissions";
 import { decideChangeRequestSchema } from "../../lib/validations/change-request";
 
 /**
