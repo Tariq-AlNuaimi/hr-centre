@@ -85,3 +85,18 @@ test("N-15 / D-14 deciding a ticket answer (approve or return) clears its 'to ap
   const d = readFileSync("app/api/approvals/delegations/route.ts", "utf8");
   assert.match(d, /notifyUsers\(\[delegation\.delegateId\]/);
 });
+
+test("N-16 a job description cannot go for sign-off while its hiring request is still a draft", async () => {
+  const { canSubmitJd } = await import("../../lib/hiring/jd-rules");
+  const actor = { id: "hr", canManage: true, hrEligible: true };
+  const base = {
+    jdStatus: "DRAFT" as const,
+    description: "We build things.",
+    jdAuthorId: null,
+    hiringManagerId: "hm",
+    signatures: [],
+  };
+  const draft = canSubmitJd(actor, { ...base, requisitionStatus: "DRAFT" });
+  assert.equal(draft.ok, false);
+  assert.match((draft as { reason: string }).reason, /Submit the hiring request first/);
+});

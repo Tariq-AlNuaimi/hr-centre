@@ -41,6 +41,7 @@ async function context(req: HiringRequisition): Promise<JdContext> {
     description: req.description,
     jdAuthorId: req.jdAuthorId,
     hiringManagerId: req.hiringManagerId,
+    requisitionStatus: req.status,
     signatures: signed.flatMap((s) =>
       s.signatory ? [{ signatory: s.signatory, actorId: s.actorId }] : [],
     ),
