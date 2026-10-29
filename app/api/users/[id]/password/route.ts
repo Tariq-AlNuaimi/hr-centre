@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, err, forbidden } from "@/lib/api-response";
 import { z } from "zod";
+import { AUTH_LIMITS, throttlePasswordChange, tooManyRequests } from "@/lib/rate-limit";
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
@@ -27,6 +28,11 @@ export const PUT = withRateLimit(
 
     // Users can only change their own password
     if (id !== session.user.id) return forbidden();
+
+    // 5/min per signed-in user, shared with the forced first-login change
+    // (POST /api/logins/change-password); 60/min per IP outside (ADR-100).
+    const userLimit = await throttlePasswordChange(session.user.id);
+    if (!userLimit.ok) return tooManyRequests(userLimit);
 
     const body = await request.json();
     const parsed = changePasswordSchema.safeParse(body);
@@ -66,5 +72,5 @@ export const PUT = withRateLimit(
 
     return ok({ changed: true });
   }),
-  { id: "password-change", limit: 5, windowMs: 60_000 },
+  AUTH_LIMITS.passwordChangeIp,
 );

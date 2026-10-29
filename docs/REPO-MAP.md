@@ -953,7 +953,7 @@
 - lib/prisma/tx-context.ts: AuditWriter, runInAuditTx, currentClient, currentAuditWriter
 - lib/prisma.ts: prisma, prismaUnfiltered, auditedTransaction
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
-- lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
+- lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit, rateLimitSubject, AUTH_LIMITS, loginEmailFrom, throttleLogin, throttlePasswordChange, throttleResetRequest, throttleResetComplete, tooManyRequests
 - lib/rbac/catalogue.ts: MODULES, ModuleKey, PERMISSIONS, Permission, PERMISSION_CODES, isPermission, SCOPED_PERMISSIONS, StarterKey, FOUNDATION_STARTER_KEYS, STARTER_ROLES
 - lib/rbac/diff.ts: permissionDiff, newPermissions
 - lib/rbac/grants.ts: ScopeRef, ScopeSubject, registerScopeResolver, scopeCovers, Grants, NO_GRANTS, expandGrants, has, hasGroup, canInScope, partialScopes, starterGrants, MAX_COVER_DAYS, isAssignmentActive, validityProblem
