@@ -224,7 +224,7 @@ export function CaseList({
                 key: "risk",
                 render: (_: unknown, r: CaseRow) => (
                   <div className="flex flex-col items-start gap-1">
-                    <RagBadge flag={r.ragFlag} />
+                    <RagBadge flag={r.ragFlag} status={r.status} />
                     {r.overdueTasks > 0 ? (
                       <span className="text-xs text-destructive-emphasis">
                         {t("overdueTasks", { count: r.overdueTasks })}

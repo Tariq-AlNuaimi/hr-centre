@@ -52,11 +52,12 @@ const segmentToNavKey: Record<string, string> = {
 
 // Fallback for a route segment with no nav-key mapping and no dynamic label (e.g. a
 // scaffolded entity like `asset` or `custom-field-def`): show a humanized label
-// ("Asset", "Custom Field Def") instead of the raw lowercase segment. kebab/snake → Title
-// Case. This is a computed value, not literal JSX copy, so it is not a next-intl chokepoint
+// ("Asset", "Custom field def") instead of the raw lowercase segment. kebab/snake →
+// sentence case, the house style (QA2 N-19: "Task Routing"). This is a computed value, not literal JSX copy, so it is not a next-intl chokepoint
 // bypass — dedicated segments should still get a real `nav` message key when one exists.
 function humanizeSegment(seg: string): string {
-  return seg.replace(/[-_]+/g, " ").replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+  const words = seg.replace(/[-_]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function Breadcrumbs() {

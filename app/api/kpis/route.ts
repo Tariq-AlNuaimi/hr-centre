@@ -102,7 +102,7 @@ export const POST = withRateLimit(
       now,
     });
     if (refusal) {
-      return refusal.status === 404 ? notFound("Participant") : err(refusal.reason, 409);
+      return refusal.status === 404 ? notFound("Participant") : err(refusal.reason, refusal.status);
     }
     // §12.3 — on a split year every KPI belongs to a period, and the period's
     // own manager owns it. Resolved here rather than in `kpiSetAccessRefusal`

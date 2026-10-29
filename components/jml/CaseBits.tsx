@@ -112,8 +112,16 @@ export function DueLabel({ value, settled = false }: { value: string | null; set
 
 const RAG_VARIANT = { GREEN: "success", AMBER: "warning", RED: "danger" } as const;
 
-/** The case's risk flag (computed by the engine; shown, finally — perf-jml headline 5). */
-export function RagBadge({ flag }: { flag: "GREEN" | "AMBER" | "RED" }) {
+const LIVE = new Set(["ACTIVE", "AT_RISK", "PENDING_SETTLEMENT"]);
+
+/**
+ * The case's risk flag (computed by the engine; shown, finally — perf-jml
+ * headline 5). QA2 N-19: a closed, completed or cancelled case has no risk —
+ * its last flag ("Off track") is history, not a state, so it is not shown.
+ */
+export function RagBadge({ flag, status }: { flag: "GREEN" | "AMBER" | "RED"; status?: string }) {
   const tRag = useTranslations("jml.common.rag");
+  if (status && !LIVE.has(status))
+    return <span className="text-muted-foreground">{tRag("none")}</span>;
   return <Badge variant={RAG_VARIANT[flag]}>{tRag(flag)}</Badge>;
 }

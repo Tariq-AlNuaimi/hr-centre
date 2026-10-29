@@ -5,10 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { apiClient } from "@/lib/api-client";
+import { ApiError, apiClient } from "@/lib/api-client";
 import { CaseStatusBadge, Progress } from "../CaseBits";
 import { CaseSummary, OpenCount } from "./CaseSummary";
-import { LoadFailed, LoadingBlock } from "../States";
+import { LoadFailed, LoadingBlock, NotFoundBlock } from "../States";
 import { CaseActions } from "./CaseActions";
 import { ChecklistTab } from "./ChecklistTab";
 import { EmailsTab } from "./EmailsTab";
@@ -37,6 +37,10 @@ export function CaseScreen({ caseId }: { caseId: string }) {
     queryFn: () => apiClient.get<CaseDetail>(`/api/jml/cases/${caseId}`),
   });
   if (detail.isLoading) return <LoadingBlock />;
+  // QA2 N-20 — a case that does not exist (or is out of scope) says so.
+  if (detail.error instanceof ApiError && detail.error.status === 404) {
+    return <NotFoundBlock />;
+  }
   if (detail.isError || !detail.data) return <LoadFailed />;
   const c = detail.data;
   const tabs = TABS_FOR[c.caseType];

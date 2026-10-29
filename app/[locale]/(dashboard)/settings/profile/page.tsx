@@ -73,7 +73,17 @@ export default function ProfilePage() {
             items={[
               { key: "name", label: t("name"), value: user?.name ?? "-" },
               { key: "email", label: t("email"), value: user?.email ?? "-" },
-              { key: "role", label: t("role"), value: user?.role ?? "-" },
+              // QA2 N-19 — not the legacy ADMIN/VIEWER enum: HR access comes from
+              // role assignments (Admin › Roles); this only says platform admin or not.
+              {
+                key: "platformAdmin",
+                label: t("platformAdmin"),
+                value: user
+                  ? user.role === "ADMIN"
+                    ? t("platformAdminYes")
+                    : t("platformAdminNo")
+                  : "-",
+              },
             ]}
           />
         </CardContent>
