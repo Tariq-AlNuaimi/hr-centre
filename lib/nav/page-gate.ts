@@ -74,6 +74,9 @@ export const SECTION_GATES = {
     c.pms.previewImport || hasGroup(g, "jml.configure") || c.hiring("hiring.manage"),
   "/admin/org-setup": (c) => c.pms.orgManage,
   "/admin/settings/ai": hiring("hiring.configure"),
+  // ADR-102: both halves are group-wide permissions in their modules.
+  "/admin/settings/hr-coverage": (c, g) =>
+    hasGroup(g, "tickets.configure") || hasGroup(g, "jml.configure"),
   "/admin/strategy-scores": orgWide,
   "/audit-log": (c) => c.isAdmin,
   "/recycling-bin": (c) => c.isAdmin,

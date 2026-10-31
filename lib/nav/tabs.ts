@@ -179,6 +179,13 @@ export const SETTING_AREAS: readonly NavLink[] = [
     show: (c) => [c.jml("jml.configure"), c.jml("jml.verifyStatutory")].some(Boolean),
   },
   {
+    // ADR-102: "who is my HR" — one coverage model for HR tickets and JML cases.
+    key: "hr-coverage",
+    label: "settingsHrCoverage",
+    href: "/admin/settings/hr-coverage",
+    show: (c) => [c.hive.configure, c.jml("jml.configure")].some(Boolean),
+  },
+  {
     // ADR-097: the platform's AI provider and limits.
     key: "ai-settings",
     label: "settingsAi",

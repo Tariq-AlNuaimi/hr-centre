@@ -31,7 +31,7 @@ import { loadCompanies } from "../hrtag-source";
  * to overlap. This file reads the core org (OrgEntity → Directorate →
  * Department → Team, whose `head` is each unit's leader) plus `hive_org_unit_info` for
  * display order only, and nothing else — it
- * never consults `RotationCoverage` or `HrTagCoverage` to resolve a name, and it
+ * never consults `RotationCoverage` or `HrCoverage` (the core HR coverage rows, ADR-102) to resolve a name, and it
  * must not start, because that is the collapse the note forbids.
  *
  * @public

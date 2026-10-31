@@ -112,7 +112,8 @@
     "settingsAi": "AI",
     "myRequests": "My requests",
     "myDocuments": "My documents",
-    "myHr": "My HR"
+    "myHr": "My HR",
+    "settingsHrCoverage": "HR coverage"
   },
   "auth": {
     "login": "Login",
@@ -2967,7 +2968,8 @@
       },
       "setHeadsLink": "Set unit heads",
       "noHead": "No head set",
-      "noHeadLegacy": "No head set — previously listed: {name}"
+      "noHeadLegacy": "No head set — previously listed: {name}",
+      "coverageMoved": "What each pair covers is set with the case owners on Admin › Settings › HR coverage."
     },
     "tasks": {
       "title": "HR tickets",
@@ -7442,8 +7444,9 @@
       "performance-settings": "Cycle windows and policy, corporate scores and 360 setup.",
       "jml-settings": "Checklists, rules, approvals, documents, statutory values and calendars for joiners, movers and leavers.",
       "hiring-settings": "Approval chains, assessment policy, AI assists and budgets for hiring.",
-      "ticket-setup": "HR pairs and coverage, ticket settings, and the information Siraaj answers from.",
-      "ai-settings": "The AI provider, key and daily limits every module's AI uses."
+      "ticket-setup": "HR pairs, ticket settings, and the information Siraaj answers from.",
+      "ai-settings": "The AI provider, key and daily limits every module's AI uses.",
+      "hr-coverage": "Who covers which unit: the HR pair its tickets go to, and who owns its joiner, mover and leaver cases."
     },
     "emailTemplates": {
       "title": "Email templates",
@@ -7670,6 +7673,78 @@
       "lettersNote": "Need a letter, such as a salary certificate? Ask HR through Siraaj.",
       "notLinked": "Your account is not linked yet",
       "notLinkedHelp": "HR links your login to your employee record. Ask HR if this stays empty."
+    }
+  },
+  "hrCoverage": {
+    "title": "HR coverage",
+    "subtitle": "Who is my HR: for each company, directorate, department or team, the HR pair its tickets go to and the HR people who own its joiner, mover and leaver cases.",
+    "listTitle": "Coverage",
+    "listNote": "Tickets match a row by its words, its unit or the whole company. Cases go to the most specific unit with an owner, then the highest priority, then the oldest row.",
+    "add": "Add coverage",
+    "addTitle": "Add coverage",
+    "editTitle": "Edit coverage",
+    "empty": "Nobody covers any unit yet. Add who covers each company, directorate or department.",
+    "loadFailed": "Coverage could not be loaded. Reload the page to try again.",
+    "notPermitted": "You need the ticket or joiners and leavers configuration permission for the whole group to see HR coverage.",
+    "saveFailed": "The coverage could not be saved. Try again.",
+    "saved": "Coverage saved",
+    "removed": "Coverage removed",
+    "removeTitle": "Remove this coverage?",
+    "removeDescription": "Tickets and cases stop using this row. You can restore it from the recycling bin.",
+    "remove": "Remove",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "choose": "Choose…",
+    "company": "Company",
+    "anyCompany": "Any company",
+    "anyUnit": "The company",
+    "wholeCompany": "The whole company",
+    "level": "Covers",
+    "levels": {
+      "COMPANY": "Company",
+      "DIRECTORATE": "Directorate",
+      "DEPARTMENT": "Department",
+      "TEAM": "Team"
+    },
+    "companyWide": "Send every ticket from this company to this pair",
+    "ticketsHalf": "HR tickets",
+    "ticketsOnly": "Only someone who configures HR tickets for the whole group can change this.",
+    "pair": "HR pair",
+    "noPair": "No ticket routing",
+    "label": "Name people use",
+    "labelHint": "How employees name the unit when they ask for help, e.g. Technology.",
+    "aliases": "Other names",
+    "aliasesHint": "Separate names with commas",
+    "casesHalf": "Joiner, mover and leaver cases",
+    "casesOnly": "Only someone who configures joiners and leavers for the whole group can change this.",
+    "owner": "Case owner",
+    "supervisor": "Supervisor",
+    "nobody": "Nobody",
+    "caseTypes": "Case types",
+    "caseTypesHint": "Leave all unticked for every case type.",
+    "caseType": {
+      "JOIN": "Joiners",
+      "MOVE": "Movers",
+      "LEAVE": "Leavers"
+    },
+    "allTypes": "Every type",
+    "priority": "Priority",
+    "priorityHint": "Higher wins when two rows cover the same unit.",
+    "activeLabel": "In use",
+    "active": "In use",
+    "inactive": "Switched off",
+    "col": {
+      "company": "Company",
+      "unit": "Unit",
+      "pair": "HR pair",
+      "words": "Names",
+      "owner": "Case owner",
+      "supervisor": "Supervisor",
+      "caseTypes": "Case types",
+      "priority": "Priority",
+      "status": "Status",
+      "actions": "Actions"
     }
   }
 }

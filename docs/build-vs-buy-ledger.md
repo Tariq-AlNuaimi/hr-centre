@@ -1184,3 +1184,14 @@ Considered: **Next.js `forbidden()` / `unauthorized()` (authInterrupts)** (rejec
 flag, and the API answers 404 for out-of-scope on purpose). **A middleware path gate** (rejected —
 middleware cannot run the module loaders a record gate needs, and is an Ask-before surface).
 Decision: build — two small server helpers over the existing nav context and module loaders.
+
+### 2026-10-31 — One "who is my HR" model: core HR partner coverage (ADR-102)
+
+Scope: lib/core/hr-coverage/rules.ts, lib/core/hr-coverage/store.ts, lib/core/hr-coverage/admin.ts, lib/validations/core/hr-coverage.ts
+Considered: **An HRIS "HR business partner" assignment (Workday HR Partner by supervisory
+organisation, HiBob / BambooHR custom "HR rep" fields)** (rejected — HR Centre is the system of
+record; the assignment must drive our own ticket routing and case ownership, with HIVE's
+word-matching and JML's precedence rules unchanged). **Keeping two tables with a union read
+model** (rejected — HR would still edit "who covers what" in two places and they would drift).
+Decision: build — the HR tickets coverage table becomes the core table in place; JML's rules are
+copied in; each module reads its half through the same rows.

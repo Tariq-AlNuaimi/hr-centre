@@ -46,7 +46,7 @@ const SOFT_DELETE_MODELS = new Set([
   // settings and rotation-config singletons are NOT soft-deletable.
   "HrTagPair",
   "HrTagMember",
-  "HrTagCoverage",
+  "HrCoverage",
   "RotationGroup",
   "RotationCoverage",
   "DiscountPartner",

@@ -1,8 +1,11 @@
-import { RulesSettings } from "@/components/jml/settings/RulesSettings";
+import { redirect } from "next/navigation";
 import { requireSection } from "@/lib/nav/page-gate";
 
-/** HR owner assignment rules (Onboarding §14 / BR-002). */
-export default async function Page() {
+/**
+ * HR owner assignment rules now live on the core HR coverage screen (ADR-102):
+ * one place for who covers which unit, for tickets and for cases.
+ */
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   await requireSection("/jml/settings/rules");
-  return <RulesSettings />;
+  redirect(`/${(await params).locale}/admin/settings/hr-coverage`);
 }

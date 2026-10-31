@@ -102,6 +102,8 @@ model User {
   jmlTaskComments          JmlTaskComment[]         @relation("JmlTaskCommentAuthor")
   jmlRulesAsOwner          JmlHrAssignmentRule[]    @relation("JmlRuleOwner")
   jmlRulesAsSenior         JmlHrAssignmentRule[]    @relation("JmlRuleSenior")
+  hrCoverageAsOwner        HrCoverage[]             @relation("HrCoverageOwner")
+  hrCoverageAsSupervisor   HrCoverage[]             @relation("HrCoverageSupervisor")
   jmlEmailsSent            EmailLog[]               @relation("JmlEmailSentBy")
   jmlItReadinessConfirmed  JmlJoinDetail[]          @relation("JmlItReadinessBy")
   jmlApprovalsDecided      JmlApproval[]            @relation("JmlApprovalDecidedBy")
@@ -2690,7 +2692,7 @@ model HrTagPair {
   updatedAt DateTime  @updatedAt
 
   members      HrTagMember[]
-  coverage     HrTagCoverage[]
+  coverage     HrCoverage[]
   escalations  Escalation[]
   savedReplies HiveSavedReply[]
 
@@ -2724,32 +2726,63 @@ model HrTagMember {
   @@map("hive_hr_tag_members")
 }
 
-/// What an HR Tag pair covers. Owns its OWN label + aliases (binding invariant).
-/// `companyWide` + `entityId` = whole-company routing (TP, Codeline) — always
-/// wins over a directorate. Otherwise `entityId` only SCOPES the row to a company
-/// (so "Operations" at TP never matches Rihal's Operations row); the optional
-/// directorate / department ids are soft links to core units.
-model HrTagCoverage {
-  id            String   @id @default(cuid())
-  pairId        String
-  label         String
-  aliases       String[] @default([])
-  entityId      String?
-  companyWide   Boolean  @default(false)
-  directorateId String?
-  departmentId  String?
+enum HrCoverageLevel {
+  COMPANY
+  DIRECTORATE
+  DEPARTMENT
+  TEAM
+}
+
+/// ADR-102 — "who is my HR": one core model of HR partner coverage. A row says
+/// which HR people cover one company / directorate / department / team:
+///   - the HR Tag PAIR HR tickets route to (`pairId`, matched by `label` /
+///     `aliases`, the company-wide flag or the unit link — HIVE §6.6), and/or
+///   - the case OWNER and SUPERVISOR JML assigns a joiner / mover / leaver case
+///     to (`ownerUserId` / `supervisorUserId`, most specific `level` wins, then
+///     `priority`, then oldest; `caseTypes` empty = every type).
+/// A row with a pair routes tickets; a row with an owner and supervisor assigns
+/// cases; one row may do both. Ticket rotation and quotas stay HIVE's.
+/// The table was `hive_hr_tag_coverage` (renamed in place; JML's assignment
+/// rules were copied in with their ids).
+model HrCoverage {
+  id               String           @id @default(cuid())
+  pairId           String?
+  /// Ticket matching: the words people use for the unit (owns its OWN label + aliases).
+  label            String           @default("")
+  aliases          String[]         @default([])
+  entityId         String?
+  /// Tickets: route the whole company to this pair (wins over a directorate).
+  companyWide      Boolean          @default(false)
+  directorateId    String?
+  departmentId     String?
+  teamId           String?          @map("team_id")
+  /// The most specific unit the row names (null = matched by words only).
+  level            HrCoverageLevel?
+  priority         Int              @default(0)
+  active           Boolean          @default(true)
+  /// JML: the case types this row assigns (empty = every type).
+  caseTypes        JmlCaseType[]    @default([]) @map("case_types")
+  ownerUserId      String?          @map("owner_user_id")
+  supervisorUserId String?          @map("supervisor_user_id")
 
   deletedAt DateTime?
   deletedBy String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  pair HrTagPair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  pair       HrTagPair? @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  owner      User?      @relation("HrCoverageOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  supervisor User?      @relation("HrCoverageSupervisor", fields: [supervisorUserId], references: [id], onDelete: Restrict)
 
   @@index([pairId])
   @@index([entityId])
+  @@index([active, level, priority])
+  @@index([departmentId])
+  @@index([directorateId])
+  @@index([ownerUserId])
+  @@index([supervisorUserId])
   @@index([deletedAt, createdAt])
-  @@map("hive_hr_tag_coverage")
+  @@map("core_hr_coverage")
 }
 
 /// Singleton. The rotation anchor and weekend — read by the rotation tool
@@ -4138,8 +4171,8 @@ model JmlTaskComment {
   @@map("jml_task_comments")
 }
 
-/// Who owns a case (Onboarding §14 / BR-002): scoped with priority; most specific
-/// level wins (department > directorate > company), then priority, then oldest.
+/// LEGACY (ADR-102): copied into `core_hr_coverage`; no longer read or written.
+/// Dropped once the core path is verified live.
 model JmlHrAssignmentRule {
   id             String        @id @default(cuid())
   scope          JmlRuleScope

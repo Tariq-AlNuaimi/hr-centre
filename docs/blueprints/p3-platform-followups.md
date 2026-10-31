@@ -1,4 +1,4 @@
-# P3 platform follow-ups — approvals, HR coverage, catalogues
+# P3 platform follow-ups — approvals on the core engine
 
 Scope: lib/core/approvals/**, lib/hiring/requisition-status.ts, lib/hiring/requisition-rules.ts, lib/hiring/requisition-pending.ts, lib/hiring/requisition-views.ts, lib/hiring/requisition-write.ts, lib/hiring/jd.ts, lib/hiring/offer-round.ts, lib/hiring/work-items.ts, lib/hiring/my-hiring.ts, prisma/schema.prisma, prisma/migrations/20261031100000_hiring_approvals_on_core/**, tests/contracts/core-approvals.test.ts, tests/integration/hiring-approvals-engine.test.ts
 

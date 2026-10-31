@@ -37,7 +37,7 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   // HR tickets (HIVE port) reference data.
   HrTagPair: { displayField: "name" },
   HrTagMember: { displayField: "name" },
-  HrTagCoverage: { displayField: "label" },
+  HrCoverage: { displayField: "label" },
   RotationGroup: { displayField: "name" },
   RotationCoverage: { displayField: "label" },
   DiscountPartner: { displayField: "name" },

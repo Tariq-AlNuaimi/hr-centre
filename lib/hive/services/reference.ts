@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { levelOf } from "@/lib/core/hr-coverage/rules";
 import { OrgRuleError } from "@/lib/org/rules";
 import { REFERENCE_SCHEMAS, type ReferenceResource } from "@/lib/validations/hive/reference";
 import type { z } from "zod";
@@ -55,7 +56,9 @@ export async function listReference(resource: ReferenceResource, q?: string, pag
         take: 200,
       });
     case "coverage":
-      return prisma.hrTagCoverage.findMany({
+      // ADR-102: the rows of the core HR coverage model that route tickets.
+      return prisma.hrCoverage.findMany({
+        where: { pairId: { not: null } },
         orderBy: { label: "asc" },
         select: COVERAGE_SELECT,
         take: 200,
@@ -230,12 +233,12 @@ const WRITERS: Record<
     },
   },
   coverage: {
-    delegate: () => prisma.hrTagCoverage as unknown as Delegate,
+    delegate: () => prisma.hrCoverage as unknown as Delegate,
     prepare: async (c) => {
       const row = c as Input<"coverage">;
       await assertPairExists(row.pairId);
       await assertOrgLinks(row);
-      return row;
+      return { ...row, level: levelOf(row) };
     },
   },
   "rotation-groups": { delegate: () => prisma.rotationGroup as unknown as Delegate },

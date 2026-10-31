@@ -268,24 +268,29 @@ test("templateTaskDefs reads the routing role with the rest of the definition", 
 
 // --- HR owner assignment -----------------------------------------------------
 
+// ADR-102: rules are rows of the core HR coverage model (level + unit columns,
+// owner / supervisor); JML still sees them as scope / scopeId / juniorHr / seniorHr.
 const rule = (id: string, scope: string) => ({
   id,
-  scope,
-  scopeId: `${scope}-id`,
+  level: scope,
+  entityId: scope === "COMPANY" ? `${scope}-id` : "co",
+  directorateId: scope === "DIRECTORATE" ? `${scope}-id` : null,
+  departmentId: scope === "DEPARTMENT" ? `${scope}-id` : null,
+  teamId: null,
   priority: 0,
   active: true,
   caseTypes: [],
   createdAt: new Date(),
-  juniorHr: { id: "jr", name: "Jr", email: "jr@rihal.om" },
-  seniorHr: { id: "sr", name: "Sr", email: "sr@rihal.om" },
+  owner: { id: "jr", name: "Jr", email: "jr@rihal.om" },
+  supervisor: { id: "sr", name: "Sr", email: "sr@rihal.om" },
 });
 
 test("resolveHrAssignment: department beats directorate beats company; one take-1 query per rung", async () => {
-  on("jmlHrAssignmentRule.findMany", (a) => {
-    const scope = (a.where as { scope: string }).scope;
+  on("hrCoverage.findMany", (a) => {
+    const scope = (a.where as { level: string }).level;
     return scope === "DEPARTMENT" ? [] : [rule(`r-${scope}`, scope)];
   });
-  on("jmlHrAssignmentRule.count", () => 2);
+  on("hrCoverage.count", () => 2);
   const r = await assignment.resolveHrAssignment(
     { entityId: "co", directorateId: "dir", departmentId: "dep" },
     "LEAVE",
@@ -293,10 +298,12 @@ test("resolveHrAssignment: department beats directorate beats company; one take-
   );
   assert.equal(r?.matchedScope, "DIRECTORATE");
   assert.equal(r?.candidateCount, 2);
+  assert.equal(r?.rule.scopeId, "DIRECTORATE-id");
+  assert.equal(r?.rule.juniorHr.id, "jr");
   const finds = calls.filter((c) => c.op === "findMany");
   assert.equal(finds.length, 3);
   assert.ok(finds.every((c) => c.args.take === 1));
-  on("jmlHrAssignmentRule.findMany", () => []);
+  on("hrCoverage.findMany", () => []);
   assert.equal(
     await assignment.resolveHrAssignment(
       { entityId: "co", directorateId: null, departmentId: null },
@@ -350,7 +357,10 @@ test("createAssignmentRule checks the target and both seats before writing", asy
     ["jml.workTasks", [{ type: "GROUP", id: null }]],
     ["jml.supervise", [{ type: "GROUP", id: null }]],
   ]);
-  on("jmlHrAssignmentRule.create", (a) => ({ id: "new", ...(a.data as object) }));
+  on("hrCoverage.create", (a) => ({
+    ...rule("new", (a.data as { level: string }).level),
+    id: "new",
+  }));
   const created = await assignment.createAssignmentRule(input);
   assert.equal(created.id, "new");
   on("orgEntity.findUnique", () => ({ id: "co" }));
@@ -361,13 +371,13 @@ test("createAssignmentRule checks the target and both seats before writing", asy
 });
 
 test("updateAssignmentRule: 404 when missing; re-checks seats only when the pair or target moves", async () => {
-  on("jmlHrAssignmentRule.findUnique", () => null);
+  on("hrCoverage.findFirst", () => null);
   await assert.rejects(
     assignment.updateAssignmentRule("x", {}),
     (e: { status?: number }) => e.status === 404,
   );
-  on("jmlHrAssignmentRule.findUnique", () => rule("r1", "COMPANY"));
-  on("jmlHrAssignmentRule.update", (a) => ({ id: "r1", ...(a.data as object) }));
+  on("hrCoverage.findFirst", () => rule("r1", "COMPANY"));
+  on("hrCoverage.update", () => rule("r1", "COMPANY"));
   await assignment.updateAssignmentRule("r1", { priority: 5 });
   assert.equal(calls.filter((c) => c.model === "user").length, 0, "priority alone: no seat check");
   on("orgEntity.findUnique", () => ({ id: "COMPANY-id" }));
@@ -383,17 +393,20 @@ test("updateAssignmentRule: 404 when missing; re-checks seats only when the pair
 test("listAssignmentRules: a company filter covers its directorates and departments", async () => {
   on("directorate.findMany", () => [{ id: "d1" }]);
   on("department.findMany", () => [{ id: "p1" }, { id: "p2" }]);
-  on("jmlHrAssignmentRule.findMany", () => [rule("r", "COMPANY")]);
-  on("jmlHrAssignmentRule.count", () => 1);
+  on("hrCoverage.findMany", () => [rule("r", "COMPANY")]);
+  on("hrCoverage.count", () => 1);
   const res = await assignment.listAssignmentRules(
     { entityId: "co", hrUserId: "jr", scope: "COMPANY", active: true },
     page,
   );
   assert.equal(res.total, 1);
-  const where = calls.find((c) => c.model === "jmlHrAssignmentRule")!.args.where as {
+  const where = calls.find((c) => c.model === "hrCoverage")!.args.where as {
+    level: string;
     AND: Array<Record<string, unknown>>;
   };
-  assert.deepEqual(where.AND[1], { scopeId: { in: ["co", "d1", "p1", "p2"] } });
+  // Every coverage row carries its company, so one equality covers all three rungs.
+  assert.deepEqual(where.AND.at(-1), { entityId: "co" });
+  assert.equal(where.level, "COMPANY");
 });
 
 test("listJmlHrUsers merges a person's roles and sorts by name", async () => {

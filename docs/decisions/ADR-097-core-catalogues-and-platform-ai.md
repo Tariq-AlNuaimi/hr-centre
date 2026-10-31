@@ -47,6 +47,7 @@ P2-4, P2-8; `ux/shell-people.md` R18).
   `HrTagPair/Coverage` routes by pair with rotation and quotas while `JmlHrAssignmentRule`
   assigns one owner per case by rule; unifying them changes routing behaviour both
   modules rely on and needs HR to confirm who covers what. Documented for a follow-up.
+  **Done in ADR-102** (one core coverage table, routing outcomes unchanged).
 - Performance does not yet reference `core_competencies` (its templates keep their own
   questions); the catalogue is ready for it.
 
