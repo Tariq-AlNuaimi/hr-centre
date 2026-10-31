@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { latestRounds, type Round } from "@/lib/core/approvals/store";
+import { JD_SUBJECT, roundSignatures, versionRound } from "./offer-round";
 import { LINEAR_STAGES, stepForStage, type Stage } from "@/lib/hiring/stage-rules";
 
 /**
@@ -51,16 +53,21 @@ export async function myHiring(userId: string, now: Date = new Date()) {
           select: { id: true, name: true, stage: true, requisitionId: true, updatedAt: true },
         }),
         // The hiring-manager signatures already on each awaiting JD's current version.
-        prisma.hiringJdSignoff.findMany({
-          where: {
-            requisitionId: { in: awaitingJd.map((r) => r.id) },
-            signatory: "HIRING_MANAGER",
-          },
-          select: { requisitionId: true, version: true },
-        }),
+        latestRounds(
+          JD_SUBJECT,
+          awaitingJd.map((r) => r.id),
+        ),
       ])
-    : [[], [], []];
-  const signedNow = new Set(signed.map((s) => `${s.requisitionId}:${s.version}`));
+    : [[], [], new Map<string, Round>()];
+  const signedNow = new Set(
+    awaitingJd
+      .filter((r) =>
+        roundSignatures(versionRound(signed.get(r.id) ?? null, r.jdVersion)).some(
+          (s) => s.signatory === "HIRING_MANAGER",
+        ),
+      )
+      .map((r) => `${r.id}:${r.jdVersion}`),
+  );
 
   const titleOf = new Map(requisitions.map((r) => [r.id, r.title]));
   const DAY = 86_400_000;

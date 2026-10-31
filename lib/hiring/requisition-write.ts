@@ -1,10 +1,12 @@
 import type { HiringRequisition, Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { can, type HiringActor } from "./access";
+import { cancelOpenRounds } from "@/lib/core/approvals/store";
+import { JD_SUBJECT } from "./offer-round";
 import { assertChainStaffed, getRoutedChain } from "./approval-config";
 import { HiringRuleError } from "./http";
 import { toOMRorNull } from "./money";
-import { notifyNextRequisitionStep } from "./requisition-status";
+import { notifyNextRequisitionStep, openRequisitionRound } from "./requisition-status";
 import { isLiveUser } from "./people";
 import { canRaiseRequisition } from "./planning-rules";
 import { requisitionSubject } from "./scope";
@@ -84,6 +86,7 @@ export async function createHiringRequest(actor: HiringActor, input: CreateHirin
   const r = input.request;
   const subject = await assertPlacement(actor, r.entityId, r.departmentId ?? null);
   await assertPeople([r.hiringManagerId]);
+  let chain: Awaited<ReturnType<typeof getRoutedChain>>["steps"] = [];
   if (input.mode === "submit") {
     // Submitting straight away: refuse a chain with a step nobody holds.
     const entity = await prisma.orgEntity.findUnique({
@@ -97,6 +100,7 @@ export async function createHiringRequest(actor: HiringActor, input: CreateHirin
       "requisition",
     );
     assertChainStaffed(steps);
+    chain = steps;
   }
   if (!r.hiringManagerId)
     throw new HiringRuleError("Choose the hiring manager before saving.", 400);
@@ -145,6 +149,7 @@ export async function createHiringRequest(actor: HiringActor, input: CreateHirin
           reason: note,
         },
       });
+      await openRequisitionRound(tx, req, actor.userId, chain);
     }
     return req;
   });
@@ -214,16 +219,20 @@ export async function updateRequisition(
   );
   const voids =
     jdChanged && (existing.jdStatus === "AWAITING_SIGNOFF" || existing.jdStatus === "APPROVED");
-  return prisma.hiringRequisition.update({
-    where: { id: existing.id },
-    data: voids
-      ? {
-          ...data,
-          jdStatus: "DRAFT",
-          jdVersion: { increment: 1 },
-          jdApprovedAt: null,
-          jdAuthorId: actor.userId,
-        }
-      : data,
+  if (!voids) return prisma.hiringRequisition.update({ where: { id: existing.id }, data });
+  // Editing a JD under sign-off voids its round (ADR-094): the new version starts fresh.
+  return auditedTransaction(async (tx) => {
+    const updated = await tx.hiringRequisition.update({
+      where: { id: existing.id },
+      data: {
+        ...data,
+        jdStatus: "DRAFT",
+        jdVersion: { increment: 1 },
+        jdApprovedAt: null,
+        jdAuthorId: actor.userId,
+      },
+    });
+    await cancelOpenRounds(tx, JD_SUBJECT, existing.id);
+    return updated;
   });
 }

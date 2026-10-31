@@ -464,9 +464,9 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - MagicLink: id, purpose, subjectId, tokenHash, expiresAt, revokedAt, lastUsedAt, createdById, createdAt
 - ModuleSetting: id, module, key, value, updatedById, updatedBy, createdAt, updatedAt
-- ApprovalRequest: id, module, subjectType, subjectId, title, href, status, submittedById, submittedBy, excludedIds, createdAt, closedAt, steps, decisions
+- ApprovalRequest: id, module, subjectType, subjectId, subjectVersion, title, href, status, submittedById, submittedBy, excludedIds, createdAt, closedAt, steps, decisions
 - ApprovalStep: id, requestId, request, sequence, roleKey, label, requiredApprovals, status, decidedAt, decisions
-- ApprovalDecision: id, requestId, request, stepId, step, deciderId, decider, onBehalfOfId, onBehalfOf, viaProxy, action, comment, decidedAt
+- ApprovalDecision: id, requestId, request, stepId, step, deciderId, decider, onBehalfOfId, onBehalfOf, viaProxy, slot, action, comment, decidedAt
 - ApprovalDelegation: id, delegatorId, delegator, delegateId, delegate, module, validFrom, validUntil, reason, revokedAt, createdAt
 - EmailTemplate: id, module, key, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - NotificationPreference: id, userId, user, kind, inApp, email, updatedAt
@@ -680,7 +680,7 @@
 - lib/hiring/offer-acceptance.ts: recordAcceptance, uploadSignedLetter, signedLetterUrl
 - lib/hiring/offer-approvals.ts: approvalView, decideOffer, previewChain
 - lib/hiring/offer-package.ts: ALLOWANCE_KEYS, CompBreakdown, buildCompBreakdown, BandStatus, bandVerdict, OfferTerms, OfferTermField, diffOfferTerms, restartsApproval, summarizeVersion, nextVersionNumber, withSupersession
-- lib/hiring/offer-round.ts: OFFER_SUBJECT, delegatorActors, qualifyForRole, roundDecisions
+- lib/hiring/offer-round.ts: OFFER_SUBJECT, REQUISITION_SUBJECT, JD_SUBJECT, delegatorActors, qualifyForRole, roundDecisions, JD_STEP, versionRound, roundSignatures
 - lib/hiring/offer-rules.ts: OFFER_STATUSES, offerTransitions, offerTransitionError, APPROVAL_BOUND_FIELDS, LIVE_OFFER_STATUSES, OfferStep, OfferDecision, nextOfferStep, offerRefusalMessage, offerDecisionRefusal, sameMuscatDay
 - lib/hiring/offer-versions.ts: termsOf, ensureInitialVersion, listVersions, RevisionBody, reviseOffer
 - lib/hiring/offer-write.ts: OfferBody, createOffer, updateOffer, deleteOffer
@@ -695,8 +695,8 @@
 - lib/hiring/preboarding.ts: preboardingView, recordHandover, retryHandoff
 - lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, hiringManagerEmployeeId, handToJml, withdrawFromJml
 - lib/hiring/requisition-pending.ts: PendingStep, pendingSteps
-- lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, RequiredField, ReadinessInput, readinessProblems, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal, isPastTargetClose
-- lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, notifyNextRequisitionStep, syncRequisitionFill, assertRoutedToActor
+- lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, RequiredField, ReadinessInput, readinessProblems, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, requisitionRefusalMessage, signRefusal, isPastTargetClose
+- lib/hiring/requisition-status.ts: requisitionChain, openRequisitionRound, currentRound, requisitionRefusal, StatusResult, changeRequisitionStatus, notifyNextRequisitionStep, syncRequisitionFill, assertRoutedToActor
 - lib/hiring/requisition-views.ts: approvalView, statusHistory, auditTrail
 - lib/hiring/requisition-write.ts: createRequisition, createHiringRequest, updateRequisition
 - lib/hiring/requisitions.ts: LoadedRequisition, loadRequisition, seatOccupancyWhere, bandFor, requisitionDetail, RequisitionListQuery, listRequisitions

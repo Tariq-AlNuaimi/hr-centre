@@ -10,6 +10,7 @@ import {
   type StepState,
 } from "../../lib/core/approvals/rules";
 import { offerDecisionRefusal } from "../../lib/hiring/offer-rules";
+import { requisitionRefusalMessage, signRefusal } from "../../lib/hiring/requisition-rules";
 import { delegationSchema } from "../../lib/validations/core/approvals";
 
 // ADR-094: the core approvals engine's rules. Every module's approvals ride on
@@ -145,4 +146,75 @@ test("parity: Hiring's offer sentences sit on the engine's codes, in the order u
   );
   // New with delegation: acting for the referrer is refused like being the referrer.
   assert.match(offerDecisionRefusal({ ...offer, actingForId: "r" })!, /referred this candidate/);
+});
+
+test("parity: requisition sentences sit on the engine's codes, in the order users saw", () => {
+  const base = {
+    actorId: "a",
+    isAdmin: false,
+    requesterId: "r",
+    routedApproverIds: ["a"],
+    priorSignerIds: [] as string[],
+  };
+  // The exact sentences of ADR-063 (Interview Hub), unchanged by the move.
+  assert.equal(
+    signRefusal({ ...base, requesterId: null }),
+    "Can't verify who submitted this requisition for approval, so it can't be signed — re-submit it for approval first.",
+  );
+  assert.equal(
+    signRefusal({ ...base, actorId: "r", routedApproverIds: ["r"] }),
+    "You can't approve a requisition you submitted — it needs a different approver (segregation of duties).",
+  );
+  assert.equal(
+    signRefusal({ ...base, priorSignerIds: ["a"] }),
+    "You already signed an earlier step of this approval — the next step needs a different approver.",
+  );
+  assert.equal(
+    signRefusal({ ...base, routedApproverIds: [] }),
+    "Only the approver routed to this step can sign it.",
+  );
+  // Order: no submitter, then the submitter, then a prior signer, then routing.
+  assert.match(signRefusal({ ...base, requesterId: null, routedApproverIds: [] })!, /re-submit/);
+  assert.match(signRefusal({ ...base, actorId: "r", routedApproverIds: [] })!, /submitted/);
+  assert.match(
+    signRefusal({ ...base, priorSignerIds: ["a"], routedApproverIds: [], isAdmin: true })!,
+    /earlier step/,
+    "not admin-overridable",
+  );
+  // New with delegation: a delegate of the routed approver qualifies; acting for
+  // the submitter is still self-approval.
+  assert.equal(
+    signRefusal({ ...base, actorId: "d", routedApproverIds: ["h"], actingForId: "h" }),
+    null,
+  );
+  assert.match(
+    signRefusal({ ...base, actorId: "d", routedApproverIds: ["r"], actingForId: "r" })!,
+    /submitted/,
+  );
+  for (const code of [
+    "NO_SUBMITTER",
+    "SUBMITTER",
+    "EXCLUDED",
+    "PRIOR_STEP",
+    "ALREADY",
+    "NOT_QUALIFIED",
+  ] as const)
+    assert.ok(requisitionRefusalMessage(code).length > 0);
+});
+
+test("a module that owns its submitter rule skips the engine's (JD drafter)", () => {
+  assert.equal(decisionRefusal({ ...base, submitterId: "a", submitterMayDecide: true }), null);
+  assert.equal(decisionRefusal({ ...base, submitterId: null, submitterMayDecide: true }), null);
+  // Every other ban still holds.
+  assert.equal(
+    decisionRefusal({ ...base, submitterMayDecide: true, qualified: false }),
+    "NOT_QUALIFIED",
+  );
+});
+
+test("someone who approved a two-signatory step may still turn it down — never approve twice", () => {
+  const signed = [approved(2, "a")];
+  assert.equal(decisionRefusal({ ...base, decisions: signed, action: "APPROVED" }), "ALREADY");
+  assert.equal(decisionRefusal({ ...base, decisions: signed, action: "SENT_BACK" }), null);
+  assert.equal(decisionRefusal({ ...base, decisions: signed, action: "REJECTED" }), null);
 });

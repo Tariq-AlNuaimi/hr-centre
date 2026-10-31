@@ -125,31 +125,55 @@ let pending: typeof import("../../lib/hiring/requisition-pending");
 
 before(async () => {
   const day = (d: string) => new Date(`2026-10-${d}T08:00:00Z`);
+  const step = (sequence: number, roleKey: string, status: string) => ({
+    id: `${roleKey}-${sequence}`,
+    sequence,
+    roleKey,
+    label: roleKey,
+    requiredApprovals: 1,
+    status,
+    decidedAt: null,
+  });
+  // ADR-094: the rounds live in the core approvals engine — one batched read.
   mockApi.module(import.meta.resolve("../../lib/prisma.ts"), {
     namedExports: {
+      auditedTransaction: async () => {
+        throw new Error("no writes here");
+      },
+      prismaUnfiltered: {},
       prisma: {
-        orgEntity: {
-          findMany: async () => (calls.push("entity"), [{ id: "e1", code: "RIHAL" }]),
-        },
-        hiringRequisitionStatusHistory: {
+        approvalRequest: {
           findMany: async () => (
-            calls.push("history"),
-            [
-              { id: "s-a", requisitionId: "a", changedAt: day("20") },
-              { id: "s-b2", requisitionId: "b", changedAt: day("15") },
-              { id: "s-b1", requisitionId: "b", changedAt: day("01") },
-            ]
-          ),
-        },
-        hiringRequisitionApproval: {
-          findMany: async () => (
-            calls.push("approvals"),
+            calls.push("rounds"),
             [
               {
-                submissionId: "s-b2",
-                sequence: 1,
-                requiredRole: "HR_MANAGER",
-                createdAt: day("24"),
+                subjectId: "a",
+                status: "PENDING",
+                createdAt: day("20"),
+                steps: [
+                  step(1, "HR_MANAGER", "CURRENT"),
+                  step(2, "OPERATIONS_DIRECTOR", "WAITING"),
+                ],
+                decisions: [],
+              },
+              {
+                // b's latest round: HR signed on the 24th.
+                subjectId: "b",
+                status: "PENDING",
+                createdAt: day("15"),
+                steps: [
+                  step(1, "HR_MANAGER", "APPROVED"),
+                  step(2, "OPERATIONS_DIRECTOR", "CURRENT"),
+                ],
+                decisions: [{ decidedAt: day("24"), step: { sequence: 1 } }],
+              },
+              {
+                // An older, sent-back round of b — never the one read.
+                subjectId: "b",
+                status: "SENT_BACK",
+                createdAt: day("01"),
+                steps: [step(1, "HR_MANAGER", "SENT_BACK")],
+                decisions: [],
               },
             ]
           ),
@@ -157,20 +181,11 @@ before(async () => {
       },
     },
   });
-  mockApi.module(import.meta.resolve("../../lib/hiring/settings.ts"), {
-    namedExports: { readSetting: async () => null, asNumber: (_: unknown, d: number) => d },
-  });
   pending = await import("../../lib/hiring/requisition-pending");
 });
 
 test("a pending requisition names the step it waits on and for how long — in batched reads", async () => {
-  const row = (id: string, status = "PENDING_APPROVAL") => ({
-    id,
-    status,
-    entityId: "e1",
-    salaryBandMax: 1200,
-    salaryCurrency: "OMR",
-  });
+  const row = (id: string, status = "PENDING_APPROVAL") => ({ id, status });
   const out = await pending.pendingSteps(
     [row("a"), row("b"), row("c", "OPEN")],
     new Date("2026-10-27T09:00:00Z"),
@@ -179,6 +194,6 @@ test("a pending requisition names the step it waits on and for how long — in b
   // b's current round is its latest submission; HR signed on the 24th.
   assert.deepEqual(out.get("b"), { role: "Operations director", days: 3 });
   assert.equal(out.has("c"), false);
-  assert.deepEqual(calls.sort(), ["approvals", "entity", "history"], "one read per signal");
+  assert.deepEqual(calls, ["rounds"], "one batched read for the page");
   assert.equal((await pending.pendingSteps([row("x", "OPEN")])).size, 0);
 });

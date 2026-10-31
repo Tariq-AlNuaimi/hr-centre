@@ -1,7 +1,16 @@
 import { revalidateTag } from "next/cache";
 import type { HiringJdSignatory, HiringRequisition } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { can, canSignJdForHr, type HiringActor } from "./access";
+import { actsAs, can, canSignJdForHr, type HiringActor } from "./access";
+import {
+  ApprovalRefusal,
+  decide,
+  latestRound,
+  openRound,
+  type Round,
+  type Tx,
+} from "@/lib/core/approvals/store";
+import { JD_STEP, JD_SUBJECT, roundSignatures, versionRound } from "./offer-round";
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { HiringRuleError } from "./http";
 import { notifyJdSubmitted } from "./notify";
@@ -17,7 +26,16 @@ import {
 import type { LoadedRequisition } from "./requisitions";
 import { isAdvertisable } from "./posting-rules";
 
-/** Step 3 — JD sign-off service (Interview Hub `POST /api/positions/[id]/jd`). */
+/**
+ * Step 3 — JD sign-off service (Interview Hub `POST /api/positions/[id]/jd`).
+ *
+ * Rounds live in the core approvals engine (ADR-094): submitting a version
+ * opens a round (`subjectVersion` = the JD version) with ONE step that needs
+ * two different signatories; each signature is a decision naming its slot
+ * (HIRING_MANAGER / HR); a request for changes sends the round back and bumps
+ * the version. Hiring's slot rules and sentences (jd-rules.ts) run first; the
+ * engine is told the module owns the drafter rule (`submitterMayDecide`).
+ */
 
 const HISTORY_LIMIT = 50;
 export const CAREERS_TAG = "hiring-careers";
@@ -30,51 +48,57 @@ function jdActor(actor: HiringActor, l: LoadedRequisition): JdActor {
   };
 }
 
-async function context(req: HiringRequisition): Promise<JdContext> {
-  const signed = await prisma.hiringJdSignoff.findMany({
-    where: { requisitionId: req.id, version: req.jdVersion, action: "SIGNED" },
-    select: { signatory: true, actorId: true },
-    take: 2,
-  });
+async function context(req: HiringRequisition, round?: Round | null): Promise<JdContext> {
+  const current = versionRound(
+    round === undefined ? await latestRound(JD_SUBJECT, req.id) : round,
+    req.jdVersion,
+  );
   return {
     jdStatus: req.jdStatus,
     description: req.description,
     jdAuthorId: req.jdAuthorId,
     hiringManagerId: req.hiringManagerId,
     requisitionStatus: req.status,
-    signatures: signed.flatMap((s) =>
-      s.signatory ? [{ signatory: s.signatory, actorId: s.actorId }] : [],
-    ),
+    signatures: roundSignatures(current).map((s) => ({
+      signatory: s.signatory,
+      actorId: s.actorId,
+    })),
   };
 }
 
 export async function jdView(actor: HiringActor, l: LoadedRequisition) {
   const req = l.req;
-  const [ctx, history, liveCareers, signedRows] = await Promise.all([
-    context(req),
-    prisma.hiringJdSignoff.findMany({
-      where: { requisitionId: req.id },
-      orderBy: { createdAt: "desc" },
+  const [round, decisions, liveCareers] = await Promise.all([
+    latestRound(JD_SUBJECT, req.id),
+    prisma.approvalDecision.findMany({
+      where: { request: { subjectType: JD_SUBJECT, subjectId: req.id } },
+      orderBy: { decidedAt: "desc" },
       take: HISTORY_LIMIT,
       select: {
         id: true,
-        version: true,
         action: true,
-        signatory: true,
-        actorName: true,
+        slot: true,
         comment: true,
-        createdAt: true,
+        decidedAt: true,
+        decider: { select: { name: true, email: true } },
+        request: { select: { subjectVersion: true } },
       },
     }),
     prisma.hiringPosting.count({
       where: { requisitionId: req.id, channel: "CAREERS_PAGE", state: "LIVE" },
     }),
-    prisma.hiringJdSignoff.findMany({
-      where: { requisitionId: req.id, version: req.jdVersion, action: "SIGNED" },
-      select: { signatory: true, actorName: true, createdAt: true },
-      take: 2,
-    }),
   ]);
+  const ctx = await context(req, round);
+  const signedRows = roundSignatures(versionRound(round, req.jdVersion));
+  const history = decisions.map((d) => ({
+    id: d.id,
+    version: d.request.subjectVersion ?? 0,
+    action: d.action === "APPROVED" ? "SIGNED" : "CHANGES_REQUESTED",
+    signatory: (d.slot as HiringJdSignatory | null) ?? null,
+    actorName: d.decider.name ?? d.decider.email,
+    comment: d.comment,
+    createdAt: d.decidedAt,
+  }));
   const a = jdActor(actor, l);
   return {
     jdVersion: req.jdVersion,
@@ -156,9 +180,21 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
 
   if (body.action === "SUBMIT") {
     await assertHrSignerExists(actor, l);
-    await prisma.hiringRequisition.update({
-      where: { id: req.id, jdStatus: req.jdStatus },
-      data: { jdStatus: "AWAITING_SIGNOFF", jdAuthorId: actor.userId },
+    await auditedTransaction(async (tx) => {
+      await tx.hiringRequisition.update({
+        where: { id: req.id, jdStatus: req.jdStatus, jdVersion: req.jdVersion },
+        data: { jdStatus: "AWAITING_SIGNOFF", jdAuthorId: actor.userId },
+      });
+      await openRound(tx, {
+        module: "hiring",
+        subjectType: JD_SUBJECT,
+        subjectId: req.id,
+        subjectVersion: req.jdVersion,
+        title: req.title,
+        href: `/hiring/requisitions/${req.id}/jd`,
+        submittedById: actor.userId,
+        steps: [{ ...JD_STEP, requiredApprovals: 2 }],
+      });
     });
     // UX review P0 (US-6): both signers hear it is waiting on them.
     await notifyJdSubmitted({
@@ -171,29 +207,24 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
     return;
   }
   if (body.action === "SIGN") {
-    const approved = await auditedTransaction(async (tx) => {
-      await tx.hiringJdSignoff.create({
-        data: {
-          requisitionId: req.id,
-          version: req.jdVersion,
-          action: "SIGNED",
-          signatory: body.signatory,
-          actorId: actor.userId,
-          actorName: actor.name,
-          comment: body.comment ?? null,
-        },
-      });
-      const count = await tx.hiringJdSignoff.count({
-        where: { requisitionId: req.id, version: req.jdVersion, action: "SIGNED" },
-      });
-      if (count < 2) return false;
-      await tx.hiringRequisition.update({
-        where: { id: req.id, jdVersion: req.jdVersion, jdStatus: "AWAITING_SIGNOFF" },
-        data: { jdStatus: "APPROVED", jdApprovedAt: new Date() },
-      });
-      return true;
+    // The HR slot by someone who holds no HR role is a hiring admin's proxy signature.
+    const viaProxy =
+      body.signatory === "HR" &&
+      !actsAs(actor, "HR_MANAGER", l.subject) &&
+      !actsAs(actor, "HR_SPECIALIST", l.subject);
+    const outcome = await decideJd(actor, req, {
+      action: "APPROVED",
+      slot: body.signatory,
+      comment: body.comment,
+      viaProxy,
+      onClosed: (tx) =>
+        tx.hiringRequisition.update({
+          where: { id: req.id, jdVersion: req.jdVersion, jdStatus: "AWAITING_SIGNOFF" },
+          data: { jdStatus: "APPROVED", jdApprovedAt: new Date() },
+          select: { id: true },
+        }),
     });
-    const done = approved || (await completeIfFullySigned(req.id, req.jdVersion));
+    const done = outcome === "APPROVED";
     if (done) revalidateTag(CAREERS_TAG, { expire: 0 });
     // QA D-14: the signer's notice is done; once approved, everyone's is.
     await resolveUserNotices(
@@ -202,41 +233,64 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
     );
     return;
   }
-  await auditedTransaction(async (tx) => {
-    await tx.hiringJdSignoff.create({
-      data: {
-        requisitionId: req.id,
-        version: req.jdVersion,
-        action: "CHANGES_REQUESTED",
-        actorId: actor.userId,
-        actorName: actor.name,
-        comment: body.comment,
-      },
-    });
-    await tx.hiringRequisition.update({
-      where: { id: req.id, jdVersion: req.jdVersion, jdStatus: "AWAITING_SIGNOFF" },
-      data: { jdStatus: "CHANGES_REQUESTED", jdVersion: { increment: 1 }, jdApprovedAt: null },
-    });
+  await decideJd(actor, req, {
+    action: "SENT_BACK",
+    slot: null,
+    comment: body.comment,
+    viaProxy: false,
+    onClosed: (tx) =>
+      tx.hiringRequisition.update({
+        where: { id: req.id, jdVersion: req.jdVersion, jdStatus: "AWAITING_SIGNOFF" },
+        data: { jdStatus: "CHANGES_REQUESTED", jdVersion: { increment: 1 }, jdApprovedAt: null },
+        select: { id: true },
+      }),
   });
   revalidateTag(CAREERS_TAG, { expire: 0 });
   // Changes requested: this version will never be signed, so its notices are done.
   await resolveUserNotices(`hiring:jd:${req.id}:v${req.jdVersion}:`);
 }
 
-/** Closes the race where both signers commit concurrently and neither saw count = 2. */
-async function completeIfFullySigned(id: string, version: number): Promise<boolean> {
-  const signed = await prisma.hiringJdSignoff.count({
-    where: { requisitionId: id, version, action: "SIGNED" },
-  });
-  if (signed < 2) return false;
+/**
+ * One JD decision on the engine. `onClosed` runs in the decision's
+ * transaction when the round closes (both signatures in, or sent back).
+ */
+async function decideJd(
+  actor: HiringActor,
+  req: HiringRequisition,
+  input: {
+    action: "APPROVED" | "SENT_BACK";
+    slot: HiringJdSignatory | null;
+    comment?: string | null;
+    viaProxy: boolean;
+    onClosed: (tx: Tx) => Promise<unknown>;
+  },
+) {
   try {
-    await prisma.hiringRequisition.update({
-      where: { id, jdVersion: version, jdStatus: "AWAITING_SIGNOFF" },
-      data: { jdStatus: "APPROVED", jdApprovedAt: new Date() },
+    const result = await decide({
+      subjectType: JD_SUBJECT,
+      subjectId: req.id,
+      subjectVersion: req.jdVersion,
+      actorId: actor.userId,
+      action: input.action,
+      comment: input.comment ?? null,
+      slot: input.slot,
+      submitterMayDecide: true,
+      qualify: async () => ({ onBehalfOfId: null, viaProxy: input.viaProxy }),
+      onOutcome: async (tx, outcome) => {
+        if (outcome === "APPROVED" || outcome === "SENT_BACK") await input.onClosed(tx);
+      },
     });
-    return true;
+    return result.outcome;
   } catch (e) {
-    if ((e as { code?: string })?.code === "P2025") return false;
-    throw e;
+    if (!(e instanceof ApprovalRefusal)) throw e;
+    if (e.code === "ALREADY")
+      throw new HiringRuleError(
+        "You've already signed this job description — the second signature has to come from someone else (separation of duties).",
+        403,
+      );
+    throw new HiringRuleError(
+      "This job description changed since you loaded it — reload and retry.",
+      409,
+    );
   }
 }

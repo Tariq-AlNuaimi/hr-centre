@@ -281,22 +281,25 @@ enum ApprovalAction {
 }
 
 model ApprovalRequest {
-  id            String                @id @default(cuid())
-  module        String                @db.VarChar(20)
-  subjectType   String                @map("subject_type") @db.VarChar(40)
-  subjectId     String                @map("subject_id")
+  id             String                @id @default(cuid())
+  module         String                @db.VarChar(20)
+  subjectType    String                @map("subject_type") @db.VarChar(40)
+  subjectId      String                @map("subject_id")
+  /// The subject's revision this round approves (a JD version); null when the
+  /// subject is not versioned.
+  subjectVersion Int?                  @map("subject_version")
   /// Display only (a candidate name, a requisition title) — never pay or IDs.
-  title         String
-  href          String
-  status        ApprovalRequestStatus @default(PENDING)
-  submittedById String?               @map("submitted_by_id")
-  submittedBy   User?                 @relation("ApprovalSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  title          String
+  href           String
+  status         ApprovalRequestStatus @default(PENDING)
+  submittedById  String?               @map("submitted_by_id")
+  submittedBy    User?                 @relation("ApprovalSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
   /// People who may never decide this round besides the submitter (a referrer).
-  excludedIds   String[]              @default([]) @map("excluded_ids")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  closedAt      DateTime?             @map("closed_at")
-  steps         ApprovalStep[]
-  decisions     ApprovalDecision[]
+  excludedIds    String[]              @default([]) @map("excluded_ids")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  closedAt       DateTime?             @map("closed_at")
+  steps          ApprovalStep[]
+  decisions      ApprovalDecision[]
 
   @@index([subjectType, subjectId, createdAt])
   @@index([status, module])
@@ -336,11 +339,17 @@ model ApprovalDecision {
   onBehalfOf   User?           @relation("ApprovalOnBehalfOf", fields: [onBehalfOfId], references: [id], onDelete: SetNull)
   /// A module administrator decided without holding the step's role (proxy).
   viaProxy     Boolean         @default(false) @map("via_proxy")
+  /// The named signature this decision fills on a multi-signatory step (a JD's
+  /// HIRING_MANAGER / HR slot); null when the step's signatures are not named.
+  slot         String?         @db.VarChar(40)
   action       ApprovalAction
   comment      String?
   decidedAt    DateTime        @default(now()) @map("decided_at")
 
-  @@unique([stepId, deciderId])
+  /// One approval per person per step; the same person may still turn the step
+  /// down after approving it (a two-signatory step closes on a no).
+  @@unique([stepId, deciderId, action])
+  @@unique([stepId, slot])
   @@index([requestId])
   @@index([deciderId])
   @@index([onBehalfOfId])
