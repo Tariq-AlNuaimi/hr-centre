@@ -15,6 +15,7 @@
 - app/[locale]/(dashboard)/admin/cycles/(list)/page.tsx
 - app/[locale]/(dashboard)/admin/cycles/[cycleId]/page.tsx
 - app/[locale]/(dashboard)/admin/edge-cases/page.tsx
+- app/[locale]/(dashboard)/admin/email-log/page.tsx
 - app/[locale]/(dashboard)/admin/import/page.tsx
 - app/[locale]/(dashboard)/admin/imports/page.tsx
 - app/[locale]/(dashboard)/admin/org-setup/page.tsx
@@ -161,6 +162,7 @@
 - app/api/calibration/route.ts  [GET,POST,PUT]
 - app/api/careers/apply/route.ts  [POST]
 - app/api/careers/route.ts  [GET]
+- app/api/competencies/route.ts  [GET]
 - app/api/cycles/[id]/overview/route.ts  [GET]
 - app/api/cycles/[id]/participants/[participantId]/approve/route.ts  [POST]
 - app/api/cycles/[id]/participants/route.ts  [GET,POST]
@@ -169,6 +171,8 @@
 - app/api/cycles/[id]/route.ts  [GET,PUT]
 - app/api/cycles/[id]/stages/route.ts  [PUT]
 - app/api/cycles/route.ts  [GET,POST]
+- app/api/email-log/[id]/resend/route.ts  [POST]
+- app/api/email-log/route.ts  [GET]
 - app/api/employees/[id]/documents/[docId]/route.ts  [GET,DELETE]
 - app/api/employees/[id]/documents/route.ts  [POST]
 - app/api/employees/[id]/record/route.ts  [PATCH]
@@ -412,6 +416,7 @@
 - app/api/org/directorates/route.ts  [GET,POST]
 - app/api/org/entities/[id]/route.ts  [PATCH]
 - app/api/org/entities/route.ts  [GET,POST]
+- app/api/org/grades/route.ts  [GET]
 - app/api/org/heads/route.ts  [PUT]
 - app/api/org/teams/[id]/route.ts  [PATCH,DELETE]
 - app/api/org/teams/route.ts  [GET,POST]
@@ -460,7 +465,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, hrCoverageAsOwner, hrCoverageAsSupervisor, jmlEmailsSent, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences, documentsUploaded
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, hrCoverageAsOwner, hrCoverageAsSupervisor, jmlEmailsSent, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences, documentsUploaded
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -474,7 +479,7 @@
 - EmailTemplate: id, module, key, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - NotificationPreference: id, userId, user, kind, inApp, email, updatedAt
 - Grade: id, code, name, minSalary, maxSalary, order, entityId, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Competency: id, name, definition, category, roleFamily, entityId, anchors, deletedAt, deletedBy, createdAt, updatedAt
+- Competency: id, name, definition, category, roleFamily, entityId, anchors, templateQuestions, deletedAt, deletedBy, createdAt, updatedAt
 - Document: id, employeeId, employee, category, title, fileName, contentType, sizeBytes, blobPathname, restricted, uploadedById, uploadedBy, createdAt, updatedAt, deletedAt, deletedBy
 - AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
 - RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
@@ -483,7 +488,7 @@
 - OrgUnitChange: id, unitKind, unitId, effectiveDate, newName, moveParent, newParentId, note, status, beforeName, beforeParentId, appliedAt, failureReason, createdById, createdAt, updatedAt
 - Team: id, name, departmentId, department, headEmployeeId, head, employees, employeesAgree, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, headEmployeeId, head, directorateId, directorate, directorateAgree, teams, employees, employeesAgree, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, departmentEntityAgree, entityId, entity, teamId, team, teamDepartmentAgree, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, headOfEntities, headOfDirectorates, headOfDepartments, headOfTeams, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, basicSalary, basicSalaryEnc, status, jobTitle, grade, gradeId, gradeRef, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt, documents
+- Employee: id, odooId, name, email, departmentId, department, departmentEntityAgree, entityId, entity, teamId, team, teamDepartmentAgree, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, headOfEntities, headOfDirectorates, headOfDepartments, headOfTeams, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, basicSalary, basicSalaryEnc, status, jobTitle, gradeId, gradeRef, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt, documents
 - ImportBatch: id, kind, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, reference, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -502,7 +507,7 @@
 - DepartmentScore: id, cycleId, cycle, departmentId, department, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
 - ThreeSixtyCycle: id, cycleId, cycle, status, opensAt, deadline, templates, assignments, createdAt, updatedAt
 - AssessmentTemplate: id, threeSixtyCycleId, threeSixtyCycle, type, questions, assignments, createdAt, updatedAt
-- TemplateQuestion: id, templateId, template, text, orderIndex, scored, responses, createdAt
+- TemplateQuestion: id, templateId, template, text, orderIndex, scored, competencyId, competency, responses, createdAt
 - Assignment: id, threeSixtyCycleId, threeSixtyCycle, rateeId, ratee, raterId, rater, templateId, template, status, submittedAt, responses, createdAt, updatedAt
 - AssignmentResponse: id, assignmentId, assignment, questionId, question, score, text, createdAt, updatedAt
 - Project: id, cycleId, cycle, name, members, createdAt, updatedAt
@@ -534,11 +539,9 @@
 - NetworkProvider: id, name, providerType, location, address, phone, deletedAt, deletedBy, createdAt, updatedAt
 - HiveSavedReply: id, title, body, hrPairId, hrPair, createdById, createdBy, createdAt, updatedAt
 - HiveOrgUnitInfo: id, kind, unitId, leaderName, leaderTitle, order, createdAt, updatedAt
-- HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, locationCity, locationCountry, workArrangement, candidates, interviews, roundPlans, offers, questions, statusHistory, approvals, postings, jdSignoffs, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
+- HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, locationCity, locationCountry, workArrangement, candidates, interviews, roundPlans, offers, questions, statusHistory, postings, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
 - HiringPosting: id, requisitionId, requisition, channel, state, detail, omaniPreferred, postedAt, postedById, withdrawnAt, withdrawnById, createdAt, updatedAt
-- HiringRequisitionStatusHistory: id, requisitionId, requisition, fromStatus, toStatus, changedById, reason, changedAt, approvals
-- HiringRequisitionApproval: id, requisitionId, requisition, submissionId, submission, sequence, requiredRole, approverId, comment, createdAt
-- HiringJdSignoff: id, requisitionId, requisition, version, action, signatory, actorId, actorName, comment, createdAt
+- HiringRequisitionStatusHistory: id, requisitionId, requisition, fromStatus, toStatus, changedById, reason, changedAt
 - HiringCandidate: id, requisitionId, requisition, name, email, phone, nationality, currentEmployer, linkedinUrl, cvBlobPathname, cvFileName, deiGender, deiEthnicity, profileData, necEnc, salaryExpectationEnc, source, sourceAttribution, referredById, packageStatus, packageRequestedAt, packageDeclinedAt, packageDeclinedReason, packageConfirmedAt, packageConfirmedById, fitScores, overallScore, aiRationale, aiWhyNot, stage, rejectionReason, rejectionNotes, rejectionNoticeSentAt, rejectionHoldUntil, stallCause, stallNote, stallCauseAt, stallCauseById, stallCauseStage, preferredAt, preferredById, preferredNote, preferredOutstandingScorecards, agencyName, agencyInviteId, agencyInvite, agencySubmissionNote, consentAt, noticeVersion, employeeId, erasedAt, documents, interviews, scorecards, stageHistory, offers, assessment, negotiationNotes, handover, deletedAt, deletedBy, createdAt, updatedAt
 - HiringStageHistory: id, candidateId, candidate, fromStage, toStage, movedById, reason, movedAt
 - HiringInterview: id, requisitionId, requisition, candidateId, candidate, round, scheduledDate, location, meetingLink, status, transcript, notes, aiAnalysis, recordingUrl, notetakerDraft, notetakerStatus, panelists, scorecards, deletedAt, deletedBy, createdAt, updatedAt
@@ -566,7 +569,6 @@
 - JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, assigneeRole, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
 - JmlDeskMember: id, desk, userId, user, createdAt
 - JmlTaskComment: id, taskId, task, body, authorId, author, createdAt
-- JmlHrAssignmentRule: id, scope, scopeId, priority, active, caseTypes, juniorHrUserId, juniorHr, seniorHrUserId, seniorHr, createdAt, updatedAt
 - JmlContractType: id, name, code, sortOrder, active, createdAt, updatedAt, joiners
 - JmlEmploymentTypeConfig: id, employmentType, active, defaultTemplateId, payrollApplicableDefault, notes, sortOrder, createdAt, updatedAt
 - EmailLog: id, module, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, subjectType, subjectId, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
@@ -600,11 +602,12 @@
 - lib/core/approvals/delegation-access.ts: canDelegateApprovals, canReceiveDelegation
 - lib/core/approvals/rules.ts: StepState, DecisionState, currentStep, RefusalCode, decisionRefusal, Outcome, decisionOutcome, vacantSteps, delegationLive
 - lib/core/approvals/store.ts: Tx, OpenRoundInput, cancelOpenRounds, openRound, Round, latestRound, latestRounds, decisionStates, ApprovalRefusal, Qualification, DecideInput, decide, delegatorsFor, delegatesOf, delegationsOf, createDelegation, revokeDelegation
-- lib/core/catalogue/grades.ts: relinkEmployeeGrades
+- lib/core/catalogue/grades.ts: CatalogueGrade, pickGrade, unknownGradeMessage, loadGradeCatalogue, resolveGradeCode
 - lib/core/documents/access.ts: documentAccess
 - lib/core/documents/employee-documents.ts: EmployeeDocument, listEmployeeDocuments
 - lib/core/documents/file-type.ts: DOC_TYPES, DocType, MAX_DOCUMENT_BYTES, sniffType
 - lib/core/documents/store.ts: DocumentError, uploadEmployeeDocument, findEmployeeDocument, documentReadUrl, removeEmployeeDocument
+- lib/core/email/log.ts: EmailLogFilter, listEmailLog, resendTarget
 - lib/core/email/send.ts: EmailMeta, sendLoggedEmail
 - lib/core/email/templates.ts: TemplateModule, TemplateOverride, templateOverride, templateOverrides, saveTemplateOverride, clearTemplateOverride
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
@@ -922,7 +925,7 @@
 - lib/pms/import/checks/employment.ts: checkSalary, checkDateOfJoining, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
 - lib/pms/import/checks/placement.ts: checkPlacement, checkManager
-- lib/pms/import/checks/record.ts: checkRecord
+- lib/pms/import/checks/record.ts: checkGrade, checkRecord
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
 - lib/pms/import/checks/units.ts: checkUnits
 - lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, ImportFileError, HeaderMap, mapHeaders, readWorkbook, cellText, LoadResult, loadEmployeesFromXlsx
@@ -979,6 +982,7 @@
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/core/approvals.ts: DELEGABLE_MODULES, delegationSchema
 - lib/validations/core/documents.ts: DOCUMENT_CATEGORIES, documentUploadSchema
+- lib/validations/core/email-log.ts: emailLogQuerySchema
 - lib/validations/core/hr-coverage.ts: hrCoverageSchema, HrCoverageInput
 - lib/validations/core/notifications.ts: preferencesSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema, remindLateSchema
@@ -1340,6 +1344,7 @@
 - components/rbac/RoleMatrix.tsx
 - components/rbac/RolesSection.tsx
 - components/rbac/UserSearch.tsx
+- components/settings/EmailLogAdmin.tsx
 - components/settings/HrCoverageDialog.tsx
 - components/settings/HrCoverageFields.tsx
 - components/settings/HrCoverageSettings.tsx

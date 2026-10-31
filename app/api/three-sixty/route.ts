@@ -49,6 +49,15 @@ export const POST = withRateLimit(
     if (cycle.status === "CLOSED") {
       return err("A closed cycle cannot take a new 360.", 409);
     }
+    // ADR-103 — a question's competency must be a live row of the shared catalogue.
+    const competencyIds = [
+      ...new Set(templates.flatMap((t) => t.questions.flatMap((q) => q.competencyId ?? []))),
+    ];
+    if (competencyIds.length > 0) {
+      const found = await prisma.competency.count({ where: { id: { in: competencyIds } } });
+      if (found !== competencyIds.length)
+        return err("A question names a competency that is not in the competency catalogue.", 400);
+    }
 
     const threeSixty = await prisma.threeSixtyCycle.create({
       data: {
@@ -63,6 +72,7 @@ export const POST = withRateLimit(
                 text: q.text,
                 orderIndex: i,
                 scored: q.scored,
+                competencyId: q.competencyId ?? null,
               })),
             },
           })),
@@ -206,7 +216,13 @@ export const GET = withRateLimit(
             id: true,
             type: true,
             questions: {
-              select: { id: true, text: true, orderIndex: true, scored: true },
+              select: {
+                id: true,
+                text: true,
+                orderIndex: true,
+                scored: true,
+                competency: { select: { id: true, name: true } },
+              },
               orderBy: { orderIndex: "asc" },
               take: 60,
             },

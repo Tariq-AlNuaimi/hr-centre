@@ -276,7 +276,7 @@ export function decryptSalary(envelope: string | null, odooId: string): string |
 /** Job & contract (Internal) and work contact (Confidential): any viewer. */
 const RECORD_BASE_SELECT = {
   jobTitle: true,
-  grade: true,
+  gradeRef: { select: { code: true } },
   contractType: true,
   probationEndDate: true,
   workLocation: true,
@@ -357,7 +357,7 @@ export type EmployeeRecordView = {
 
 type DetailRow = Parameters<typeof serializeEmployee>[0] & {
   jobTitle: string | null;
-  grade: string | null;
+  gradeRef: { code: string } | null;
   contractType: string | null;
   probationEndDate: Date | null;
   workLocation: string | null;
@@ -384,7 +384,7 @@ export function serializeEmployeeDetail(
 ): EmployeeListRow & { record: EmployeeRecordView } {
   const record: EmployeeRecordView = {
     jobTitle: row.jobTitle,
-    grade: row.grade,
+    grade: row.gradeRef?.code ?? null,
     contractType: row.contractType,
     probationEndDate: day(row.probationEndDate),
     workLocation: row.workLocation,

@@ -264,6 +264,7 @@ export function AddEmployeeForm({
           showPersonal={canEditPersonal}
           showIdDocuments={canEditIdDocuments}
           disabled={submitting}
+          entityId={core.entityId || null}
         />
       </SectionCard>
 

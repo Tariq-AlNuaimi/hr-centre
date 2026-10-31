@@ -20,7 +20,7 @@ const EMPLOYEE_SELECT = {
   name: true,
   status: true,
   jobTitle: true,
-  grade: true,
+  gradeRef: { select: { code: true } },
   nationality: true,
   contractType: true,
   managerId: true,
@@ -35,7 +35,7 @@ function snapshotOf(e: Prisma.EmployeeGetPayload<{ select: typeof EMPLOYEE_SELEC
   return {
     employeeNameAtExit: e.name,
     jobTitleAtExit: e.jobTitle,
-    gradeAtExit: e.grade,
+    gradeAtExit: e.gradeRef?.code ?? null,
     positionClassificationName: e.positionClassification?.label ?? null,
     entityIdAtExit: e.entityId,
     directorateIdAtExit: e.department?.directorateId ?? null,

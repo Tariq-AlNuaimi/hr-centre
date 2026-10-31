@@ -24,6 +24,8 @@ export const createThreeSixtyCycleSchema = z
                 text: text("A question"),
                 // §9.2 — "scored questions PLUS open-ended feedback questions".
                 scored: z.boolean().default(true),
+                // ADR-103 — the shared competency a scored question assesses.
+                competencyId: z.string().trim().min(1).max(64).nullable().optional(),
               }),
             )
             .min(1, "A template needs at least one question")

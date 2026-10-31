@@ -113,7 +113,9 @@
     "myRequests": "My requests",
     "myDocuments": "My documents",
     "myHr": "My HR",
-    "settingsHrCoverage": "HR coverage"
+    "settingsHrCoverage": "HR coverage",
+    "emailLog": "Email log",
+    "logs": "Logs"
   },
   "auth": {
     "login": "Login",
@@ -1415,7 +1417,9 @@
       "stepOne": "Create",
       "stepTwo": "Generate raters",
       "stepThree": "Activate",
-      "whatNextHelp": "Creating the cycle does not invite anyone. You generate the rater assignments from the reporting lines, review them, and only then activate — which is the moment raters can start answering."
+      "whatNextHelp": "Creating the cycle does not invite anyone. You generate the rater assignments from the reporting lines, review them, and only then activate — which is the moment raters can start answering.",
+      "competency": "Competency",
+      "noCompetency": "No competency"
     },
     "threeSixtyWindow": {
       "title": "360 window",
@@ -2189,7 +2193,8 @@
       "saving": "Saving…",
       "cancel": "Cancel",
       "saved": "Details saved",
-      "saveFailed": "Could not save the details"
+      "saveFailed": "Could not save the details",
+      "gradeChooseCompany": "Choose the company first"
     },
     "add": {
       "title": "Add employee",
@@ -7743,6 +7748,51 @@
       "supervisor": "Supervisor",
       "caseTypes": "Case types",
       "priority": "Priority",
+      "status": "Status",
+      "actions": "Actions"
+    }
+  },
+  "emailLog": {
+    "title": "Email log",
+    "subtitle": "Every email the modules sent, queued or failed to send. Bodies are never stored, so only what was sent to whom is shown.",
+    "filters": "Filter",
+    "module": "Module",
+    "allModules": "All modules",
+    "status": "Status",
+    "allStatuses": "All statuses",
+    "from": "From",
+    "to": "To",
+    "listTitle": "Emails",
+    "listNote": "Newest first. A failed joiners and leavers email can be sent again; other modules send once.",
+    "empty": "No emails match these filters.",
+    "loadFailed": "The email log could not be loaded. Reload the page to try again.",
+    "resend": "Resend",
+    "resent": "Email queued to be sent again",
+    "resendFailed": "The email could not be queued again. Try again.",
+    "alreadyResent": "Resent",
+    "isResend": "A resend of an earlier email",
+    "cc": "Cc {cc}",
+    "pageOf": "Page {page} of {pages} · {total} emails",
+    "previous": "Previous",
+    "next": "Next",
+    "modules": {
+      "jml": "Joiners & leavers",
+      "tickets": "HR tickets",
+      "performance": "Performance",
+      "hiring": "Hiring"
+    },
+    "statuses": {
+      "QUEUED": "Queued",
+      "SENT": "Sent",
+      "FAILED": "Failed",
+      "CANCELLED": "Cancelled"
+    },
+    "col": {
+      "when": "When",
+      "module": "Module",
+      "type": "Type",
+      "recipient": "Recipient",
+      "subject": "Subject",
       "status": "Status",
       "actions": "Actions"
     }

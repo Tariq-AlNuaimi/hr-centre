@@ -208,6 +208,11 @@ export type ValidatedRow = {
   teamId?: string | null;
   entityId: string;
   /**
+   * ADR-103 — the catalogue grade the row's grade code names (undefined when the
+   * sheet has no Grade column: keep the grade on file; null = clear it).
+   */
+  gradeId?: string | null;
+  /**
    * Resolved LATER than the rest of the row: a manager may appear further down
    * the same file and therefore have no database id at validation time. Held as
    * the source `odooId` and resolved during reconciliation, once every row in

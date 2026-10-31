@@ -13,6 +13,7 @@ import {
   checkStatus,
   checkUnpaidLeave,
   checkUnits,
+  checkGrade,
   checkRecord,
   issue,
   type ValidationContext,
@@ -160,6 +161,7 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
     const placement = checkPlacement(row, track.value, ctx);
     const units = checkUnits(row, placement.value, track.value, ctx);
     const record = checkRecord(row);
+    const grade = checkGrade(row, record.value, placement.value.entityId ?? null, ctx);
     const manager = checkManager(row, id.value, track.value, idsInFile, ctx);
     const salary = checkSalary(row);
     const dateOfJoining = checkDateOfJoining(row);
@@ -181,6 +183,7 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
       ...placement.issues,
       ...units.issues,
       ...record.issues,
+      ...grade.issues,
       ...manager.issues,
       ...salary.issues,
       ...dateOfJoining.issues,
@@ -203,6 +206,7 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
       departmentId: placement.value.departmentId,
       teamId: units.value.teamId,
       record: record.value,
+      gradeId: grade.value,
       entityId: placement.value.entityId as string,
       managerOdooId: manager.value,
       roleTrack: track.value as RoleTrack,

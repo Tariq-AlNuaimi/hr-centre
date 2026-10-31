@@ -1,6 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { apiClient } from "@/lib/api-client";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import {
@@ -29,25 +31,83 @@ const DATE_FIELDS = new Set<RecordField>([
   "passportExpiry",
 ]);
 
+type GradeOption = { id: string; code: string; name: string };
+
+/** ADR-103: the grade is picked from the core catalogue for the employee's company. */
+function GradeSelect({
+  id,
+  value,
+  entityId,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  entityId: string | null;
+  disabled: boolean;
+  onChange: (v: string) => void;
+}) {
+  const t = useTranslations("people.record");
+  const grades = useQuery({
+    queryKey: ["org", "grades", entityId],
+    queryFn: () =>
+      apiClient.get<GradeOption[]>(`/api/org/grades?entityId=${encodeURIComponent(entityId!)}`),
+    enabled: Boolean(entityId),
+    staleTime: 60_000,
+  });
+  const list = grades.data ?? [];
+  const known = list.some((g) => g.code === value);
+  return (
+    <NativeSelect
+      id={id}
+      value={value}
+      disabled={disabled || !entityId || grades.isLoading}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full"
+    >
+      <option value="">{entityId ? t("notSet") : t("gradeChooseCompany")}</option>
+      {value && !known && !grades.isLoading ? <option value={value}>{value}</option> : null}
+      {list.map((g) => (
+        <option key={g.id} value={g.code}>
+          {g.code === g.name ? g.code : `${g.code} — ${g.name}`}
+        </option>
+      ))}
+    </NativeSelect>
+  );
+}
+
 export function RecordFields({
   values,
   onChange,
   showPersonal,
   showIdDocuments,
   disabled,
+  entityId,
 }: {
   values: RecordValues;
   onChange: (field: RecordField, value: string) => void;
   showPersonal: boolean;
   showIdDocuments: boolean;
   disabled: boolean;
+  /** The employee's company: the grade picker lists its grades (and group-wide ones). */
+  entityId: string | null;
 }) {
   const t = useTranslations("people.record");
 
   const field = (name: RecordField) => {
     const id = `record-${name}`;
     let control;
-    if (name === "contractType" || name === "gender") {
+    if (name === "grade") {
+      control = (
+        <GradeSelect
+          id={id}
+          value={values.grade ?? ""}
+          entityId={entityId}
+          disabled={disabled}
+          onChange={(v) => onChange("grade", v)}
+        />
+      );
+    } else if (name === "contractType" || name === "gender") {
       const options = name === "contractType" ? CONTRACT_TYPES : GENDERS;
       const prefix = name === "contractType" ? "contract" : "genderValue";
       control = (

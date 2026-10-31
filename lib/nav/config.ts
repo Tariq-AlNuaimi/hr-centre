@@ -334,13 +334,18 @@ export const NAV: readonly NavEntry[] = [
     ],
   },
   {
+    // ADR-095 follow-up: the audit log and the cross-module email log, one entry.
     key: "audit-log",
     group: "admin",
     personas: STAFF_ONLY,
     icon: "audit",
-    label: "auditLog",
+    label: "logs",
     href: "/audit-log",
-    show: admin,
+    show: byTabs,
+    tabs: [
+      { key: "audit-log-events", label: "auditLog", href: "/audit-log", show: admin },
+      { key: "email-log", label: "emailLog", href: "/admin/email-log", show: admin },
+    ],
   },
   // Scaffolded entities land here — `/scaffold-entity` inserts an entry above the recycling bin.
   {

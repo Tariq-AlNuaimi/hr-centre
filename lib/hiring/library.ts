@@ -1,6 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { relinkEmployeeGrades } from "@/lib/core/catalogue/grades";
 import { hasGroup } from "@/lib/rbac/grants";
 import { can, holdsAnywhere, type HiringActor } from "./access";
 import { HiringRuleError } from "./http";
@@ -98,6 +97,21 @@ async function assertGradeCodeFree(code: string, entityId: string | null, except
 }
 
 /**
+ * ADR-103 — employees hold a grade by its id, so a grade cannot move to one
+ * company while people in another company hold it.
+ */
+async function assertGradeHoldersIn(id: string, entityId: string, code: string) {
+  const elsewhere = await prisma.employee.count({
+    where: { gradeId: id, NOT: { entityId } },
+  });
+  if (elsewhere > 0)
+    throw new HiringRuleError(
+      `Grade ${code} is held by ${elsewhere} ${elsewhere === 1 ? "employee" : "employees"} in another company. Move them to another grade first.`,
+      409,
+    );
+}
+
+/**
  * QA2 N-07 — a grade still in use is not deleted from under its users: JD
  * templates and requisitions name it by code, and employees link to it.
  */
@@ -141,7 +155,6 @@ export async function createLibraryItem(
     await assertGradeCodeFree(String(data.code), (data.entityId as string | null) ?? null);
   }
   const row = await delegate(kind).create({ data });
-  if (kind === "grades") await relinkEmployeeGrades([row.code]);
   return serialize(kind, row);
 }
 
@@ -162,8 +175,9 @@ export async function updateLibraryItem(
       id,
     );
   }
+  if (kind === "grades" && "entityId" in data && data.entityId)
+    await assertGradeHoldersIn(id, data.entityId as string, row.code as string);
   const updated = await delegate(kind).update({ where: { id }, data });
-  if (kind === "grades") await relinkEmployeeGrades([row.code as string, updated.code]);
   return serialize(kind, updated);
 }
 
@@ -173,6 +187,5 @@ export async function deleteLibraryItem(actor: HiringActor, kind: LibraryKind, i
   assertCanWriteLibrary(actor, row.entityId as string | null);
   if (kind === "grades") await assertGradeUnused(id, row.code as string);
   await delegate(kind).delete({ where: { id } });
-  if (kind === "grades") await relinkEmployeeGrades([row.code as string]);
   return true;
 }

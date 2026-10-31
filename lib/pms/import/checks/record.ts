@@ -1,7 +1,8 @@
 import type { ContractType, Gender } from "@/generated/prisma/client";
 import { DATE_RECORD_FIELDS, RECORD_FIELDS, type EmployeeRecordInput } from "@/lib/people/record";
 import type { EmployeeSourceRow, ImportIssue } from "../types";
-import { issue, normalize, parseIsoDate, type Check } from "./shared";
+import { pickGrade, unknownGradeMessage } from "@/lib/core/catalogue/grades";
+import { issue, normalize, parseIsoDate, type Check, type ValidationContext } from "./shared";
 
 /**
  * F-b — the record columns (blueprint §2, AC-F2.1). Every column is optional:
@@ -107,6 +108,40 @@ function parseField(field: keyof EmployeeRecordInput, raw: string): Parsed {
         : { problem: `Keep it under ${limit} characters.` };
     }
   }
+}
+
+/**
+ * ADR-103 — the Grade column names a grade CODE of the core catalogue: the
+ * company's own grade first, then a group-wide one (case and spacing ignored).
+ * An unknown code is refused with the codes that would be accepted. On a match
+ * the record carries the catalogue's spelling, so a re-import is not a change.
+ */
+export function checkGrade(
+  row: EmployeeSourceRow,
+  record: EmployeeRecordInput,
+  entityId: string | null,
+  ctx: ValidationContext,
+): Check<string | null | undefined> {
+  if (record.grade === undefined) return { value: undefined, issues: [] };
+  if (record.grade === null) return { value: null, issues: [] };
+  const grades = ctx.grades ?? [];
+  const hit = pickGrade(grades, record.grade, entityId);
+  if (hit) {
+    record.grade = hit.code;
+    return { value: hit.id, issues: [] };
+  }
+  const company = [...ctx.entitiesByKey.values()].find((e) => e.id === entityId)?.code ?? null;
+  return {
+    value: undefined,
+    issues: [
+      issue(
+        row,
+        "grade",
+        "grade_unknown",
+        unknownGradeMessage(record.grade, company, grades, entityId),
+      ),
+    ],
+  };
 }
 
 export function checkRecord(row: EmployeeSourceRow): Check<EmployeeRecordInput> {

@@ -5,6 +5,7 @@ import { existingLoginEmails, provisionLoginFor } from "@/lib/pms/import/run";
 import type { CreateEmployeeInput } from "@/lib/validations/employee";
 import type { EmployeeRecordInput } from "./record";
 import { employeeCreateData, recordWriteData } from "./write";
+import { resolveGradeCode } from "@/lib/core/catalogue/grades";
 
 /**
  * HR Centre F-b — the form paths onto the one writer (lib/people/write.ts).
@@ -46,6 +47,17 @@ async function placementProblem(input: CreateEmployeeInput): Promise<string | nu
   return null;
 }
 
+/**
+ * ADR-103: the form sends a grade code; it must be in the catalogue for the
+ * employee's company (or group-wide). Undefined = not sent; null = cleared.
+ */
+async function gradeFor(record: EmployeeRecordInput, entityId: string) {
+  if (record.grade === undefined) return undefined;
+  const r = await resolveGradeCode(record.grade, entityId);
+  if ("problem" in r) throw new OrgRuleError(`grade: ${r.problem}`, 400);
+  return r.gradeId;
+}
+
 export async function createEmployeeFromForm(
   input: CreateEmployeeInput,
   record: EmployeeRecordInput,
@@ -59,6 +71,7 @@ export async function createEmployeeFromForm(
     throw new OrgRuleError(`email: "${input.email}" already belongs to another employee`);
   const problem = await placementProblem(input);
   if (problem) throw new OrgRuleError(problem, 400);
+  const grade = await gradeFor(record, input.entityId);
 
   return auditedTransaction(async (tx) => {
     const taken = await existingLoginEmails(tx, [input.email]);
@@ -80,7 +93,7 @@ export async function createEmployeeFromForm(
           unpaidLeaveDays: input.unpaidLeaveDays,
         },
         record,
-        { userId, managerId: input.managerId },
+        { userId, managerId: input.managerId, gradeId: grade },
       ),
       select: { id: true },
     });
@@ -94,10 +107,10 @@ export async function updateEmployeeRecord(
 ): Promise<void> {
   const target = await prisma.employee.findUnique({
     where: { id: employeeId },
-    select: { odooId: true },
+    select: { odooId: true, entityId: true },
   });
   if (!target) throw new OrgRuleError("That employee does not exist", 404);
-  const data = recordWriteData(record, target.odooId);
+  const data = recordWriteData(record, target.odooId, await gradeFor(record, target.entityId));
   if (Object.keys(data).length === 0) return;
   await prisma.employee.update({ where: { id: employeeId }, data, select: { id: true } });
 }

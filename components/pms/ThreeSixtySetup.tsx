@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Badge } from "@/components/ui/badge";
@@ -46,38 +46,55 @@ import { endOfDay, startOfDay } from "@/lib/date-input";
 const TYPES = ["LINE_MANAGER_TO_EMPLOYEE", "EMPLOYEE_TO_LINE_MANAGER", "PEER_TO_PEER"] as const;
 type AssessmentType = (typeof TYPES)[number];
 
-type QuestionDraft = { text: string; scored: boolean };
+/** ADR-103: `competencyId` — the shared competency a scored question assesses ("" = none). */
+type QuestionDraft = { text: string; scored: boolean; competencyId: string };
 type Drafts = Record<AssessmentType, QuestionDraft[]>;
 
 /** §9.2's three directions, in the order the clause lists them. */
 const STARTER: Drafts = {
   LINE_MANAGER_TO_EMPLOYEE: [
-    { text: "Delivers what they commit to, on the agreed timeline", scored: true },
-    { text: "Raises risks early rather than at the deadline", scored: true },
-    { text: "Works well with people outside their own team", scored: true },
-    { text: "Takes ownership of quality in their own work", scored: true },
-    { text: "Anything else you would like to say about working with them?", scored: false },
+    {
+      text: "Delivers what they commit to, on the agreed timeline",
+      scored: true,
+      competencyId: "",
+    },
+    { text: "Raises risks early rather than at the deadline", scored: true, competencyId: "" },
+    { text: "Works well with people outside their own team", scored: true, competencyId: "" },
+    { text: "Takes ownership of quality in their own work", scored: true, competencyId: "" },
+    {
+      text: "Anything else you would like to say about working with them?",
+      scored: false,
+      competencyId: "",
+    },
   ],
   EMPLOYEE_TO_LINE_MANAGER: [
-    { text: "Gives me the context I need to do my work", scored: true },
-    { text: "Is available when I am blocked", scored: true },
-    { text: "Gives feedback I can act on", scored: true },
-    { text: "Represents my work fairly to others", scored: true },
-    { text: "Anything else you would like to say about working with them?", scored: false },
+    { text: "Gives me the context I need to do my work", scored: true, competencyId: "" },
+    { text: "Is available when I am blocked", scored: true, competencyId: "" },
+    { text: "Gives feedback I can act on", scored: true, competencyId: "" },
+    { text: "Represents my work fairly to others", scored: true, competencyId: "" },
+    {
+      text: "Anything else you would like to say about working with them?",
+      scored: false,
+      competencyId: "",
+    },
   ],
   PEER_TO_PEER: [
-    { text: "Is dependable when we work together", scored: true },
-    { text: "Communicates clearly and early", scored: true },
-    { text: "Shares knowledge rather than holding it", scored: true },
-    { text: "Handles disagreement constructively", scored: true },
-    { text: "Anything else you would like to say about working with them?", scored: false },
+    { text: "Is dependable when we work together", scored: true, competencyId: "" },
+    { text: "Communicates clearly and early", scored: true, competencyId: "" },
+    { text: "Shares knowledge rather than holding it", scored: true, competencyId: "" },
+    { text: "Handles disagreement constructively", scored: true, competencyId: "" },
+    {
+      text: "Anything else you would like to say about working with them?",
+      scored: false,
+      competencyId: "",
+    },
   ],
 };
 
 const EMPTY: Drafts = {
-  LINE_MANAGER_TO_EMPLOYEE: [{ text: "", scored: true }],
-  EMPLOYEE_TO_LINE_MANAGER: [{ text: "", scored: true }],
-  PEER_TO_PEER: [{ text: "", scored: true }],
+  LINE_MANAGER_TO_EMPLOYEE: [{ text: "", scored: true, competencyId: "" }],
+  EMPLOYEE_TO_LINE_MANAGER: [{ text: "", scored: true, competencyId: "" }],
+  PEER_TO_PEER: [{ text: "", scored: true, competencyId: "" }],
 };
 
 /**
@@ -103,6 +120,12 @@ export function ThreeSixtySetup({ cycleId }: { cycleId: string }) {
   const queryClient = useQueryClient();
 
   const [drafts, setDrafts] = useState<Drafts>(EMPTY);
+  const competencies = useQuery({
+    queryKey: ["competencies"],
+    queryFn: () =>
+      apiClient.get<{ id: string; name: string; category: string | null }[]>("/api/competencies"),
+    staleTime: 300_000,
+  });
   const [opensAt, setOpensAt] = useState("");
   const [deadline, setDeadline] = useState("");
 
@@ -113,7 +136,10 @@ export function ThreeSixtySetup({ cycleId }: { cycleId: string }) {
     }));
 
   const addQuestion = (type: AssessmentType) =>
-    setDrafts((d) => ({ ...d, [type]: [...d[type], { text: "", scored: true }] }));
+    setDrafts((d) => ({
+      ...d,
+      [type]: [...d[type], { text: "", scored: true, competencyId: "" }],
+    }));
 
   const removeQuestion = (type: AssessmentType, index: number) =>
     setDrafts((d) => ({ ...d, [type]: d[type].filter((_, i) => i !== index) }));
@@ -131,7 +157,11 @@ export function ThreeSixtySetup({ cycleId }: { cycleId: string }) {
           type,
           questions: drafts[type]
             .filter((q) => q.text.trim().length > 0)
-            .map((q) => ({ text: q.text.trim(), scored: q.scored })),
+            .map((q) => ({
+              text: q.text.trim(),
+              scored: q.scored,
+              competencyId: q.scored && q.competencyId ? q.competencyId : null,
+            })),
         })),
       }),
     onSuccess: () => {
@@ -235,6 +265,24 @@ export function ThreeSixtySetup({ cycleId }: { cycleId: string }) {
                       <option value="open">{t("kindOpen")}</option>
                     </select>
                   </div>
+                  {question.scored && (competencies.data?.length ?? 0) > 0 ? (
+                    <div className="space-y-1">
+                      <Label htmlFor={`comp-${type}-${index}`}>{t("competency")}</Label>
+                      <select
+                        id={`comp-${type}-${index}`}
+                        value={question.competencyId}
+                        onChange={(e) => edit(type, index, { competencyId: e.target.value })}
+                        className="h-9 max-w-[16rem] rounded-md border border-border bg-background px-3 text-sm text-foreground"
+                      >
+                        <option value="">{t("noCompetency")}</option>
+                        {competencies.data!.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.category ? `${c.name} (${c.category})` : c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
                   <Button
                     variant="outline"
                     size="sm"

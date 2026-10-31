@@ -11,6 +11,7 @@ import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./
 import { decryptSalary } from "@/lib/core/employee-select";
 import { isPlaceholderEmail } from "@/lib/people/provisional-id";
 import { employeeCreateData, employeeUpdateData, type EmployeeCoreInput } from "@/lib/people/write";
+import { loadGradeCatalogue } from "@/lib/core/catalogue/grades";
 import { readIdNumber } from "@/lib/people/id-documents";
 import { applyDeparture } from "../departure";
 import type { EmployeeRecordInput } from "@/lib/people/record";
@@ -67,7 +68,8 @@ function normalize(value: string): string {
 /** F-b record columns, read back for comparison (lib/people/record.ts). */
 const RECORD_COLUMNS = {
   jobTitle: true,
-  grade: true,
+  // ADR-103: the grade on file is the catalogue's code.
+  gradeRef: { select: { code: true } },
   contractType: true,
   probationEndDate: true,
   workLocation: true,
@@ -96,6 +98,10 @@ function recordOnFile(e: {
   for (const key of Object.keys(RECORD_COLUMNS)) {
     if (key in rest) record[key] = rest[key];
   }
+  if ("gradeRef" in record) {
+    record.grade = (record.gradeRef as { code: string } | null)?.code ?? null;
+    delete record.gradeRef;
+  }
   // An unreadable number stays `undefined`: the import then treats any value
   // in the sheet as a change and re-encrypts it, rather than guessing equality.
   record.civilIdNumber = civil.unavailable ? undefined : civil.value;
@@ -107,7 +113,7 @@ async function loadContext(): Promise<{
   validation: ValidationContext;
   reconcile: ReconcileContext;
 }> {
-  const [entities, departments, employees, directorates, teams] = await Promise.all([
+  const [entities, departments, employees, directorates, teams, grades] = await Promise.all([
     prisma.orgEntity.findMany({ select: { id: true, code: true, name: true } }),
     prisma.department.findMany({
       select: {
@@ -141,6 +147,7 @@ async function loadContext(): Promise<{
     // the WHOLE org, and directorates/teams are a small multiple of departments.
     prisma.directorate.findMany({ select: { name: true, entityId: true } }),
     prisma.team.findMany({ select: { id: true, name: true, departmentId: true } }),
+    loadGradeCatalogue(),
   ]);
 
   const directorateKeys = new Set(directorates.map((d) => `${d.entityId}::${normalize(d.name)}`));
@@ -220,6 +227,7 @@ async function loadContext(): Promise<{
       directorateKeys,
       departmentDirectorates,
       teamsByDepartmentAndName,
+      grades,
     },
     reconcile: { existing, departmentNames, entityCodes, teamNames },
   };
@@ -505,7 +513,10 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
       // same builder, so the two ways in cannot drift (AC-F5.2). The login
       // link goes on the CREATE, not a second statement after it.
       await tx.employee.create({
-        data: employeeCreateData(coreOf(row, row.teamId ?? null), row.record ?? {}, { userId }),
+        data: employeeCreateData(coreOf(row, row.teamId ?? null), row.record ?? {}, {
+          userId,
+          gradeId: row.gradeId,
+        }),
         select: { id: true },
       });
     }
@@ -542,7 +553,11 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
       await tx.employee.update({
         where: { id: update.employeeId },
         data: {
-          ...employeeUpdateData(coreOf(row, effectiveTeamId(row, existing)), row.record ?? {}),
+          ...employeeUpdateData(
+            coreOf(row, effectiveTeamId(row, existing)),
+            row.record ?? {},
+            row.gradeId,
+          ),
           // `status` and `lastWorkingDay` are DEFERRED for a departure: pass 3
           // writes them as part of the whole §12.1 act. Writing them here too
           // would re-write the same values a second time and emit a second
