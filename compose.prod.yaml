@@ -65,7 +65,7 @@ services:
     # unaffected. Bring it up with:
     #   docker compose -f compose.prod.yaml --profile observability up -d
     # Pin to a collector version your tenant has vetted; never `latest`.
-    image: otel/opentelemetry-collector-contrib:0.163.2
+    image: otel/opentelemetry-collector-contrib:0.164.0
     profiles:
       - observability
     restart: unless-stopped

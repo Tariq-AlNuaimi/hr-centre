@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 15
     container:
       # Pinned tag (not :latest) for reproducibility. Bump deliberately.
-      image: semgrep/semgrep:1.182.1
+      image: semgrep/semgrep:1.183.0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
