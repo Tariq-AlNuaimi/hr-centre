@@ -96,6 +96,7 @@ function recordEdit(
   if (!actorCan(actor, "people.edit", subject)) return null;
   return {
     initial: recordFormValues(record),
+    entityId: subject.entityId ?? "",
     canEditPersonal: actorCan(actor, "people.viewPersonal", subject),
     // A number the server key cannot open is not offered for editing: the
     // empty box would read as "none" and saving it would clear it.

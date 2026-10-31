@@ -1195,3 +1195,12 @@ word-matching and JML's precedence rules unchanged). **Keeping two tables with a
 model** (rejected — HR would still edit "who covers what" in two places and they would drift).
 Decision: build — the HR tickets coverage table becomes the core table in place; JML's rules are
 copied in; each module reads its half through the same rows.
+
+### 2026-10-31 — Cross-module email log screen (ADR-103)
+
+Scope: lib/core/email/log.ts, lib/validations/core/email-log.ts
+Considered: **The transactional provider's activity log (Postmark, SendGrid, Resend)**
+(rejected — SMTP is the transport, and JML's queue and the logged sender already write
+`core_email_logs`). **A generic admin table generator (react-admin, Refine)** (rejected — one
+bounded list with three filters; the shared table and form primitives cover it).
+Decision: build — one bounded, paged read and a resend that defers to the module's queue.

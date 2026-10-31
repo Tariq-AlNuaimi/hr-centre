@@ -100,8 +100,6 @@ model User {
   jmlTasksCompleted        JmlTask[]                @relation("JmlTaskCompletedBy")
   jmlDeskMemberships       JmlDeskMember[]          @relation("JmlDeskMember")
   jmlTaskComments          JmlTaskComment[]         @relation("JmlTaskCommentAuthor")
-  jmlRulesAsOwner          JmlHrAssignmentRule[]    @relation("JmlRuleOwner")
-  jmlRulesAsSenior         JmlHrAssignmentRule[]    @relation("JmlRuleSenior")
   hrCoverageAsOwner        HrCoverage[]             @relation("HrCoverageOwner")
   hrCoverageAsSupervisor   HrCoverage[]             @relation("HrCoverageSupervisor")
   jmlEmailsSent            EmailLog[]               @relation("JmlEmailSentBy")
@@ -442,13 +440,15 @@ model Grade {
 /// Core competency catalogue (ADR-097): the framework Hiring scores against and
 /// Performance can reference. BARS anchors { "1": "...", …, "5": "..." }.
 model Competency {
-  id         String  @id @default(cuid())
-  name       String
-  definition String?
-  category   String?
-  roleFamily String?
-  entityId   String?
-  anchors    Json?
+  id                String             @id @default(cuid())
+  name              String
+  definition        String?
+  category          String?
+  roleFamily        String?
+  entityId          String?
+  anchors           Json?
+  /// Performance 360 questions that assess this competency (ADR-103).
+  templateQuestions TemplateQuestion[]
 
   deletedAt DateTime?
   deletedBy String?
@@ -946,10 +946,9 @@ model Employee {
   // All optional: the import and the form fill them; Performance never reads them.
   // Job & contract — Internal.
   jobTitle          String?       @map("job_title")
-  /// The grade as written (import, form, joiner). Kept as the record's value;
-  /// `gradeId` links it to the core catalogue (ADR-097), maintained by a
-  /// database trigger on every write, so every writer stays in step.
-  grade             String?
+  /// The employee's grade: a row of the core catalogue (ADR-097, ADR-103). Every
+  /// writer hands over a grade CODE and resolves it (lib/core/catalogue/grades.ts);
+  /// the legacy free-text `grade` column and its sync trigger were dropped.
   gradeId           String?       @map("grade_id")
   gradeRef          Grade?        @relation("EmployeeGrade", fields: [gradeId], references: [id], onDelete: SetNull)
   contractType      ContractType? @map("contract_type")
@@ -1959,6 +1958,11 @@ model TemplateQuestion {
   /// rather than counting it as a zero.
   scored Boolean @default(true)
 
+  /// ADR-103 — the competency a scored question assesses, from the shared core
+  /// catalogue (the one Hiring scores against). Optional; never changes scoring.
+  competencyId String?     @map("competency_id")
+  competency   Competency? @relation(fields: [competencyId], references: [id], onDelete: SetNull)
+
   responses AssignmentResponse[]
 
   createdAt DateTime @default(now())
@@ -2960,11 +2964,6 @@ enum HiringJdSignatory {
   HR
 }
 
-enum HiringJdSignoffAction {
-  SIGNED
-  CHANGES_REQUESTED
-}
-
 enum HiringStage {
   NEW_APPLICATION
   CV_SCREENED
@@ -3183,9 +3182,7 @@ model HiringRequisition {
   offers        HiringOffer[]
   questions     HiringQuestion[]
   statusHistory HiringRequisitionStatusHistory[]
-  approvals     HiringRequisitionApproval[]
   postings      HiringPosting[]
-  jdSignoffs    HiringJdSignoff[]
   agencyInvites HiringAgencyInvite[]
 
   deletedAt DateTime?
@@ -3226,53 +3223,17 @@ model HiringPosting {
 }
 
 model HiringRequisitionStatusHistory {
-  id            String                      @id @default(cuid())
+  id            String                  @id @default(cuid())
   requisitionId String
-  requisition   HiringRequisition           @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  requisition   HiringRequisition       @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
   fromStatus    HiringRequisitionStatus
   toStatus      HiringRequisitionStatus
   changedById   String?
   reason        String
-  changedAt     DateTime                    @default(now())
-  approvals     HiringRequisitionApproval[]
+  changedAt     DateTime                @default(now())
 
   @@index([requisitionId, changedAt])
   @@map("hiring_requisition_status_history")
-}
-
-/// ADR-063 (Interview Hub) — one sign-off of one step of one approval round.
-model HiringRequisitionApproval {
-  id            String                         @id @default(cuid())
-  requisitionId String
-  requisition   HiringRequisition              @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  submissionId  String
-  submission    HiringRequisitionStatusHistory @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  sequence      Int
-  requiredRole  HiringApprovalRole
-  approverId    String
-  comment       String
-  createdAt     DateTime                       @default(now())
-
-  @@unique([submissionId, sequence])
-  @@index([requisitionId])
-  @@map("hiring_requisition_approvals")
-}
-
-model HiringJdSignoff {
-  id            String                @id @default(cuid())
-  requisitionId String
-  requisition   HiringRequisition     @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
-  version       Int
-  action        HiringJdSignoffAction
-  signatory     HiringJdSignatory?
-  actorId       String
-  actorName     String
-  comment       String?
-  createdAt     DateTime              @default(now())
-
-  @@unique([requisitionId, version, signatory])
-  @@index([requisitionId, createdAt])
-  @@map("hiring_jd_signoffs")
 }
 
 /// The candidate. DEI fields are self-declared, scrubbed from audit, never exported.
@@ -4169,29 +4130,6 @@ model JmlTaskComment {
 
   @@index([taskId, createdAt])
   @@map("jml_task_comments")
-}
-
-/// LEGACY (ADR-102): copied into `core_hr_coverage`; no longer read or written.
-/// Dropped once the core path is verified live.
-model JmlHrAssignmentRule {
-  id             String        @id @default(cuid())
-  scope          JmlRuleScope
-  /// The company / directorate / department id the rule covers.
-  scopeId        String        @map("scope_id")
-  priority       Int           @default(0)
-  active         Boolean       @default(true)
-  /// Empty = every case type.
-  caseTypes      JmlCaseType[] @default([]) @map("case_types")
-  juniorHrUserId String        @map("junior_hr_user_id")
-  juniorHr       User          @relation("JmlRuleOwner", fields: [juniorHrUserId], references: [id], onDelete: Restrict)
-  seniorHrUserId String        @map("senior_hr_user_id")
-  seniorHr       User          @relation("JmlRuleSenior", fields: [seniorHrUserId], references: [id], onDelete: Restrict)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  @@index([active, scope, priority])
-  @@index([scopeId])
-  @@map("jml_hr_assignment_rules")
 }
 
 /// HR's approved legal contract kinds (Onboarding ContractType; seeded EMPTY —

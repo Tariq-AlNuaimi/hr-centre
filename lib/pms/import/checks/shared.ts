@@ -1,3 +1,4 @@
+import type { CatalogueGrade } from "@/lib/core/catalogue/grades";
 import type { EmployeeStatus, RoleTrack } from "@/generated/prisma/client";
 import type { ImportIssue } from "../types";
 
@@ -78,6 +79,11 @@ export type ValidationContext = {
   departmentDirectorates?: Map<string, { key: string; name: string } | null>;
   /** `${departmentId}::${normalized team name}` → teamId. */
   teamsByDepartmentAndName?: Map<string, string>;
+  /**
+   * ADR-103 — the live grade catalogue (codes only). Absent means "nothing
+   * known": any grade the sheet names is refused rather than accepted unchecked.
+   */
+  grades?: CatalogueGrade[];
 };
 
 export function issue(

@@ -79,6 +79,8 @@ export const SECTION_GATES = {
     hasGroup(g, "tickets.configure") || hasGroup(g, "jml.configure"),
   "/admin/strategy-scores": orgWide,
   "/audit-log": (c) => c.isAdmin,
+  // ADR-095 follow-up: every module's email log, metadata only.
+  "/admin/email-log": (c) => c.isAdmin,
   "/recycling-bin": (c) => c.isAdmin,
   "/calibration": (c) => c.pms.runCalibration,
   "/executive": orgWide,

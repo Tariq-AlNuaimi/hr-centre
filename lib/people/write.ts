@@ -31,10 +31,18 @@ export type EmployeeCoreInput = {
   unpaidLeaveDays: number;
 };
 
-/** The F-b record fields as Prisma data. Absent (`undefined`) keys are omitted. */
+/**
+ * The F-b record fields as Prisma data. Absent (`undefined`) keys are omitted.
+ *
+ * ADR-103: `input.grade` is a grade CODE; the caller resolves it against the
+ * core catalogue (`lib/core/catalogue/grades.ts`) and passes the `gradeId` —
+ * the employee row stores only the link. A code with no resolved id is a
+ * caller bug and fails closed rather than writing a gradeless record.
+ */
 export function recordWriteData(
   input: EmployeeRecordInput,
   odooId: string,
+  gradeId?: string | null,
 ): Prisma.EmployeeUncheckedUpdateInput {
   const data: Prisma.EmployeeUncheckedUpdateInput = {};
   const copy = <K extends keyof EmployeeRecordInput & keyof Prisma.EmployeeUncheckedUpdateInput>(
@@ -43,7 +51,11 @@ export function recordWriteData(
     if (input[key] !== undefined) (data as Record<string, unknown>)[key] = input[key];
   };
   copy("jobTitle");
-  copy("grade");
+  if (input.grade !== undefined) {
+    if (input.grade !== null && !gradeId)
+      throw new Error("A grade code must be resolved to a catalogue grade before it is written");
+    data.gradeId = input.grade === null ? null : gradeId;
+  }
   copy("contractType");
   copy("probationEndDate");
   copy("workLocation");
@@ -68,7 +80,7 @@ export function recordWriteData(
 export function employeeCreateData(
   core: EmployeeCoreInput,
   record: EmployeeRecordInput,
-  extra: { userId: string | null; managerId?: string | null },
+  extra: { userId: string | null; managerId?: string | null; gradeId?: string | null },
 ): Prisma.EmployeeUncheckedCreateInput {
   const data: Prisma.EmployeeUncheckedCreateInput = {
     odooId: core.odooId,
@@ -88,7 +100,7 @@ export function employeeCreateData(
   };
   // Record fields share their names and types between the create and update
   // inputs; the update-typed builder is the single source for both.
-  return Object.assign(data, recordWriteData(record, core.odooId));
+  return Object.assign(data, recordWriteData(record, core.odooId, extra.gradeId));
 }
 
 /**
@@ -98,6 +110,7 @@ export function employeeCreateData(
 export function employeeUpdateData(
   core: Omit<EmployeeCoreInput, "status" | "lastWorkingDay">,
   record: EmployeeRecordInput,
+  gradeId?: string | null,
 ): Prisma.EmployeeUncheckedUpdateInput {
   return {
     name: core.name,
@@ -109,6 +122,6 @@ export function employeeUpdateData(
     basicSalaryEnc: encryptSalary(core.basicSalary, core.odooId),
     dateOfJoining: core.dateOfJoining,
     unpaidLeaveDays: core.unpaidLeaveDays,
-    ...recordWriteData(record, core.odooId),
+    ...recordWriteData(record, core.odooId, gradeId),
   };
 }

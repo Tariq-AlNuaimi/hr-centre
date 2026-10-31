@@ -49,7 +49,8 @@ P2-4, P2-8; `ux/shell-people.md` R18).
   modules rely on and needs HR to confirm who covers what. Documented for a follow-up.
   **Done in ADR-102** (one core coverage table, routing outcomes unchanged).
 - Performance does not yet reference `core_competencies` (its templates keep their own
-  questions); the catalogue is ready for it.
+  questions); the catalogue is ready for it. **Done in ADR-103** (360 questions name a
+  competency), together with dropping `Employee.grade` and its trigger.
 
 The legacy `hiring_grades` / `hiring_competencies` tables are dropped once the new path is
 verified live.

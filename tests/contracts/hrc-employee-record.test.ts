@@ -82,7 +82,7 @@ const baseRow = {
   entity: { id: "rihal", code: "RIHAL", name: "Rihal" },
   manager: null,
   jobTitle: "Analyst",
-  grade: null,
+  gradeRef: null,
   contractType: "PERMANENT",
   probationEndDate: new Date("2026-04-01T00:00:00Z"),
   workLocation: null,

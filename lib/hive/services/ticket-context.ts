@@ -21,7 +21,7 @@ export async function ticketContext(
             id: true,
             name: true,
             jobTitle: true,
-            grade: true,
+            gradeRef: { select: { code: true } },
             dateOfJoining: true,
             status: true,
             entity: { select: { name: true } },
@@ -53,5 +53,9 @@ export async function ticketContext(
       select: { id: true, ticketNumber: true, status: true, question: true, createdAt: true },
     }),
   ]);
-  return { employee, openCaseType: openCase?.caseType ?? null, recent };
+  // ADR-103: the grade is the catalogue's code; the rail keeps its `grade` field.
+  const person = employee
+    ? (({ gradeRef, ...rest }) => ({ ...rest, grade: gradeRef?.code ?? null }))(employee)
+    : null;
+  return { employee: person, openCaseType: openCase?.caseType ?? null, recent };
 }

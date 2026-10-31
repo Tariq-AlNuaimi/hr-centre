@@ -38,7 +38,7 @@ async function workforce() {
       lastWorkingDay: true,
       entityId: true,
       departmentId: true,
-      grade: true,
+      gradeRef: { select: { code: true } },
       jobTitle: true,
       nationality: true,
       department: { select: { directorateId: true } },
@@ -81,7 +81,7 @@ function personKey(p: Person, seg: Segment): string | null {
     case "role":
       return p.jobTitle;
     case "grade":
-      return p.grade;
+      return p.gradeRef?.code ?? null;
     default:
       return null;
   }

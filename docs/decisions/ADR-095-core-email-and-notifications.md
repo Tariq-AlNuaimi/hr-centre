@@ -51,4 +51,4 @@ statement of which module owns a kind or whether a person may turn it off (audit
 
 - The legacy template tables are dropped once the new path is verified live.
 - An admin page listing the core email log across modules is deferred; JML's per-case
-  email tab reads the same log.
+  email tab reads the same log. **Done in ADR-103** (Admin › Logs › Email log).

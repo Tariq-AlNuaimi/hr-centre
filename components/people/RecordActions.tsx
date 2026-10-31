@@ -30,7 +30,13 @@ export type RecordActionsProps = {
   /** Employment & placement (PUT) — only where the viewer may edit and see salary. */
   core: { initial: UpdateEmployeeInput; managerName: string | null } | null;
   /** Job, personal and ID details (PATCH) — only where the viewer may edit. */
-  record: { initial: RecordValues; canEditPersonal: boolean; canEditIdDocuments: boolean } | null;
+  record: {
+    initial: RecordValues;
+    /** The employee's company (the grade picker lists its grades). */
+    entityId: string;
+    canEditPersonal: boolean;
+    canEditIdDocuments: boolean;
+  } | null;
   links: {
     label: "startMover" | "startLeaver" | "raiseTicket" | "orgChart" | "manageLogin";
     href: string;
@@ -158,6 +164,7 @@ export function RecordActions({
         <EmployeeRecordForm
           key={`record-${opening}`}
           employeeId={employeeId}
+          entityId={record.entityId}
           initial={record.initial}
           canEditPersonal={record.canEditPersonal}
           canEditIdDocuments={record.canEditIdDocuments}

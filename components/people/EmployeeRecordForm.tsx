@@ -25,6 +25,7 @@ import { RecordFields, recordPayload, type RecordValues } from "./RecordFields";
  */
 export function EmployeeRecordForm({
   employeeId,
+  entityId,
   initial,
   canEditPersonal,
   canEditIdDocuments,
@@ -32,6 +33,8 @@ export function EmployeeRecordForm({
   onOpenChange,
 }: {
   employeeId: string;
+  /** The employee's company (the grade picker lists its grades). */
+  entityId: string;
   initial: RecordValues;
   canEditPersonal: boolean;
   canEditIdDocuments: boolean;
@@ -107,6 +110,7 @@ export function EmployeeRecordForm({
               showPersonal={canEditPersonal}
               showIdDocuments={canEditIdDocuments}
               disabled={submitting}
+              entityId={entityId}
             />
           </form>
           {formError ? (
