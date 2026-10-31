@@ -1,4 +1,5 @@
 import type { HiringRequisitionStatus } from "@/generated/prisma/client";
+import { decisionRefusal, type RefusalCode } from "@/lib/core/approvals/rules";
 
 /**
  * Requisition lifecycle — pure rules (Interview Hub ADR-024 / ADR-063,
@@ -135,31 +136,55 @@ export function isFinalStep(chain: { sequence: number }[], step: { sequence: num
   return chain.length > 0 && chain[chain.length - 1].sequence === step.sequence;
 }
 
+/** Hiring's sentences for the core engine's refusal codes (ADR-094), unchanged since ADR-063. */
+export function requisitionRefusalMessage(code: RefusalCode): string {
+  switch (code) {
+    case "NO_SUBMITTER":
+      return "Can't verify who submitted this requisition for approval, so it can't be signed — re-submit it for approval first.";
+    case "SUBMITTER":
+    case "EXCLUDED":
+      return "You can't approve a requisition you submitted — it needs a different approver (segregation of duties).";
+    case "PRIOR_STEP":
+    case "ALREADY":
+      return "You already signed an earlier step of this approval — the next step needs a different approver.";
+    case "NOT_QUALIFIED":
+      return "Only the approver routed to this step can sign it.";
+  }
+}
+
 /**
  * Segregation of duties for a requisition step: never the submitter, never
  * someone who signed an earlier step of this round (not admin-overridable),
- * and only a routed approver — or a hiring admin.
+ * and only a routed approver (or their delegate) — or a hiring admin. The rule
+ * is the core engine's (ADR-094); `actingForId` is the holder a delegate acts
+ * for, held to the same bans.
  */
 export function signRefusal(input: {
   actorId: string;
   isAdmin: boolean;
   requesterId: string | null;
-  routedApproverIds: string[];
-  priorSignerIds: string[];
+  routedApproverIds: readonly string[];
+  priorSignerIds: readonly string[];
+  actingForId?: string | null;
 }): string | null {
-  if (!input.requesterId) {
-    return "Can't verify who submitted this requisition for approval, so it can't be signed — re-submit it for approval first.";
-  }
-  if (input.actorId === input.requesterId) {
-    return "You can't approve a requisition you submitted — it needs a different approver (segregation of duties).";
-  }
-  if (input.priorSignerIds.includes(input.actorId)) {
-    return "You already signed an earlier step of this approval — the next step needs a different approver.";
-  }
-  if (!input.isAdmin && !input.routedApproverIds.includes(input.actorId)) {
-    return "Only the approver routed to this step can sign it.";
-  }
-  return null;
+  const routed =
+    input.routedApproverIds.includes(input.actorId) ||
+    (Boolean(input.actingForId) && input.routedApproverIds.includes(input.actingForId!));
+  const code = decisionRefusal({
+    actorId: input.actorId,
+    actingFor: input.actingForId ?? null,
+    submitterId: input.requesterId,
+    excludedIds: [],
+    step: { sequence: 0 },
+    decisions: input.priorSignerIds.map((id) => ({
+      sequence: -1,
+      deciderId: id,
+      onBehalfOfId: null,
+      action: "APPROVED" as const,
+    })),
+    qualified: routed || input.isAdmin,
+  });
+  return code ? requisitionRefusalMessage(code) : null;
 }
 
 /** Still being hired for (not drafted, filled or archived). */

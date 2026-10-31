@@ -4,14 +4,23 @@ import { PROVIDER_LIMIT, type WorkItem, type WorkProvider } from "@/lib/core/wor
 import { APPROVAL_ROLES, ROLE_PERMISSION, actsAs, can, holdsAnywhere } from "./access";
 import type { HiringActor } from "./access";
 import { resolveHiringActor } from "./actor";
-import { chainFromSnapshot, computeChain } from "./approval-chain";
-import { approvalRoleLabel, configToChainOptions, loadApprovalConfig } from "./approval-config";
+import { chainFromSnapshot } from "./approval-chain";
+import { approvalRoleLabel } from "./approval-config";
 import { signableSlots } from "./jd-rules";
-import { toOMRorNull } from "./money";
 import { nextOfferStep, offerDecisionRefusal } from "./offer-rules";
-import { delegatorActors, OFFER_SUBJECT, qualifyForRole, roundDecisions } from "./offer-round";
+import {
+  delegatorActors,
+  OFFER_SUBJECT,
+  qualifyForRole,
+  JD_SUBJECT,
+  REQUISITION_SUBJECT,
+  roundDecisions,
+  roundSignatures,
+  versionRound,
+} from "./offer-round";
+import { currentStep } from "@/lib/core/approvals/rules";
 import { decisionStates, latestRounds } from "@/lib/core/approvals/store";
-import { nextUnsignedStep } from "./requisition-rules";
+import { requisitionRefusal } from "./requisition-status";
 import { candidateScopeWhere, requisitionScopeWhere, requisitionSubjects } from "./scope";
 
 /**
@@ -32,67 +41,42 @@ const holdsAnApprovalRole = (actor: HiringActor) =>
   APPROVAL_ROLES.some((r) => holdsAnywhere(actor, ROLE_PERMISSION[r]));
 
 async function requisitionApprovals(actor: HiringActor): Promise<WorkItem[]> {
-  if (!holdsAnApprovalRole(actor)) return [];
+  // Delegates see the steps they may decide for someone away (ADR-094).
+  const delegators = await delegatorActors(actor);
+  if (!holdsAnApprovalRole(actor) && !delegators.some(holdsAnApprovalRole)) return [];
   const scope = await requisitionScopeWhere(actor, "hiring.view");
   if (scope === null) return [];
   const reqs = await prisma.hiringRequisition.findMany({
     where: { AND: [scope, { status: "PENDING_APPROVAL" }] },
     orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
     take: PROVIDER_LIMIT,
-    select: {
-      id: true,
-      title: true,
-      entityId: true,
-      departmentId: true,
-      salaryBandMax: true,
-      salaryCurrency: true,
-    },
+    select: { id: true, title: true, entityId: true, departmentId: true },
   });
   if (reqs.length === 0) return [];
-  const ids = reqs.map((r) => r.id);
-  const [subjects, entities, history, cfg] = await Promise.all([
+  const [subjects, rounds] = await Promise.all([
     requisitionSubjects(reqs),
-    prisma.orgEntity.findMany({
-      where: { id: { in: [...new Set(reqs.map((r) => r.entityId))] } },
-      select: { id: true, code: true },
-      take: PROVIDER_LIMIT,
-    }),
-    prisma.hiringRequisitionStatusHistory.findMany({
-      where: { requisitionId: { in: ids }, toStatus: "PENDING_APPROVAL" },
-      orderBy: { changedAt: "desc" },
-      select: { id: true, requisitionId: true, changedById: true },
-      take: 500,
-    }),
-    loadApprovalConfig(),
+    latestRounds(
+      REQUISITION_SUBJECT,
+      reqs.map((r) => r.id),
+    ),
   ]);
-  const latest = new Map<string, (typeof history)[number]>();
-  for (const h of history) if (!latest.has(h.requisitionId)) latest.set(h.requisitionId, h);
-  const signed = await prisma.hiringRequisitionApproval.findMany({
-    where: { submissionId: { in: [...latest.values()].map((h) => h.id) } },
-    select: { submissionId: true, sequence: true, requiredRole: true, approverId: true },
-    take: 500,
-  });
-  const code = new Map(entities.map((e) => [e.id, e.code]));
-  const opts = { ...configToChainOptions(cfg), kind: "requisition" as const };
   return reqs.flatMap((r) => {
-    const sub = latest.get(r.id);
-    if (!sub || sub.changedById === actor.userId) return [];
-    const mine = signed.filter((s) => s.submissionId === sub.id);
-    if (mine.some((s) => s.approverId === actor.userId)) return [];
-    const steps = computeChain(
-      code.get(r.entityId),
-      toOMRorNull(r.salaryBandMax, r.salaryCurrency),
-      opts,
-    );
-    const step = nextUnsignedStep(steps, mine);
-    if (!step || !actsAs(actor, step.role, subjects.get(r.id)!)) return [];
+    const round = rounds.get(r.id) ?? null;
+    const step = round?.status === "PENDING" ? currentStep(round.steps) : undefined;
+    if (!step) return [];
+    // Role holders and their delegates only — not a hiring admin's proxy right.
+    if (requisitionRefusal(actor, delegators, round, subjects.get(r.id)!, { proxy: false }))
+      return [];
     return [
       {
         key: `hiring-req:${r.id}`,
         module: "hiring" as const,
         kind: "hiringRequisitionApproval",
         approval: true,
-        params: { title: r.title, role: approvalRoleLabel(step.role) },
+        params: {
+          title: r.title,
+          role: approvalRoleLabel(step.roleKey as (typeof APPROVAL_ROLES)[number]),
+        },
         dueAt: null,
         href: `/hiring/requisitions/${r.id}/approval`,
       },
@@ -182,13 +166,12 @@ async function jdSignoffs(actor: HiringActor): Promise<WorkItem[]> {
     },
   });
   if (reqs.length === 0) return [];
-  const [subjects, sigs] = await Promise.all([
+  const [subjects, rounds] = await Promise.all([
     requisitionSubjects(reqs),
-    prisma.hiringJdSignoff.findMany({
-      where: { requisitionId: { in: reqs.map((r) => r.id) }, action: "SIGNED" },
-      select: { requisitionId: true, version: true, signatory: true, actorId: true },
-      take: 500,
-    }),
+    latestRounds(
+      JD_SUBJECT,
+      reqs.map((r) => r.id),
+    ),
   ]);
   return reqs.flatMap((r) => {
     const subject = subjects.get(r.id)!;
@@ -204,9 +187,7 @@ async function jdSignoffs(actor: HiringActor): Promise<WorkItem[]> {
         description: r.description,
         jdAuthorId: r.jdAuthorId,
         hiringManagerId: r.hiringManagerId,
-        signatures: sigs
-          .filter((s) => s.requisitionId === r.id && s.version === r.jdVersion && s.signatory)
-          .map((s) => ({ signatory: s.signatory!, actorId: s.actorId })),
+        signatures: roundSignatures(versionRound(rounds.get(r.id) ?? null, r.jdVersion)),
       },
     );
     if (slots.length === 0) return [];

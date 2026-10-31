@@ -85,7 +85,7 @@ test("providers apply their module's own permission rules", () => {
   assert.match(jml, /caseScopeWhere\(actor, "jml\.decideApprovals"\)/, "approvals: in scope only");
   const hiring = src("lib/hiring/work-items.ts");
   assert.match(hiring, /requisitionScopeWhere\(actor, "hiring\.view"\)/);
-  assert.match(hiring, /actsAs\(actor, step\.role/);
+  assert.match(hiring, /requisitionRefusal\(actor, delegators, round/);
   assert.match(hiring, /offerDecisionRefusal\(/);
   assert.match(hiring, /panelists: \{ some: \{ userId: actor\.userId \} \}/);
   assert.match(src("lib/hive/services/work-items.ts"), /ticketTasksFor\(session\.user\.id\)/);

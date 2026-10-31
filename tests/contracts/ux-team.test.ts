@@ -22,8 +22,26 @@ let team: typeof import("../../lib/people/team-overview");
 
 before(async () => {
   const created = new Date("2026-10-01T00:00:00Z");
+  const jdRound = (subjectId: string, subjectVersion: number, slot: string) => ({
+    subjectId,
+    subjectVersion,
+    status: "PENDING",
+    decisions: [
+      {
+        action: "APPROVED",
+        slot,
+        deciderId: "u1",
+        decider: { name: "U", email: "u@x" },
+        decidedAt: created,
+      },
+    ],
+  });
   mockApi.module(import.meta.resolve("../../lib/prisma.ts"), {
     namedExports: {
+      auditedTransaction: async () => {
+        throw new Error("no writes here");
+      },
+      prismaUnfiltered: {},
       prisma: {
         hiringRequisition: {
           findMany: record("reqs", [
@@ -62,11 +80,12 @@ before(async () => {
             },
           ]),
         },
-        hiringJdSignoff: {
-          // The HM already signed r2's current version; r1's signature is on an old version.
+        // ADR-094: JD rounds live in the core approvals engine. The HM already
+        // signed r2's current version; r1's signature is on an old version.
+        approvalRequest: {
           findMany: record("signed", [
-            { requisitionId: "r1", version: 1 },
-            { requisitionId: "r2", version: 1 },
+            jdRound("r1", 1, "HIRING_MANAGER"),
+            jdRound("r2", 1, "HIRING_MANAGER"),
           ]),
         },
         employee: { groupBy: record("reports", [{ status: "ACTIVE", _count: { _all: 4 } }]) },

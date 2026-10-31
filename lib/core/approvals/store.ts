@@ -27,6 +27,8 @@ export type OpenRoundInput = {
   module: string;
   subjectType: string;
   subjectId: string;
+  /** The subject's revision this round approves (a JD version). */
+  subjectVersion?: number | null;
   title: string;
   href: string;
   submittedById: string;
@@ -68,6 +70,7 @@ export async function openRound(tx: Tx, input: OpenRoundInput): Promise<string> 
       module: input.module,
       subjectType: input.subjectType,
       subjectId: input.subjectId,
+      subjectVersion: input.subjectVersion ?? null,
       title: input.title.slice(0, 200),
       href: input.href,
       submittedById: input.submittedById,
@@ -98,6 +101,7 @@ const ROUND_SELECT = {
   module: true,
   subjectType: true,
   subjectId: true,
+  subjectVersion: true,
   title: true,
   href: true,
   status: true,
@@ -124,9 +128,11 @@ const ROUND_SELECT = {
       deciderId: true,
       onBehalfOfId: true,
       viaProxy: true,
+      slot: true,
       action: true,
       comment: true,
       decidedAt: true,
+      decider: { select: { name: true, email: true } },
       step: { select: { sequence: true } },
     },
   },
@@ -195,6 +201,12 @@ export type DecideInput = {
   actorId: string;
   action: DecisionState["action"];
   comment?: string | null;
+  /** The named signature this decision fills on a multi-signatory step. */
+  slot?: string | null;
+  /** The subject revision the actor saw; a round for another revision is CHANGED. */
+  subjectVersion?: number;
+  /** The module enforces its own submitter rule (see `decisionRefusal`). */
+  submitterMayDecide?: boolean;
   qualify: (round: Round, step: Round["steps"][number]) => Promise<Qualification>;
   onOutcome?: (tx: Tx, outcome: Outcome, round: Round) => Promise<void>;
 };
@@ -206,6 +218,8 @@ export type DecideInput = {
 export async function decide(input: DecideInput) {
   const round = await latestRound(input.subjectType, input.subjectId);
   if (!round || round.status !== "PENDING") throw new ApprovalRefusal("NOT_PENDING");
+  if (input.subjectVersion !== undefined && round.subjectVersion !== input.subjectVersion)
+    throw new ApprovalRefusal("CHANGED");
   const steps = stepStates(round);
   const step = currentStep(steps);
   if (!step) throw new ApprovalRefusal("NO_STEP");
@@ -220,6 +234,8 @@ export async function decide(input: DecideInput) {
     step,
     decisions,
     qualified: q !== null,
+    action: input.action,
+    submitterMayDecide: input.submitterMayDecide,
   });
   if (refusal) throw new ApprovalRefusal(refusal, step.sequence);
   const outcome = decisionOutcome({
@@ -249,6 +265,7 @@ export async function decide(input: DecideInput) {
         deciderId: input.actorId,
         onBehalfOfId: q?.onBehalfOfId ?? null,
         viaProxy: q?.viaProxy ?? false,
+        slot: input.slot ?? null,
         action: input.action,
         comment: input.comment?.trim() || null,
         decidedAt: now,

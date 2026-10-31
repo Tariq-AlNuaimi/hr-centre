@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { can, isHiringAdmin, type HiringActor } from "./access";
+import { can, type HiringActor } from "./access";
 import { buildBudgetCheck, type BudgetEnvelopeEntry } from "./fill-rules";
 import { toOMRorNull } from "./money";
 import { peopleById, personOrNull } from "./people";
-import { nextUnsignedStep, parseDecisionNote, signRefusal } from "./requisition-rules";
-import { currentRound, requisitionChain } from "./requisition-status";
+import { delegatorActors } from "./offer-round";
+import { nextUnsignedStep, parseDecisionNote } from "./requisition-rules";
+import { currentRound, requisitionChain, requisitionRefusal } from "./requisition-status";
 import { bandFor, type LoadedRequisition } from "./requisitions";
 import { readSetting } from "./settings";
 
@@ -21,11 +22,12 @@ async function envelopeFor(entityId: string): Promise<BudgetEnvelopeEntry | null
 
 export async function approvalView(actor: HiringActor, l: LoadedRequisition) {
   const req = l.req;
-  const [{ steps, threshold }, round, history, envelope] = await Promise.all([
+  const [{ steps, threshold }, round, history, envelope, delegators] = await Promise.all([
     requisitionChain(req, l.subject),
     currentRound(req.id),
     statusHistory(req.id),
     envelopeFor(req.entityId),
+    delegatorActors(actor),
   ]);
   // The latest round's signatures always show; "next" exists only while pending.
   const signedRows = req.status === "DRAFT" || req.status === "ARCHIVED" ? [] : round.signed;
@@ -38,13 +40,7 @@ export async function approvalView(actor: HiringActor, l: LoadedRequisition) {
   const band = bandFor(actor, l, routedApprover);
   const refusal =
     req.status === "PENDING_APPROVAL" && next
-      ? signRefusal({
-          actorId: actor.userId,
-          isAdmin: isHiringAdmin(actor),
-          requesterId: round.submission?.changedById ?? null,
-          routedApproverIds: next.approvers.map((a) => a.id),
-          priorSignerIds: signedRows.map((s) => s.approverId),
-        })
+      ? requisitionRefusal(actor, delegators, round.round, l.subject)
       : "This requisition is not awaiting approval.";
   const lastDecision = history.find((h) => h.fromStatus === "PENDING_APPROVAL");
   return {

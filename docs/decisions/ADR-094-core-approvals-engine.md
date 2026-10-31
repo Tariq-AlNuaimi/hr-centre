@@ -46,17 +46,46 @@ the same audited transaction. Modules turn refusal codes into their own sentence
 
 ## Decision
 
-Option 1. **Migrated now: Hiring offers** — every round is copied (pending offers keep
+Option 1. **Migrated first: Hiring offers** — every round is copied (pending offers keep
 their chain and decisions; decided offers keep their history), submit/resubmit open a
 round, leaving approval cancels it, decisions go through `decide`. Sentences and their
 order are unchanged (parity test). New: a delegate may decide for a holder.
 
+**Migrated in the follow-up (2026-10-31, migration `hiring_approvals_on_core`):**
+
+- _Hiring requisitions_ — subject `hiring.requisition`. Every move INTO
+  PENDING_APPROVAL opens a round whose steps are the chain at that moment (HR Manager,
+  then Operations Director); a sign-off is an engine decision (the last one moves the
+  requisition to OPEN and writes its history row in the same transaction); a routed
+  approver's "Rejected — …" / "Sent back — …" is that decision on the current step; any
+  other move out of PENDING_APPROVAL (a withdrawal, archiving, or a decline the engine
+  would not record as this person's decision) cancels the round — the move itself is
+  allowed exactly as before. The status history keeps every move and its reason. The
+  four sentences and their order are pinned (`requisitionRefusalMessage`, parity test).
+  The "chain changed while pending" refusal is gone: the round's steps are the snapshot
+  taken at submission, so a configuration change cannot rewrite a round under way.
+- _JD sign-off_ — subject `hiring.jd`, one round per JD version (`subject_version`):
+  ONE step needing two different signatories; each signature is a decision naming its
+  slot (`slot` = HIRING_MANAGER / HR, unique per step). Hiring's slot rules and
+  sentences (`jd-rules.ts`) run first; the engine is told the module owns the drafter
+  rule (`submitterMayDecide` — the drafter may sign the hiring-manager slot, never the
+  HR one). A request for changes is a send-back (the version bumps); editing the JD
+  under sign-off cancels the round. Two concurrent signatures no longer both commit and
+  get reconciled afterwards — the second reloads (`CHANGED`). JD sign-off takes no
+  delegation (the hiring-manager slot is exactly the requisition's hiring manager).
+- Engine changes for these: `core_approval_requests.subject_version`,
+  `core_approval_decisions.slot`; the one-decision-per-person rule is now one
+  APPROVAL per person per step — a person who signed a two-signatory step may still
+  send it back (`(step_id, decider_id, action)` unique), as JD signers always could.
+- Requisition delegation is new, as for offers: a delegate may sign for a holder and is
+  held to the holder's bans.
+- Every existing round was copied (pending ones keep their signatures; decided ones
+  keep their history), verified by replaying the migration on a scratch database with
+  fixture rows for every case. `hiring_requisition_approvals` and `hiring_jd_signoffs`
+  are dropped once the new path is verified live.
+
 **Not migrated, and why:**
 
-- _Hiring requisitions and JD sign-off_ fit the engine (a two-step chain; a two-signatory
-  round per JD version) but are tied to the status-history round and JD versioning;
-  they move in a follow-up with their own parity tests. Until then they are listed in the
-  Approvals inbox from their module provider.
 - _JML approvals_ record a decision a holder made elsewhere (the holder may have no login;
   HR record it), so the decider is not the approver — the engine's decider rule does not
   fit without changing JML's rule. Kept; listed in the inbox. `JmlApprovalAuthority`

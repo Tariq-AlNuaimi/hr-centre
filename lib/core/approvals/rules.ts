@@ -33,8 +33,14 @@ export function currentStep<T extends StepState>(steps: readonly T[]): T | undef
  *   EXCLUDED       a module-named conflict (e.g. the candidate's referrer)
  *   PRIOR_STEP     the actor (or the holder they act for) approved an earlier step
  *                  of this round — one person, one step
- *   ALREADY        the actor already decided this step (two-holder steps need two people)
+ *   ALREADY        the actor already approved this step (two-holder steps need two
+ *                  people) — they may still turn it down (reject / send back)
  *   NOT_QUALIFIED  neither the actor, a holder they are a delegate for, nor a proxy
+ *
+ * `submitterMayDecide` is for a module whose own rule about the submitter is
+ * narrower than a round-wide ban (a JD's drafter may sign the hiring-manager
+ * slot, never the HR one): the engine then skips NO_SUBMITTER and SUBMITTER and
+ * the module enforces its rule before calling `decide`.
  */
 export type RefusalCode =
   "NO_SUBMITTER" | "SUBMITTER" | "EXCLUDED" | "PRIOR_STEP" | "ALREADY" | "NOT_QUALIFIED";
@@ -48,18 +54,28 @@ export function decisionRefusal(input: {
   step: Pick<StepState, "sequence">;
   decisions: readonly DecisionState[];
   qualified: boolean;
+  /** The decision being made; ALREADY guards approvals only. Defaults to an approval. */
+  action?: DecisionState["action"];
+  submitterMayDecide?: boolean;
 }): RefusalCode | null {
-  if (!input.submitterId) return "NO_SUBMITTER";
   const people = new Set([input.actorId, input.actingFor].filter((x): x is string => Boolean(x)));
-  if (people.has(input.submitterId)) return "SUBMITTER";
+  if (!input.submitterMayDecide) {
+    if (!input.submitterId) return "NO_SUBMITTER";
+    if (people.has(input.submitterId)) return "SUBMITTER";
+  }
   if (input.excludedIds.some((id) => people.has(id))) return "EXCLUDED";
   const approvedEarlier = input.decisions.filter(
     (d) => d.action === "APPROVED" && d.sequence !== input.step.sequence,
   );
   if (approvedEarlier.some((d) => people.has(d.deciderId) || people.has(d.onBehalfOfId ?? "")))
     return "PRIOR_STEP";
-  const onThisStep = input.decisions.filter((d) => d.sequence === input.step.sequence);
-  if (onThisStep.some((d) => people.has(d.deciderId) || people.has(d.onBehalfOfId ?? "")))
+  const onThisStep = input.decisions.filter(
+    (d) => d.sequence === input.step.sequence && d.action === "APPROVED",
+  );
+  if (
+    (input.action ?? "APPROVED") === "APPROVED" &&
+    onThisStep.some((d) => people.has(d.deciderId) || people.has(d.onBehalfOfId ?? ""))
+  )
     return "ALREADY";
   if (!input.qualified) return "NOT_QUALIFIED";
   return null;
