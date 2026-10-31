@@ -22,6 +22,7 @@ type CoverageDb = {
   companyWide: boolean;
   directorateId: string | null;
   departmentId: string | null;
+  teamId: string | null;
 };
 
 /** A stored coverage row in the routing rules' shape (HIVE's companyId / orgUnitId). */
@@ -32,7 +33,7 @@ function toCoverageRow(c: CoverageDb): CoverageRow {
     // HIVE's `companyId` meant "company-wide routing"; it stays a separate flag.
     companyId: c.companyWide ? c.entityId : null,
     entityId: c.entityId,
-    orgUnitId: c.directorateId ?? c.departmentId ?? null,
+    orgUnitId: c.directorateId ?? c.departmentId ?? c.teamId ?? null,
   };
 }
 
@@ -53,7 +54,9 @@ export async function loadHrPairs(): Promise<PairRow[]> {
       coverage: {
         // Nested reads are NOT rewritten by the soft-delete extension, so this
         // filter is the only thing stopping a deleted row from still routing.
-        where: { deletedAt: null },
+        // ADR-102: these are rows of the core HR coverage model that name this
+        // pair; a row switched off on Admin › Settings › HR coverage stops routing.
+        where: { deletedAt: null, active: true },
         select: {
           label: true,
           aliases: true,
@@ -61,6 +64,7 @@ export async function loadHrPairs(): Promise<PairRow[]> {
           companyWide: true,
           directorateId: true,
           departmentId: true,
+          teamId: true,
         },
       },
     },

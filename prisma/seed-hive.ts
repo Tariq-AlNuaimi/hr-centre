@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../generated/prisma/client";
 import { TICKET_STARTER_ROLES } from "../lib/hive/roles";
+import { levelOf } from "../lib/core/hr-coverage/rules";
 // The answer email's default wording has ONE owner (lib/validations/hive/email-template.ts).
 
 /**
@@ -452,7 +453,7 @@ async function seedPairs(prisma: Db, entities: Map<string, string>): Promise<voi
       const entityId = companyCode ? (entities.get(companyCode) ?? null) : (rihal ?? null);
       const unitName = "unit" in cov ? (cov.unit as string) : null;
       const unit = unitName ? await unitIn(prisma, rihal, unitName) : null;
-      const found = await prisma.hrTagCoverage.findFirst({
+      const found = await prisma.hrCoverage.findFirst({
         where: { pairId: pair.id, label: cov.label },
       });
       if (found) {
@@ -463,12 +464,15 @@ async function seedPairs(prisma: Db, entities: Map<string, string>): Promise<voi
           !found.departmentId &&
           (unit.directorateId || unit.departmentId)
         ) {
-          await prisma.hrTagCoverage.update({ where: { id: found.id }, data: unit });
+          await prisma.hrCoverage.update({
+            where: { id: found.id },
+            data: { ...unit, level: levelOf({ ...found, ...unit }) },
+          });
         }
         continue;
       }
       if (companyCode && !entityId) continue; // that company is not in this database
-      await prisma.hrTagCoverage.create({
+      await prisma.hrCoverage.create({
         data: {
           pairId: pair.id,
           label: cov.label,
@@ -477,6 +481,12 @@ async function seedPairs(prisma: Db, entities: Map<string, string>): Promise<voi
           companyWide: companyCode !== null,
           directorateId: unit?.directorateId ?? null,
           departmentId: unit?.departmentId ?? null,
+          level: levelOf({
+            companyWide: companyCode !== null,
+            entityId,
+            directorateId: unit?.directorateId ?? null,
+            departmentId: unit?.departmentId ?? null,
+          }),
         },
       });
     }

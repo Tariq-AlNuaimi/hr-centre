@@ -21,6 +21,7 @@
 - app/[locale]/(dashboard)/admin/roles/page.tsx
 - app/[locale]/(dashboard)/admin/settings/ai/page.tsx
 - app/[locale]/(dashboard)/admin/settings/email-templates/page.tsx
+- app/[locale]/(dashboard)/admin/settings/hr-coverage/page.tsx
 - app/[locale]/(dashboard)/admin/settings/page.tsx
 - app/[locale]/(dashboard)/admin/settings/performance/page.tsx
 - app/[locale]/(dashboard)/admin/strategy-scores/page.tsx
@@ -279,6 +280,8 @@
 - app/api/hive/reply/[token]/route.ts  [POST]
 - app/api/hive/saved-replies/[id]/route.ts  [PUT,DELETE]
 - app/api/hive/saved-replies/route.ts  [GET,POST]
+- app/api/hr-coverage/[id]/route.ts  [PATCH,DELETE]
+- app/api/hr-coverage/route.ts  [GET,POST]
 - app/api/imports/[id]/apply/route.ts  [POST]
 - app/api/imports/history/route.ts  [GET]
 - app/api/imports/route.ts  [GET,POST]
@@ -457,7 +460,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences, documentsUploaded
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveEscalationsRaised, hiveSavedReplies, hiveEscalationEvents, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlDeskMemberships, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, hrCoverageAsOwner, hrCoverageAsSupervisor, jmlEmailsSent, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden, moduleSettingsUpdated, approvalsSubmitted, approvalDecisions, approvalsOnBehalfOf, approvalDelegations, approvalDelegatedTo, emailTemplatesUpdated, notificationPreferences, documentsUploaded
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -523,7 +526,7 @@
 - EscalationMessage: id, escalationId, direction, body, at, escalation
 - HrTagPair: id, name, order, isDefault, deletedAt, deletedBy, createdAt, updatedAt, members, coverage, escalations, savedReplies
 - HrTagMember: id, pairId, name, email, phone, photoKey, order, userId, deletedAt, deletedBy, createdAt, updatedAt, pair, user
-- HrTagCoverage: id, pairId, label, aliases, entityId, companyWide, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, pair
+- HrCoverage: id, pairId, label, aliases, entityId, companyWide, directorateId, departmentId, teamId, level, priority, active, caseTypes, ownerUserId, supervisorUserId, deletedAt, deletedBy, createdAt, updatedAt, pair, owner, supervisor
 - RotationConfig: id, anchorDate, anchorType, timezone, weekendDays, createdAt, updatedAt
 - RotationGroup: id, name, mode, order, deletedAt, deletedBy, createdAt, updatedAt, coverage
 - RotationCoverage: id, groupId, label, aliases, entityId, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, group
@@ -606,6 +609,9 @@
 - lib/core/email/templates.ts: TemplateModule, TemplateOverride, templateOverride, templateOverrides, saveTemplateOverride, clearTemplateOverride
 - lib/core/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/core/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
+- lib/core/hr-coverage/admin.ts: CoverageEditor, CoverageForbidden, coverageEditor, coverageView, createCoverage, updateCoverage, removeCoverage
+- lib/core/hr-coverage/rules.ts: Placement, CASE_LEVEL_PRECEDENCE, CaseLevel, caseRungs, levelOf, unitIdOf, hasTicketHalf, hasCaseHalf, halvesTouched
+- lib/core/hr-coverage/store.ts: CASE_SEAT_SELECT, CaseSeatRow, resolveCaseOwner, unitSubject, userHolds, seatProblem, caseSeatHolders
 - lib/core/imports/record.ts: IMPORT_KINDS, ImportKind, RecordedIssue, recordImport, visibleImportKinds
 - lib/core/notify/audience.ts: isGatedHref, hasAccessRule, whoCanOpen, grantsMemo
 - lib/core/notify/preferences.ts: PreferenceRow, preferencesFor, savePreferences, mutedInApp, wantEmail
@@ -766,7 +772,7 @@
 - lib/jml/email/types.ts: EMAIL_TYPES
 - lib/jml/employee-tab.ts: jmlTabVisible, employeeJml, EmployeeJml, employeeJmlDocuments
 - lib/jml/engine/activity.ts: caseActivity
-- lib/jml/engine/assignment.ts: RuleRow, Placement, resolveHrAssignment, userHolds, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules, listJmlHrUsers
+- lib/jml/engine/assignment.ts: RuleRow, resolveHrAssignment, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules
 - lib/jml/engine/case-actions.ts: cancelOpenWork, cancelCase, archiveCase, reassignOwner, setLegalHold
 - lib/jml/engine/case-read.ts: CaseRow, CaseListRow, listCases, getCaseDetail, listCaseEmails
 - lib/jml/engine/case-ref.ts: nextCaseRef, withCaseRefRetry
@@ -973,6 +979,7 @@
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/core/approvals.ts: DELEGABLE_MODULES, delegationSchema
 - lib/validations/core/documents.ts: DOCUMENT_CATEGORIES, documentUploadSchema
+- lib/validations/core/hr-coverage.ts: hrCoverageSchema, HrCoverageInput
 - lib/validations/core/notifications.ts: preferencesSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema, remindLateSchema
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
@@ -1222,9 +1229,8 @@
 - components/jml/settings/ImportExitsSettings.tsx
 - components/jml/settings/LeaverListsSettings.tsx
 - components/jml/settings/ReasonCodesSettings.tsx
+- components/jml/settings/ResolvePreview.tsx
 - components/jml/settings/RetentionSettings.tsx
-- components/jml/settings/RuleForm.tsx
-- components/jml/settings/RulesSettings.tsx
 - components/jml/settings/SettingsHub.tsx
 - components/jml/settings/StatutorySettings.tsx
 - components/jml/settings/TaskRoutingSettings.tsx
@@ -1334,6 +1340,9 @@
 - components/rbac/RoleMatrix.tsx
 - components/rbac/RolesSection.tsx
 - components/rbac/UserSearch.tsx
+- components/settings/HrCoverageDialog.tsx
+- components/settings/HrCoverageFields.tsx
+- components/settings/HrCoverageSettings.tsx
 - components/settings/NotificationPreferences.tsx
 - components/settings/PlatformAiSettings.tsx
 - components/shared/AuthCard.tsx

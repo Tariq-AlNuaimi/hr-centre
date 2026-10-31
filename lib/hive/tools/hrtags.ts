@@ -32,7 +32,7 @@ import {
  *    names to ask with, and why {@link runHrTags} never returns an empty result.
  *
  * §4.4's binding note again: HR Tag coverage is its own structure with its own
- * `label` and `aliases`. This file resolves against `HrTagCoverage` and never
+ * `label` and `aliases`. This file resolves against `HrCoverage` (the core HR coverage rows, ADR-102) and never
  * against `OrgUnit` names or `RotationCoverage` — Operations is covered by
  * Shahed & Afra, is a rotation CONSTANT, and is an org directorate, three facts
  * that are independently editable and must stay that way.

@@ -203,14 +203,15 @@ function model(name: string): string {
 }
 
 test("each coverage table owns its own label and aliases; org links are optional", () => {
-  for (const name of ["HrTagCoverage", "RotationCoverage"]) {
+  // ADR-102: HR Tag coverage is now the core HR coverage model (label defaults to "").
+  for (const name of ["HrCoverage", "RotationCoverage"]) {
     const body = model(name);
-    assert.match(body, /\n\s+label\s+String\n/);
+    assert.match(body, /\n\s+label\s+String(\s+@default\(""\))?\n/);
     assert.match(body, /\n\s+aliases\s+String\[\]/);
     assert.match(body, /\n\s+directorateId\s+String\?/);
     assert.match(body, /\n\s+departmentId\s+String\?/);
   }
-  assert.match(model("HrTagCoverage"), /companyWide\s+Boolean/, "company-wide kept separate");
+  assert.match(model("HrCoverage"), /companyWide\s+Boolean/, "company-wide kept separate");
 });
 
 test("rotation config keeps the anchor and weekend as data; discount expiry is nullable", () => {
